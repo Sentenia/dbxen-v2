@@ -1321,13 +1321,16 @@ footer {
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Burned!';
       document.getElementById('burnBtn').style.background = 'var(--green)';
       lucide.createIcons();
+      await refreshBalances();
+      await refreshProtocolStats();
       setTimeout(async () => {
         document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
         document.getElementById('burnBtn').style.background = '';
         document.getElementById('burnBtn').disabled = false;
         lucide.createIcons();
         await refreshBalances();
-      }, 3000);
+        await refreshProtocolStats();
+      }, 5000);
     } catch (e) {
       console.error('Burn failed:', e);
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
@@ -1355,7 +1358,8 @@ footer {
       const tx = await dbxenContract.stake(amount);
       await tx.wait();
       document.getElementById('stakeBtn').textContent = 'Staked!';
-      setTimeout(async () => { document.getElementById('stakeBtn').textContent = 'Stake'; document.getElementById('stakeBtn').disabled = false; await refreshBalances(); }, 3000);
+      await refreshBalances();
+      setTimeout(async () => { document.getElementById('stakeBtn').textContent = 'Stake'; document.getElementById('stakeBtn').disabled = false; await refreshBalances(); }, 5000);
     } catch (e) {
       console.error('Stake failed:', e);
       document.getElementById('stakeBtn').textContent = 'Stake';
@@ -1375,7 +1379,8 @@ footer {
       const tx = await dbxenContract.unstake(ethers.parseEther(val));
       await tx.wait();
       document.getElementById('unstakeBtn').textContent = 'Unstaked!';
-      setTimeout(async () => { document.getElementById('unstakeBtn').textContent = 'Unstake'; document.getElementById('unstakeBtn').disabled = false; await refreshBalances(); }, 3000);
+      await refreshBalances();
+      setTimeout(async () => { document.getElementById('unstakeBtn').textContent = 'Unstake'; document.getElementById('unstakeBtn').disabled = false; await refreshBalances(); }, 5000);
     } catch (e) {
       console.error('Unstake failed:', e);
       document.getElementById('unstakeBtn').textContent = 'Unstake';
@@ -1393,7 +1398,8 @@ footer {
       const tx = await dbxenContract.claimRewards();
       await tx.wait();
       document.getElementById('claimDxnBtn').textContent = 'Claimed!';
-      setTimeout(async () => { document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards'; document.getElementById('claimDxnBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 3000);
+      await refreshBalances();
+      setTimeout(async () => { document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards'; document.getElementById('claimDxnBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
     } catch (e) {
       console.error('Claim DXN failed:', e);
       document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards';
@@ -1412,7 +1418,8 @@ footer {
       const tx = await dbxenContract.claimFees();
       await tx.wait();
       document.getElementById('claimFeesBtn').textContent = 'Claimed!';
-      setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 3000);
+      await refreshBalances();
+      setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
     } catch (e) {
       console.error('Claim fees failed:', e);
       document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees';
@@ -1443,6 +1450,8 @@ footer {
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Migrated!';
       document.getElementById('bridgeBtn').style.background = 'var(--green)';
       lucide.createIcons();
+      await refreshBalances();
+      await refreshBridgeStats();
       setTimeout(async () => {
         document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
         document.getElementById('bridgeBtn').style.background = '';
@@ -1450,7 +1459,7 @@ footer {
         lucide.createIcons();
         await refreshBalances();
         await refreshBridgeStats();
-      }, 3000);
+      }, 5000);
     } catch (e) {
       console.error('Migration failed:', e);
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
