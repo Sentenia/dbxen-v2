@@ -556,9 +556,12 @@ footer {
 
   <!-- HERO -->
   <section class="hero fade-up">
-    <div class="hero-badge"><span class="pulse-dot"></span> Live on Ethereum</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px;">
+      <div class="hero-badge"><span class="pulse-dot"></span> Live on Ethereum</div>
+      <div class="hero-badge" style="color:var(--amber);border-color:var(--amber-glow);background:var(--amber-glow)"><i data-lucide="timer" style="width:14px;height:14px"></i> Next cycle: <span id="heroTimer">—</span></div>
+    </div>
     <h1>Burn <span class="cyan">XEN</span>. Earn <span class="amber">DXN</span>.</h1>
-    <p>Trustless Yield. Community Built. Fully immutable.</p>
+    <p>Trustless Yield. Community-built Protocol. Fully Immutable.</p>
     <div class="hero-stats fade-up fade-up-2">
       <div class="hero-stat">
         <div class="hero-stat-value" id="statCycle">1090</div>
@@ -1212,11 +1215,13 @@ footer {
       // Next cycle timer
       const now = BigInt(Math.floor(Date.now() / 1000));
       const nextCycleTs = initTs + ((cycle + 1n) * period);
+      cachedNextCycleTs = Number(nextCycleTs);
       const secsLeft = Number(nextCycleTs - now);
       if (secsLeft > 0) {
         const h = Math.floor(secsLeft / 3600);
         const m = Math.floor((secsLeft % 3600) / 60);
         document.getElementById('nextCycleTimer').textContent = `${h}h ${m}m`;
+        document.getElementById('heroTimer').textContent = `${h}h ${m}m`;
       }
     } catch (e) {
       console.error('Protocol stats failed:', e);
@@ -1632,6 +1637,28 @@ footer {
       refreshActivity();
     }
   }, 30000);
+
+  // Client-side timer tick every 60s (no RPC calls)
+  let cachedNextCycleTs = 0;
+  const origRefreshProtocol = refreshProtocolStats;
+  const _origRefresh = refreshProtocolStats;
+  setInterval(() => {
+    if (cachedNextCycleTs > 0) {
+      const now = Math.floor(Date.now() / 1000);
+      const secsLeft = cachedNextCycleTs - now;
+      if (secsLeft > 0) {
+        const h = Math.floor(secsLeft / 3600);
+        const m = Math.floor((secsLeft % 3600) / 60);
+        const str = `${h}h ${m}m`;
+        document.getElementById('nextCycleTimer').textContent = str;
+        document.getElementById('heroTimer').textContent = str;
+        const actTimer = document.getElementById('actTimer');
+        if (actTimer) actTimer.textContent = str;
+      } else {
+        document.getElementById('heroTimer').textContent = 'New cycle!';
+      }
+    }
+  }, 60000);
 
   // Also trigger on tab switch
   document.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
