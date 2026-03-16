@@ -533,7 +533,7 @@ footer {
             <a id="burnMaxBtn" style="cursor:pointer">Max</a>
           </div>
         </div>
-        <button class="btn-action primary" id="burnBtn" disabled>
+        <button class="btn-action primary" id="burnBtn" onclick="if(!userAddr){document.getElementById('connectBtn').click()}">
           <i data-lucide="flame" style="width:16px;height:16px"></i>
           Connect Wallet to Burn
         </button>
@@ -683,7 +683,7 @@ footer {
         </div>
       </div>
 
-      <button class="btn-action primary" id="bridgeBtn" style="margin-bottom: 16px;" disabled>
+      <button class="btn-action primary" id="bridgeBtn" style="margin-bottom: 16px;" onclick="if(!userAddr){document.getElementById('connectBtn').click()}">
         <i data-lucide="arrow-left-right" style="width:16px;height:16px"></i>
         Connect Wallet to Migrate
       </button>
@@ -864,7 +864,13 @@ footer {
   // ═══ CONNECT WALLET ═══
   document.getElementById('connectBtn').addEventListener('click', async () => {
     if (typeof window.ethereum === 'undefined') {
-      alert('No wallet detected. Please install MetaMask.');
+      // Mobile: redirect to MetaMask in-app browser
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = 'https://metamask.app.link/dapp/dbxen-v2.vercel.app';
+      } else {
+        alert('No wallet detected. Please install MetaMask from metamask.io');
+      }
       return;
     }
     try {
