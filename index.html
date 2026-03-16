@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBXen V2 — Burn XEN. Earn DXN.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2332;
+  --border: #1e2a3a;
+  --border-glow: #22d3ee33;
+  --cyan: #22d3ee;
+  --cyan-dim: #0e7490;
+  --cyan-glow: #22d3ee22;
+  --amber: #f59e0b;
+  --amber-hover: #fbbf24;
+  --amber-glow: #f59e0b33;
+  --text-primary: #f0f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --green: #34d399;
+  --red: #f87171;
+  --font: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --radius: 12px;
+  --radius-lg: 16px;
+}
+
+html { font-family: var(--font); background: var(--bg-deep); color: var(--text-primary); }
+body { min-height: 100vh; overflow-x: hidden; position: relative; }
+
+/* ═══ ANIMATED WAVY BACKGROUND ═══ */
+.wave-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.wave-bg svg { width: 100%; height: 100%; opacity: 0.12; }
+.wave-line { fill: none; stroke-width: 1.5; }
+.wave-line:nth-child(1) { stroke: var(--cyan); animation: wave1 12s ease-in-out infinite; }
+.wave-line:nth-child(2) { stroke: var(--cyan); opacity: 0.6; animation: wave2 15s ease-in-out infinite; }
+.wave-line:nth-child(3) { stroke: var(--cyan-dim); animation: wave3 18s ease-in-out infinite; }
+.wave-line:nth-child(4) { stroke: var(--amber); opacity: 0.3; animation: wave1 20s ease-in-out infinite reverse; }
+.wave-line:nth-child(5) { stroke: var(--cyan-dim); opacity: 0.4; animation: wave2 22s ease-in-out infinite; }
+
+@keyframes wave1 {
+  0%, 100% { d: path("M-100,300 C200,250 400,350 600,280 C800,210 1000,320 1200,270 C1400,220 1600,310 1900,260"); }
+  50% { d: path("M-100,280 C200,340 400,220 600,310 C800,280 1000,210 1200,300 C1400,260 1600,220 1900,290"); }
+}
+@keyframes wave2 {
+  0%, 100% { d: path("M-100,500 C200,450 400,550 600,480 C800,410 1000,520 1200,470 C1400,420 1600,510 1900,460"); }
+  50% { d: path("M-100,480 C200,540 400,420 600,510 C800,480 1000,410 1200,500 C1400,460 1600,420 1900,490"); }
+}
+@keyframes wave3 {
+  0%, 100% { d: path("M-100,700 C200,650 400,750 600,680 C800,610 1000,720 1200,670 C1400,620 1600,710 1900,660"); }
+  50% { d: path("M-100,680 C200,740 400,620 600,710 C800,680 1000,610 1200,700 C1400,660 1600,620 1900,690"); }
+}
+
+/* subtle radial glow behind content */
+.glow-orb {
+  position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0;
+}
+.glow-orb.cyan { width: 600px; height: 600px; background: var(--cyan-glow); top: -100px; right: -100px; }
+.glow-orb.amber { width: 400px; height: 400px; background: var(--amber-glow); bottom: -50px; left: -50px; }
+
+/* ═══ LAYOUT ═══ */
+.app { position: relative; z-index: 1; }
+
+/* ═══ NAV ═══ */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px; max-width: 1200px; margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-dim));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: var(--bg-deep);
+}
+.nav-name { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.nav-name span { color: var(--cyan); }
+
+.nav-links { display: flex; gap: 4px; }
+.nav-link {
+  padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+  text-decoration: none; display: flex; align-items: center; gap: 6px;
+  border: none; background: none;
+}
+.nav-link:hover { color: var(--text-primary); background: var(--bg-card); }
+.nav-link.active { color: var(--cyan); background: var(--cyan-glow); }
+.nav-link.bridge-link {
+  color: var(--amber); border: 1px solid var(--amber-glow);
+}
+.nav-link.bridge-link:hover { background: var(--amber-glow); color: var(--amber-hover); }
+
+.btn-connect {
+  padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  background: var(--amber); color: var(--bg-deep); border: none; cursor: pointer;
+  transition: all 0.25s; display: flex; align-items: center; gap: 8px;
+  font-family: var(--font);
+}
+.btn-connect:hover { background: var(--amber-hover); transform: translateY(-1px); box-shadow: 0 8px 24px var(--amber-glow); }
+
+/* ═══ HERO ═══ */
+.hero {
+  text-align: center; padding: 80px 32px 48px; max-width: 720px; margin: 0 auto;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 600;
+  color: var(--cyan); background: var(--cyan-glow); border: 1px solid var(--cyan-dim);
+  margin-bottom: 24px; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.hero h1 {
+  font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.03em;
+  line-height: 1.1; margin-bottom: 16px;
+}
+.hero h1 .cyan { color: var(--cyan); }
+.hero h1 .amber { color: var(--amber); }
+.hero p {
+  font-size: 17px; color: var(--text-secondary); line-height: 1.6;
+  max-width: 520px; margin: 0 auto 32px; font-weight: 400;
+}
+.hero-stats {
+  display: flex; justify-content: center; gap: 40px; margin-top: 16px;
+}
+.hero-stat { text-align: center; }
+.hero-stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.hero-stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ═══ CONTENT SECTIONS ═══ */
+.content { max-width: 1100px; margin: 0 auto; padding: 0 32px 80px; }
+
+.tab-panels { display: none; }
+.tab-panels.active { display: block; }
+
+/* ═══ CARD GRID ═══ */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+.card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 28px; transition: all 0.3s;
+}
+.card:hover { border-color: var(--border-glow); background: var(--bg-card-hover); }
+
+.card-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.card-icon {
+  width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+}
+.card-icon.burn { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.card-icon.stake { background: linear-gradient(135deg, var(--cyan), var(--cyan-dim)); }
+.card-icon.rewards { background: linear-gradient(135deg, var(--amber), #d97706); }
+
+.card-title { font-size: 16px; font-weight: 700; }
+.card-desc { font-size: 13px; color: var(--text-muted); }
+
+.input-group { margin-bottom: 16px; }
+.input-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+.input-field {
+  width: 100%; padding: 12px 16px; border-radius: var(--radius); font-size: 16px;
+  background: var(--bg-deep); border: 1px solid var(--border); color: var(--text-primary);
+  font-family: var(--font); font-weight: 500; transition: border 0.2s; outline: none;
+}
+.input-field:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-glow); }
+.input-field::placeholder { color: var(--text-muted); }
+
+.input-hint { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.input-hint a { color: var(--cyan); cursor: pointer; text-decoration: none; }
+.input-hint a:hover { text-decoration: underline; }
+
+.btn-action {
+  width: 100%; padding: 14px; border-radius: var(--radius); font-size: 15px; font-weight: 700;
+  border: none; cursor: pointer; transition: all 0.25s; font-family: var(--font);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-action.primary { background: var(--amber); color: var(--bg-deep); }
+.btn-action.primary:hover { background: var(--amber-hover); transform: translateY(-1px); box-shadow: 0 6px 20px var(--amber-glow); }
+.btn-action.secondary { background: var(--cyan-glow); color: var(--cyan); border: 1px solid var(--cyan-dim); }
+.btn-action.secondary:hover { background: var(--cyan); color: var(--bg-deep); }
+
+.stat-row {
+  display: flex; justify-content: space-between; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.stat-row:last-child { border: none; }
+.stat-label { color: var(--text-muted); }
+.stat-value { color: var(--text-primary); font-weight: 600; }
+.stat-value.green { color: var(--green); }
+
+/* ═══ BRIDGE PANEL ═══ */
+.bridge-card {
+  max-width: 480px; margin: 40px auto; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;
+}
+.bridge-card:hover { border-color: var(--amber-glow); }
+.bridge-arrow {
+  display: flex; align-items: center; justify-content: center;
+  margin: 16px 0; color: var(--amber);
+}
+.bridge-token {
+  display: flex; align-items: center; gap: 12px; padding: 16px;
+  background: var(--bg-deep); border-radius: var(--radius); border: 1px solid var(--border);
+}
+.bridge-token-icon {
+  width: 36px; height: 36px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-weight: 800; font-size: 12px;
+}
+.bridge-token-icon.old { background: var(--text-muted); color: var(--bg-deep); }
+.bridge-token-icon.new { background: var(--cyan); color: var(--bg-deep); }
+.bridge-token-name { font-weight: 600; font-size: 15px; }
+.bridge-token-sub { font-size: 12px; color: var(--text-muted); }
+.bridge-rate { text-align: center; font-size: 13px; color: var(--text-muted); margin: 16px 0; }
+.bridge-rate span { color: var(--green); font-weight: 600; }
+
+/* ═══ FOOTER ═══ */
+footer {
+  text-align: center; padding: 32px; font-size: 13px; color: var(--text-muted);
+  border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
+}
+footer a { color: var(--cyan); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 768px) {
+  nav { padding: 12px 16px; flex-wrap: wrap; gap: 12px; }
+  .nav-links { order: 3; width: 100%; justify-content: center; }
+  .hero { padding: 48px 20px 32px; }
+  .hero-stats { flex-wrap: wrap; gap: 24px; }
+  .content { padding: 0 16px 48px; }
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══ BRIDGE STATS ═══ */
+.bridge-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 16px;
+}
+.bridge-stat-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px;
+  background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.bridge-stat-icon {
+  width: 32px; height: 32px; border-radius: 8px; display: flex;
+  align-items: center; justify-content: center; background: var(--bg-card);
+  flex-shrink: 0;
+}
+.bridge-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+.bridge-stat-value { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.bridge-burn-note { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+/* ═══ RANGE SLIDER ═══ */
+.range-slider {
+  width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+  background: var(--border); border-radius: 3px; outline: none; margin: 12px 0 4px;
+  cursor: pointer;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--amber); border: 3px solid var(--bg-deep); cursor: pointer;
+  box-shadow: 0 0 8px var(--amber-glow);
+}
+.range-slider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--amber); border: 3px solid var(--bg-deep); cursor: pointer;
+}
+
+/* ═══ WALLET BALANCE DISPLAY ═══ */
+.wallet-balance {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: var(--cyan-glow); border: 1px solid var(--cyan-dim);
+  border-radius: var(--radius); margin-bottom: 16px; font-size: 13px;
+  color: var(--text-secondary);
+}
+.wallet-balance strong { color: var(--text-primary); font-weight: 700; }
+.balance-sub { color: var(--text-muted); font-size: 12px; }
+
+/* ═══ HOW IT WORKS ═══ */
+.how-it-works {
+  max-width: 1100px; margin: 0 auto; padding: 64px 32px;
+  border-top: 1px solid var(--border);
+}
+.hiw-title {
+  text-align: center; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;
+  margin-bottom: 40px;
+}
+.hiw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.hiw-step {
+  padding: 24px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); transition: all 0.3s;
+}
+.hiw-step:hover { border-color: var(--border-glow); background: var(--bg-card-hover); }
+.hiw-number {
+  width: 32px; height: 32px; border-radius: 8px; display: flex;
+  align-items: center; justify-content: center; font-size: 14px; font-weight: 800;
+  background: var(--amber); color: var(--bg-deep); margin-bottom: 16px;
+}
+.hiw-step-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.hiw-step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+/* ═══ FOOTER ═══ */
+footer {
+  border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
+  padding: 48px 32px 32px;
+}
+.footer-grid {
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 40px;
+  margin-bottom: 32px;
+}
+.footer-heading {
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 16px; letter-spacing: -0.01em;
+}
+.footer-address {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-size: 13px; color: var(--text-muted);
+}
+.footer-address-label { color: var(--text-secondary); min-width: 72px; }
+.footer-address code {
+  font-family: 'Plus Jakarta Sans', monospace; font-size: 13px; font-weight: 500;
+  color: var(--text-primary); background: var(--bg-deep); padding: 2px 8px;
+  border-radius: 4px; border: 1px solid var(--border);
+}
+.footer-icon-link {
+  color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center;
+}
+.footer-icon-link:hover { color: var(--cyan); }
+.footer-link {
+  display: flex; align-items: center; gap: 8px; font-size: 14px;
+  color: var(--text-muted); text-decoration: none; margin-bottom: 10px;
+  transition: color 0.2s;
+}
+.footer-link:hover { color: var(--cyan); }
+.footer-socials { display: flex; gap: 10px; }
+.footer-social {
+  width: 40px; height: 40px; border-radius: 10px; display: flex;
+  align-items: center; justify-content: center; background: var(--bg-card);
+  border: 1px solid var(--border); color: var(--text-secondary);
+  transition: all 0.2s; text-decoration: none;
+}
+.footer-social:hover { color: var(--text-primary); border-color: var(--border-glow); background: var(--bg-card-hover); }
+.footer-bottom {
+  text-align: center; font-size: 13px; color: var(--text-muted);
+  padding-top: 24px; border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .hiw-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.6s ease-out both; }
+.fade-up-1 { animation-delay: 0.1s; }
+.fade-up-2 { animation-delay: 0.2s; }
+.fade-up-3 { animation-delay: 0.3s; }
+.fade-up-4 { animation-delay: 0.4s; }
+
+/* ═══ PULSE DOT ═══ */
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  display: inline-block; animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+</style>
+</head>
+<body>
+
+<!-- ANIMATED WAVE BACKGROUND -->
+<div class="wave-bg">
+  <svg viewBox="0 0 1800 900" preserveAspectRatio="none">
+    <path class="wave-line" d="M-100,300 C200,250 400,350 600,280 C800,210 1000,320 1200,270 C1400,220 1600,310 1900,260"/>
+    <path class="wave-line" d="M-100,400 C200,350 400,450 600,380 C800,310 1000,420 1200,370 C1400,320 1600,410 1900,360"/>
+    <path class="wave-line" d="M-100,500 C200,450 400,550 600,480 C800,410 1000,520 1200,470 C1400,420 1600,510 1900,460"/>
+    <path class="wave-line" d="M-100,600 C200,550 400,650 600,580 C800,510 1000,620 1200,570 C1400,520 1600,610 1900,560"/>
+    <path class="wave-line" d="M-100,700 C200,650 400,750 600,680 C800,610 1000,720 1200,670 C1400,620 1600,710 1900,660"/>
+  </svg>
+</div>
+<div class="glow-orb cyan"></div>
+<div class="glow-orb amber"></div>
+
+<div class="app">
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">V2</div>
+      <div class="nav-name">DBXen <span>V2</span></div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Protocol</button>
+      <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
+      <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
+    </div>
+    <button class="btn-connect" id="connectBtn">
+      <i data-lucide="wallet" style="width:16px;height:16px"></i>
+      Connect Wallet
+    </button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero fade-up">
+    <div class="hero-badge"><span class="pulse-dot"></span> Live on Ethereum</div>
+    <h1>Burn <span class="cyan">XEN</span>. Earn <span class="amber">DXN</span>.</h1>
+    <p>The community-owned protocol, rebuilt from scratch. No exploits. No backdoors. Fully immutable.</p>
+    <div class="hero-stats fade-up fade-up-2">
+      <div class="hero-stat">
+        <div class="hero-stat-value" id="statCycle">1090</div>
+        <div class="hero-stat-label">Current Cycle</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value" id="statReward">1,135.14</div>
+        <div class="hero-stat-label">Daily Reward</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value" id="statBurned">14.78T</div>
+        <div class="hero-stat-label">XEN Burned</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value" id="statStaked">—</div>
+        <div class="hero-stat-label">DXN Staked</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROTOCOL TAB -->
+  <section class="content tab-panels active" id="tab-protocol">
+    <div class="card-grid">
+
+      <!-- BURN CARD -->
+      <div class="card fade-up fade-up-2">
+        <div class="card-header">
+          <div class="card-icon burn"><i data-lucide="flame" style="width:20px;height:20px;color:white"></i></div>
+          <div>
+            <div class="card-title">Burn XEN</div>
+            <div class="card-desc">Burn XEN tokens to earn DXN rewards</div>
+          </div>
+        </div>
+        <div class="wallet-balance" id="xenBalanceRow" style="display:none;">
+          <i data-lucide="wallet" style="width:14px;height:14px;color:var(--cyan)"></i>
+          <span>Your XEN: <strong id="xenBalance">—</strong></span>
+          <span class="balance-sub" id="xenMaxBatches">(— batches)</span>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Number of Batches</div>
+          <input class="input-field" id="burnInput" type="number" value="1" min="1" max="10000" placeholder="1">
+          <input class="range-slider" id="burnSlider" type="range" min="1" max="10000" value="1">
+          <div class="input-hint">
+            <span id="burnXenCost">2,500,000 XEN</span>
+            <a id="burnMaxBtn" style="cursor:pointer">Max</a>
+          </div>
+        </div>
+        <button class="btn-action primary" id="burnBtn" disabled>
+          <i data-lucide="flame" style="width:16px;height:16px"></i>
+          Connect Wallet to Burn
+        </button>
+        <div style="margin-top: 16px;">
+          <div class="stat-row">
+            <span class="stat-label">XEN Cost</span>
+            <span class="stat-value" id="burnCostDisplay">2,500,000 XEN</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Protocol Fee</span>
+            <span class="stat-value">~gas based</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Next Cycle</span>
+            <span class="stat-value green" id="nextCycleTimer">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAKE CARD -->
+      <div class="card fade-up fade-up-3">
+        <div class="card-header">
+          <div class="card-icon stake"><i data-lucide="lock" style="width:20px;height:20px;color:white"></i></div>
+          <div>
+            <div class="card-title">Stake DXN</div>
+            <div class="card-desc">Stake DXN to earn ETH protocol fees</div>
+          </div>
+        </div>
+        <div class="wallet-balance" id="dxnBalanceRow" style="display:none;">
+          <i data-lucide="wallet" style="width:14px;height:14px;color:var(--cyan)"></i>
+          <span>Your DXNv2: <strong id="dxnBalance">—</strong></span>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Amount to Stake</div>
+          <input class="input-field" id="stakeInput" type="text" placeholder="0.00" value="">
+          <div class="input-hint">
+            <span id="stakeBalanceHint">Balance: — DXN</span>
+            <a id="stakeMaxBtn" style="cursor:pointer">Max</a>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-action primary" id="stakeBtn" style="flex:1" disabled>Stake</button>
+          <button class="btn-action secondary" id="unstakeBtn" style="flex:1" disabled>Unstake</button>
+        </div>
+        <div style="margin-top: 16px;">
+          <div class="stat-row">
+            <span class="stat-label">Your Stake</span>
+            <span class="stat-value" id="userStake">— DXN</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Withdrawable</span>
+            <span class="stat-value" id="userWithdrawable">— DXN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- REWARDS CARD -->
+      <div class="card fade-up fade-up-4">
+        <div class="card-header">
+          <div class="card-icon rewards"><i data-lucide="gift" style="width:20px;height:20px;color:white"></i></div>
+          <div>
+            <div class="card-title">Your Rewards</div>
+            <div class="card-desc">Claim earned DXN and ETH fees</div>
+          </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <div class="stat-row">
+            <span class="stat-label">Unclaimed DXN</span>
+            <span class="stat-value green" id="unclaimedDxn">0.00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Unclaimed ETH Fees</span>
+            <span class="stat-value green" id="unclaimedFees">0.0000</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Withdrawable Stake</span>
+            <span class="stat-value" id="withdrawableStake">— DXN</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-action primary" id="claimDxnBtn" disabled>
+            <i data-lucide="coins" style="width:16px;height:16px"></i>
+            Claim DXN Rewards
+          </button>
+          <button class="btn-action secondary" id="claimFeesBtn" disabled>
+            <i data-lucide="banknote" style="width:16px;height:16px"></i>
+            Claim ETH Fees
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRIDGE TAB -->
+  <section class="content tab-panels" id="tab-bridge">
+    <div class="bridge-card fade-up">
+      <div class="card-header" style="margin-bottom: 24px;">
+        <div class="card-icon" style="background: linear-gradient(135deg, var(--amber), #d97706);">
+          <i data-lucide="arrow-left-right" style="width:20px;height:20px;color:white"></i>
+        </div>
+        <div>
+          <div class="card-title">DXN Migration Bridge</div>
+          <div class="card-desc">Swap your old DXN for DXNv2 at 1:1</div>
+        </div>
+      </div>
+
+      <div class="bridge-token">
+        <div class="bridge-token-icon old">v1</div>
+        <div>
+          <div class="bridge-token-name">DXN (Old)</div>
+          <div class="bridge-token-sub">0x80f0...cB6F</div>
+        </div>
+        <div style="margin-left:auto; text-align:right;">
+          <div style="font-weight:700; font-size:16px;" id="oldDxnBal">—</div>
+          <div style="font-size:12px; color:var(--text-muted);">Balance</div>
+        </div>
+      </div>
+
+      <div class="bridge-arrow">
+        <i data-lucide="arrow-down" style="width:24px;height:24px"></i>
+      </div>
+
+      <div class="bridge-token" style="border-color: var(--cyan-dim);">
+        <div class="bridge-token-icon new">v2</div>
+        <div>
+          <div class="bridge-token-name">DXNv2 (New)</div>
+          <div class="bridge-token-sub">0x1b08...52ab</div>
+        </div>
+        <div style="margin-left:auto; text-align:right;">
+          <div style="font-weight:700; font-size:16px;" id="newDxnBal">—</div>
+          <div style="font-size:12px; color:var(--text-muted);">You Receive</div>
+        </div>
+      </div>
+
+      <div class="bridge-rate">Swap rate: <span>1 DXN = 1 DXNv2</span> — always.</div>
+
+      <div class="input-group">
+        <div class="input-label">Amount to Migrate</div>
+        <input class="input-field" id="bridgeInput" type="text" placeholder="0.00">
+        <div class="input-hint">
+          <span id="bridgeBalanceHint">Old DXN balance: —</span>
+          <a id="bridgeMaxBtn" style="cursor:pointer">Max</a>
+        </div>
+      </div>
+
+      <button class="btn-action primary" id="bridgeBtn" style="margin-bottom: 16px;" disabled>
+        <i data-lucide="arrow-left-right" style="width:16px;height:16px"></i>
+        Connect Wallet to Migrate
+      </button>
+
+      <!-- BRIDGE STATS -->
+      <div class="bridge-stats">
+        <div class="bridge-stat-item">
+          <div class="bridge-stat-icon"><i data-lucide="arrow-right-left" style="width:16px;height:16px;color:var(--green)"></i></div>
+          <div>
+            <div class="bridge-stat-label">Total Migrated</div>
+            <div class="bridge-stat-value" id="totalMigrated">—</div>
+          </div>
+        </div>
+        <div class="bridge-stat-item">
+          <div class="bridge-stat-icon"><i data-lucide="vault" style="width:16px;height:16px;color:var(--cyan)"></i></div>
+          <div>
+            <div class="bridge-stat-label">Remaining in Pool</div>
+            <div class="bridge-stat-value" id="poolRemaining">—</div>
+          </div>
+        </div>
+        <div class="bridge-stat-item">
+          <div class="bridge-stat-icon"><i data-lucide="timer" style="width:16px;height:16px;color:var(--amber)"></i></div>
+          <div>
+            <div class="bridge-stat-label">Bridge Closes</div>
+            <div class="bridge-stat-value" id="bridgeDeadline">No deadline set</div>
+          </div>
+        </div>
+        <div class="bridge-stat-item">
+          <div class="bridge-stat-icon"><i data-lucide="flame" style="width:16px;height:16px;color:var(--red)"></i></div>
+          <div>
+            <div class="bridge-stat-label">DXNv2 Burned After Close</div>
+            <div class="bridge-stat-value bridge-burn-note" id="burnAfterClose">Unclaimed DXNv2 sent to 0xdead</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px; background: var(--bg-deep); border-radius: var(--radius); border: 1px solid var(--border); font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+        <strong style="color: var(--text-secondary);">How it works:</strong> Approve your old DXN, then swap. Your old tokens are sent to the burn address (0xdead). You receive an equal amount of DXNv2. This is irreversible. After the bridge closes, any remaining DXNv2 in the pool is swept to the burn address — permanently reducing supply.
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works">
+    <h2 class="hiw-title">How DBXen Works</h2>
+    <div class="hiw-grid">
+      <div class="hiw-step fade-up fade-up-1">
+        <div class="hiw-number">1</div>
+        <div class="hiw-step-title">Burn XEN</div>
+        <div class="hiw-step-desc">Burn XEN in batches of 2.5M to earn DXN rewards.</div>
+      </div>
+      <div class="hiw-step fade-up fade-up-2">
+        <div class="hiw-number">2</div>
+        <div class="hiw-step-title">Earn DXN</div>
+        <div class="hiw-step-desc">DXN rewards distributed at end of each 24h cycle.</div>
+      </div>
+      <div class="hiw-step fade-up fade-up-3">
+        <div class="hiw-number">3</div>
+        <div class="hiw-step-title">Stake for Fees</div>
+        <div class="hiw-step-desc">Stake DXN to earn protocol fees in native tokens.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="footer-heading">Contract Addresses</div>
+        <div class="footer-address">
+          <span class="footer-address-label">XEN:</span>
+          <code>0x06450d...9a6Fb8</code>
+          <a href="https://etherscan.io/address/0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
+        </div>
+        <div class="footer-address">
+          <span class="footer-address-label">DBXenV2:</span>
+          <code>0x61614...E03D0</code>
+          <a href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
+        </div>
+        <div class="footer-address">
+          <span class="footer-address-label">DXNv2:</span>
+          <code>0x1b08d...f52ab</code>
+          <a href="https://etherscan.io/address/0x1b08d317963cc65932f3f79f00987b2e23df52ab" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
+        </div>
+        <div class="footer-address">
+          <span class="footer-address-label">Migration:</span>
+          <code>0x93bc5...65a71</code>
+          <a href="https://etherscan.io/address/0x93bc54186656DC17C300fd5F6C464c0F75965a71" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-heading">Resources</div>
+        <a href="#" class="footer-link"><i data-lucide="external-link" style="width:13px;height:13px"></i> Litepaper</a>
+        <a href="#" class="footer-link"><i data-lucide="github" style="width:13px;height:13px"></i> GitHub</a>
+        <a href="https://xen.network" target="_blank" class="footer-link"><i data-lucide="external-link" style="width:13px;height:13px"></i> XEN Network</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-heading">Community</div>
+        <div class="footer-socials">
+          <a href="#" class="footer-social" title="X / Twitter"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="#" class="footer-social" title="Telegram"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      DBXen V2 — Community-owned. Fully immutable. No admin keys.
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script>
+  lucide.createIcons();
+
+  // ═══ CONTRACT ADDRESSES ═══
+  const ADDR = {
+    XEN:       '0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
+    DBXEN_V2:  '0x61614137edE60C65458F76a51D6431052EBE03D0',
+    DXN_V2:    '0x1b08d317963cc65932f3f79f00987b2e23df52ab',
+    OLD_DXN:   '0x80f0C1c49891dcFDD40b6e0F960F84E6042bcB6F',
+    MIGRATION: '0x93bc54186656DC17C300fd5F6C464c0F75965a71',
+  };
+  const BATCH_SIZE = 2500000n * (10n ** 18n); // 2.5M XEN per batch
+  const ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)'];
+  const DBXEN_ABI = [
+    'function burnBatch(uint256) payable',
+    'function stake(uint256)',
+    'function unstake(uint256)',
+    'function claimRewards()',
+    'function claimFees()',
+    'function getCurrentCycle() view returns (uint256)',
+    'function currentCycleReward() view returns (uint256)',
+    'function accRewards(address) view returns (uint256)',
+    'function accAccruedFees(address) view returns (uint256)',
+    'function accWithdrawableStake(address) view returns (uint256)',
+    'function i_initialTimestamp() view returns (uint256)',
+    'function i_periodDuration() view returns (uint256)',
+  ];
+  const MIGRATION_ABI = ['function swap(uint256)', 'function totalSwapped() view returns (uint256)', 'function deadline() view returns (uint256)', 'function active() view returns (bool)'];
+
+  // ═══ STATE ═══
+  let provider, signer, userAddr;
+  let xenContract, dxnV2Contract, oldDxnContract, dbxenContract, migrationContract;
+  let xenBal = 0n, dxnBal = 0n, oldDxnBal = 0n;
+  let maxBatches = 0;
+
+  // ═══ HELPERS ═══
+  function fmt(wei, decimals = 2) {
+    const str = ethers.formatEther(wei);
+    const num = parseFloat(str);
+    if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    return num.toLocaleString('en-US', { maximumFractionDigits: decimals });
+  }
+
+  // ═══ TAB SWITCHING ═══
+  document.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-link[data-tab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-panels').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ═══ CONNECT WALLET ═══
+  document.getElementById('connectBtn').addEventListener('click', async () => {
+    if (typeof window.ethereum === 'undefined') {
+      alert('No wallet detected. Please install MetaMask.');
+      return;
+    }
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      // Check network
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== '0x1') {
+        alert('Please switch to Ethereum Mainnet');
+        return;
+      }
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userAddr = accounts[0];
+
+      // Update button
+      document.getElementById('connectBtn').innerHTML =
+        `<i data-lucide="check-circle" style="width:16px;height:16px"></i> ${userAddr.slice(0,6)}...${userAddr.slice(-4)}`;
+      document.getElementById('connectBtn').style.background = 'var(--green)';
+      lucide.createIcons();
+
+      // Init contracts
+      xenContract = new ethers.Contract(ADDR.XEN, ERC20_ABI, signer);
+      dxnV2Contract = new ethers.Contract(ADDR.DXN_V2, ERC20_ABI, signer);
+      oldDxnContract = new ethers.Contract(ADDR.OLD_DXN, ERC20_ABI, signer);
+      dbxenContract = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, signer);
+      migrationContract = new ethers.Contract(ADDR.MIGRATION, MIGRATION_ABI, signer);
+
+      // Enable buttons
+      document.getElementById('burnBtn').disabled = false;
+      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+      document.getElementById('stakeBtn').disabled = false;
+      document.getElementById('unstakeBtn').disabled = false;
+      document.getElementById('claimDxnBtn').disabled = false;
+      document.getElementById('claimFeesBtn').disabled = false;
+      document.getElementById('bridgeBtn').disabled = false;
+      document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
+      lucide.createIcons();
+
+      await refreshBalances();
+      await refreshProtocolStats();
+      await refreshBridgeStats();
+    } catch (e) {
+      console.error('Connection failed:', e);
+    }
+  });
+
+  // ═══ REFRESH BALANCES ═══
+  async function refreshBalances() {
+    if (!userAddr) return;
+    try {
+      xenBal = await xenContract.balanceOf(userAddr);
+      dxnBal = await dxnV2Contract.balanceOf(userAddr);
+      oldDxnBal = await oldDxnContract.balanceOf(userAddr);
+
+      // XEN balance + batch calc
+      maxBatches = Number(xenBal / BATCH_SIZE);
+      document.getElementById('xenBalanceRow').style.display = 'flex';
+      document.getElementById('xenBalance').textContent = fmt(xenBal, 0);
+      document.getElementById('xenMaxBatches').textContent = `(${maxBatches.toLocaleString()} batches)`;
+
+      // Update slider max
+      const sliderMax = Math.min(maxBatches, 10000);
+      document.getElementById('burnSlider').max = Math.max(sliderMax, 1);
+
+      // DXN balance
+      document.getElementById('dxnBalanceRow').style.display = 'flex';
+      document.getElementById('dxnBalance').textContent = fmt(dxnBal);
+      document.getElementById('stakeBalanceHint').textContent = `Balance: ${fmt(dxnBal)} DXN`;
+
+      // Old DXN (bridge)
+      document.getElementById('oldDxnBal').textContent = fmt(oldDxnBal);
+      document.getElementById('bridgeBalanceHint').textContent = `Old DXN balance: ${fmt(oldDxnBal)}`;
+      document.getElementById('newDxnBal').textContent = fmt(dxnBal);
+
+      // Rewards
+      const rewards = await dbxenContract.accRewards(userAddr);
+      const withdrawable = await dbxenContract.accWithdrawableStake(userAddr);
+      const fees = await dbxenContract.accAccruedFees(userAddr);
+      const unclaimedDxn = rewards - withdrawable;
+
+      document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
+      document.getElementById('unclaimedFees').textContent = fmt(fees);
+      document.getElementById('withdrawableStake').textContent = fmt(withdrawable) + ' DXN';
+      document.getElementById('userStake').textContent = fmt(rewards) + ' DXN';
+      document.getElementById('userWithdrawable').textContent = fmt(withdrawable) + ' DXN';
+    } catch (e) {
+      console.error('Balance refresh failed:', e);
+    }
+  }
+
+  // ═══ REFRESH PROTOCOL STATS ═══
+  async function refreshProtocolStats() {
+    try {
+      const readProvider = new ethers.BrowserProvider(window.ethereum);
+      const dbxRead = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, readProvider);
+
+      const cycle = await dbxRead.getCurrentCycle();
+      const reward = await dbxRead.currentCycleReward();
+      const initTs = await dbxRead.i_initialTimestamp();
+      const period = await dbxRead.i_periodDuration();
+
+      document.getElementById('statCycle').textContent = cycle.toString();
+      document.getElementById('statReward').textContent = fmt(reward);
+
+      // Next cycle timer
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const nextCycleTs = initTs + ((cycle + 1n) * period);
+      const secsLeft = Number(nextCycleTs - now);
+      if (secsLeft > 0) {
+        const h = Math.floor(secsLeft / 3600);
+        const m = Math.floor((secsLeft % 3600) / 60);
+        document.getElementById('nextCycleTimer').textContent = `${h}h ${m}m`;
+      }
+    } catch (e) {
+      console.error('Protocol stats failed:', e);
+    }
+  }
+
+  // ═══ REFRESH BRIDGE STATS ═══
+  async function refreshBridgeStats() {
+    try {
+      const readProvider = new ethers.BrowserProvider(window.ethereum);
+      const migRead = new ethers.Contract(ADDR.MIGRATION, MIGRATION_ABI, readProvider);
+      const dxnV2Read = new ethers.Contract(ADDR.DXN_V2, ERC20_ABI, readProvider);
+
+      const totalSwapped = await migRead.totalSwapped();
+      const poolBalance = await dxnV2Read.balanceOf(ADDR.MIGRATION);
+      const deadline = await migRead.deadline();
+
+      document.getElementById('totalMigrated').textContent = fmt(totalSwapped) + ' DXN';
+      document.getElementById('poolRemaining').textContent = fmt(poolBalance) + ' DXNv2';
+
+      if (deadline === 0n) {
+        document.getElementById('bridgeDeadline').textContent = 'No deadline set';
+        document.getElementById('bridgeDeadline').style.color = 'var(--text-muted)';
+      } else {
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        if (now > deadline) {
+          document.getElementById('bridgeDeadline').textContent = 'CLOSED';
+          document.getElementById('bridgeDeadline').style.color = 'var(--red)';
+        } else {
+          const secsLeft = Number(deadline - now);
+          const days = Math.floor(secsLeft / 86400);
+          const hours = Math.floor((secsLeft % 86400) / 3600);
+          document.getElementById('bridgeDeadline').textContent = `${days}d ${hours}h remaining`;
+          document.getElementById('bridgeDeadline').style.color = 'var(--amber)';
+        }
+      }
+    } catch (e) {
+      console.error('Bridge stats failed:', e);
+    }
+  }
+
+  // ═══ BURN: SLIDER + INPUT SYNC ═══
+  const burnInput = document.getElementById('burnInput');
+  const burnSlider = document.getElementById('burnSlider');
+
+  burnSlider.addEventListener('input', () => {
+    burnInput.value = burnSlider.value;
+    updateBurnCost();
+  });
+  burnInput.addEventListener('input', () => {
+    let val = parseInt(burnInput.value) || 1;
+    val = Math.max(1, Math.min(val, 10000));
+    burnSlider.value = Math.min(val, parseInt(burnSlider.max));
+    updateBurnCost();
+  });
+  document.getElementById('burnMaxBtn').addEventListener('click', () => {
+    if (maxBatches <= 0) return;
+    const val = Math.min(maxBatches, 10000);
+    burnInput.value = val;
+    burnSlider.value = val;
+    updateBurnCost();
+  });
+
+  function updateBurnCost() {
+    const batches = parseInt(burnInput.value) || 1;
+    const xenCost = batches * 2500000;
+    document.getElementById('burnCostDisplay').textContent = xenCost.toLocaleString() + ' XEN';
+    document.getElementById('burnXenCost').textContent = xenCost.toLocaleString() + ' XEN';
+  }
+
+  // ═══ STAKE: MAX BUTTON ═══
+  document.getElementById('stakeMaxBtn').addEventListener('click', () => {
+    if (dxnBal > 0n) {
+      document.getElementById('stakeInput').value = ethers.formatEther(dxnBal);
+    }
+  });
+
+  // ═══ BRIDGE: MAX BUTTON ═══
+  document.getElementById('bridgeMaxBtn').addEventListener('click', () => {
+    if (oldDxnBal > 0n) {
+      document.getElementById('bridgeInput').value = ethers.formatEther(oldDxnBal);
+    }
+  });
+
+  // ═══ BURN TRANSACTION ═══
+  document.getElementById('burnBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    const batches = parseInt(burnInput.value) || 1;
+    const xenNeeded = BigInt(batches) * BATCH_SIZE;
+    if (xenBal < xenNeeded) { alert(`Not enough XEN. Need ${fmt(xenNeeded, 0)}, have ${fmt(xenBal, 0)}`); return; }
+    try {
+      document.getElementById('burnBtn').textContent = 'Approving XEN...';
+      document.getElementById('burnBtn').disabled = true;
+      // Check allowance
+      const allowance = await xenContract.allowance(userAddr, ADDR.DBXEN_V2);
+      if (allowance < xenNeeded) {
+        const appTx = await xenContract.approve(ADDR.DBXEN_V2, ethers.MaxUint256);
+        await appTx.wait();
+      }
+      document.getElementById('burnBtn').textContent = 'Burning...';
+      const tx = await dbxenContract.burnBatch(batches, { value: ethers.parseEther('0.01'), gasLimit: 500000 });
+      await tx.wait();
+      document.getElementById('burnBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Burned!';
+      document.getElementById('burnBtn').style.background = 'var(--green)';
+      lucide.createIcons();
+      setTimeout(async () => {
+        document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+        document.getElementById('burnBtn').style.background = '';
+        document.getElementById('burnBtn').disabled = false;
+        lucide.createIcons();
+        await refreshBalances();
+      }, 3000);
+    } catch (e) {
+      console.error('Burn failed:', e);
+      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+      document.getElementById('burnBtn').disabled = false;
+      lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ STAKE TRANSACTION ═══
+  document.getElementById('stakeBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    const val = document.getElementById('stakeInput').value;
+    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to stake'); return; }
+    const amount = ethers.parseEther(val);
+    try {
+      document.getElementById('stakeBtn').textContent = 'Approving...';
+      document.getElementById('stakeBtn').disabled = true;
+      const allowance = await dxnV2Contract.allowance(userAddr, ADDR.DBXEN_V2);
+      if (allowance < amount) {
+        const appTx = await dxnV2Contract.approve(ADDR.DBXEN_V2, ethers.MaxUint256);
+        await appTx.wait();
+      }
+      document.getElementById('stakeBtn').textContent = 'Staking...';
+      const tx = await dbxenContract.stake(amount);
+      await tx.wait();
+      document.getElementById('stakeBtn').textContent = 'Staked!';
+      setTimeout(async () => { document.getElementById('stakeBtn').textContent = 'Stake'; document.getElementById('stakeBtn').disabled = false; await refreshBalances(); }, 3000);
+    } catch (e) {
+      console.error('Stake failed:', e);
+      document.getElementById('stakeBtn').textContent = 'Stake';
+      document.getElementById('stakeBtn').disabled = false;
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ UNSTAKE TRANSACTION ═══
+  document.getElementById('unstakeBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    const val = document.getElementById('stakeInput').value;
+    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to unstake'); return; }
+    try {
+      document.getElementById('unstakeBtn').textContent = 'Unstaking...';
+      document.getElementById('unstakeBtn').disabled = true;
+      const tx = await dbxenContract.unstake(ethers.parseEther(val));
+      await tx.wait();
+      document.getElementById('unstakeBtn').textContent = 'Unstaked!';
+      setTimeout(async () => { document.getElementById('unstakeBtn').textContent = 'Unstake'; document.getElementById('unstakeBtn').disabled = false; await refreshBalances(); }, 3000);
+    } catch (e) {
+      console.error('Unstake failed:', e);
+      document.getElementById('unstakeBtn').textContent = 'Unstake';
+      document.getElementById('unstakeBtn').disabled = false;
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ CLAIM DXN ═══
+  document.getElementById('claimDxnBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    try {
+      document.getElementById('claimDxnBtn').textContent = 'Claiming...';
+      document.getElementById('claimDxnBtn').disabled = true;
+      const tx = await dbxenContract.claimRewards();
+      await tx.wait();
+      document.getElementById('claimDxnBtn').textContent = 'Claimed!';
+      setTimeout(async () => { document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards'; document.getElementById('claimDxnBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 3000);
+    } catch (e) {
+      console.error('Claim DXN failed:', e);
+      document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards';
+      document.getElementById('claimDxnBtn').disabled = false;
+      lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ CLAIM ETH FEES ═══
+  document.getElementById('claimFeesBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    try {
+      document.getElementById('claimFeesBtn').textContent = 'Claiming...';
+      document.getElementById('claimFeesBtn').disabled = true;
+      const tx = await dbxenContract.claimFees();
+      await tx.wait();
+      document.getElementById('claimFeesBtn').textContent = 'Claimed!';
+      setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 3000);
+    } catch (e) {
+      console.error('Claim fees failed:', e);
+      document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees';
+      document.getElementById('claimFeesBtn').disabled = false;
+      lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ BRIDGE TRANSACTION ═══
+  document.getElementById('bridgeBtn').addEventListener('click', async () => {
+    if (!signer) return;
+    const val = document.getElementById('bridgeInput').value;
+    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to migrate'); return; }
+    const amount = ethers.parseEther(val);
+    if (oldDxnBal < amount) { alert('Not enough old DXN'); return; }
+    try {
+      document.getElementById('bridgeBtn').textContent = 'Approving old DXN...';
+      document.getElementById('bridgeBtn').disabled = true;
+      const allowance = await oldDxnContract.allowance(userAddr, ADDR.MIGRATION);
+      if (allowance < amount) {
+        const appTx = await oldDxnContract.approve(ADDR.MIGRATION, ethers.MaxUint256);
+        await appTx.wait();
+      }
+      document.getElementById('bridgeBtn').textContent = 'Migrating...';
+      const tx = await migrationContract.swap(amount);
+      await tx.wait();
+      document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Migrated!';
+      document.getElementById('bridgeBtn').style.background = 'var(--green)';
+      lucide.createIcons();
+      setTimeout(async () => {
+        document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
+        document.getElementById('bridgeBtn').style.background = '';
+        document.getElementById('bridgeBtn').disabled = false;
+        lucide.createIcons();
+        await refreshBalances();
+      }, 3000);
+    } catch (e) {
+      console.error('Migration failed:', e);
+      document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
+      document.getElementById('bridgeBtn').disabled = false;
+      lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // ═══ LISTEN FOR ACCOUNT/NETWORK CHANGES ═══
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', () => location.reload());
+    window.ethereum.on('chainChanged', () => location.reload());
+  }
+</script>
+</body>
+</html>
