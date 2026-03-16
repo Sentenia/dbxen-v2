@@ -787,9 +787,8 @@ footer {
     }
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      // Check network
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0x1') {
+      if (chainId !== '0x1' && parseInt(chainId) !== 1) {
         alert('Please switch to Ethereum Mainnet');
         return;
       }
