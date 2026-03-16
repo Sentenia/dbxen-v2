@@ -403,6 +403,77 @@ footer {
   .footer-grid { grid-template-columns: 1fr; gap: 32px; }
 }
 
+/* ═══ ACTIVITY DASHBOARD ═══ */
+.activity-layout { display: flex; gap: 20px; }
+.cycle-sidebar {
+  width: 280px; flex-shrink: 0; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;
+}
+.cycle-sidebar-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+}
+.cycle-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.cycle-stat-box {
+  background: var(--bg-deep); border-radius: var(--radius); padding: 12px;
+  border: 1px solid var(--border);
+}
+.cycle-stat-label {
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.05em; margin-bottom: 4px;
+}
+.cycle-stat-val { font-size: 18px; font-weight: 700; }
+.cycle-timer-section { margin-bottom: 20px; }
+.cycle-timer { font-size: 32px; font-weight: 800; margin-top: 4px; color: var(--amber); }
+.cycle-your-position {
+  background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+}
+.cycle-pos-row {
+  display: flex; justify-content: space-between; font-size: 13px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.cycle-pos-row:last-child { border: none; }
+
+.burn-feed {
+  flex: 1; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px; min-width: 0;
+}
+.burn-feed-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+}
+.burn-feed-live {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--green);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.burn-table-wrap { overflow-x: auto; }
+.burn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.burn-table th {
+  padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.burn-table td { padding: 12px 8px; border-bottom: 1px solid var(--border); }
+.burn-table tr:last-child td { border: none; }
+.burn-table tr.you-row { background: var(--cyan-glow); }
+.burn-addr {
+  font-family: var(--font); font-size: 12px; background: var(--bg-deep);
+  padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);
+}
+.burn-you-badge {
+  font-size: 10px; background: var(--cyan-glow); color: var(--cyan);
+  padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;
+}
+.burn-feed-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding: 12px; background: var(--bg-deep);
+  border-radius: var(--radius); font-size: 13px; font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .activity-layout { flex-direction: column; }
+  .cycle-sidebar { width: 100%; }
+}
+
 /* ═══ ANIMATIONS ═══ */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -451,6 +522,7 @@ footer {
     <div class="nav-links">
       <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Protocol</button>
       <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
+      <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
       <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
     </div>
     <div class="wallet-area" id="walletArea">
@@ -730,6 +802,89 @@ footer {
     </div>
   </section>
 
+  <!-- ACTIVITY TAB -->
+  <section class="content tab-panels" id="tab-activity">
+    <div class="activity-layout">
+      <!-- CYCLE SIDEBAR -->
+      <div class="cycle-sidebar">
+        <div class="cycle-sidebar-header">
+          <span style="font-size: 15px; font-weight: 700;">Cycle <span id="actCycle" style="color:var(--cyan)">1090</span></span>
+          <span class="pulse-dot"></span>
+        </div>
+
+        <div class="cycle-stats-grid">
+          <div class="cycle-stat-box">
+            <div class="cycle-stat-label">Total batches</div>
+            <div class="cycle-stat-val" id="actBatches">0</div>
+          </div>
+          <div class="cycle-stat-box">
+            <div class="cycle-stat-label">Burners</div>
+            <div class="cycle-stat-val" id="actBurners">0</div>
+          </div>
+          <div class="cycle-stat-box">
+            <div class="cycle-stat-label">Reward pool</div>
+            <div class="cycle-stat-val" id="actRewardPool">— <span style="font-size:12px;color:var(--text-muted)">DXN</span></div>
+          </div>
+          <div class="cycle-stat-box">
+            <div class="cycle-stat-label">ETH fees</div>
+            <div class="cycle-stat-val" id="actEthFees">— <span style="font-size:12px;color:var(--text-muted)">ETH</span></div>
+          </div>
+        </div>
+
+        <div class="cycle-timer-section">
+          <div class="cycle-stat-label">Time remaining</div>
+          <div class="cycle-timer" id="actTimer">—</div>
+        </div>
+
+        <div class="cycle-your-position">
+          <div class="cycle-stat-label" style="margin-bottom:10px;">Your position</div>
+          <div class="cycle-pos-row">
+            <span>Your batches</span>
+            <span id="actYourBatches">0</span>
+          </div>
+          <div class="cycle-pos-row">
+            <span>Your share</span>
+            <span id="actYourShare">0%</span>
+          </div>
+          <div class="cycle-pos-row">
+            <span>Est. reward</span>
+            <span style="color:var(--green);font-weight:700" id="actYourReward">0 DXN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BURN FEED TABLE -->
+      <div class="burn-feed">
+        <div class="burn-feed-header">
+          <span style="font-size:15px;font-weight:700;">Burn activity — cycle <span id="actCycle2" style="color:var(--cyan)">1090</span></span>
+          <span class="burn-feed-live"><span class="pulse-dot"></span> Live</span>
+        </div>
+
+        <div class="burn-table-wrap">
+          <table class="burn-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">Address</th>
+                <th style="text-align:right">Batches</th>
+                <th style="text-align:right">XEN burned</th>
+                <th style="text-align:right">Share</th>
+                <th style="text-align:right">Est. DXN</th>
+              </tr>
+            </thead>
+            <tbody id="burnTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px 0;">Connect wallet to load burn activity</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="burn-feed-footer" id="burnFeedFooter" style="display:none">
+          <span style="color:var(--text-muted)">Total this cycle</span>
+          <span id="actTotalSummary">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- HOW IT WORKS -->
   <section class="how-it-works">
     <h2 class="hiw-title">How DBXen Works</h2>
@@ -922,6 +1077,7 @@ footer {
       await refreshBalances();
       await refreshProtocolStats();
       await refreshBridgeStats();
+      await refreshActivity();
     } catch (e) {
       console.error('Connection failed:', e);
     }
@@ -1295,13 +1451,12 @@ footer {
     window.ethereum.request({ method: 'eth_chainId' }).then(id => { currentChainId = id; });
     window.ethereum.on('accountsChanged', (accounts) => {
       if (accounts.length === 0) {
-        // User disconnected from MetaMask
         location.reload();
       } else {
-        // Account switched — refresh balances without full reload
         userAddr = accounts[0];
         refreshBalances();
         refreshBridgeStats();
+        refreshActivity();
       }
     });
     window.ethereum.on('chainChanged', (newChainId) => {
@@ -1319,6 +1474,128 @@ footer {
     if (dd && !dd.contains(e.target) && !btn.contains(e.target)) {
       dd.classList.remove('show');
     }
+  });
+
+  // ═══ ACTIVITY DASHBOARD ═══
+  const BURN_EVENT_SIG = ethers.id('Burn(address,uint256)');
+
+  async function refreshActivity() {
+    if (!provider) return;
+    try {
+      const readProvider = new ethers.BrowserProvider(window.ethereum);
+      const dbxRead = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, readProvider);
+
+      const cycle = await dbxRead.getCurrentCycle();
+      const reward = await dbxRead.currentCycleReward();
+      const initTs = await dbxRead.i_initialTimestamp();
+      const period = await dbxRead.i_periodDuration();
+
+      document.getElementById('actCycle').textContent = cycle.toString();
+      document.getElementById('actCycle2').textContent = cycle.toString();
+      document.getElementById('actRewardPool').innerHTML = fmt(reward) + ' <span style="font-size:12px;color:var(--text-muted)">DXN</span>';
+
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const nextCycleTs = initTs + ((cycle + 1n) * period);
+      const secsLeft = Number(nextCycleTs - now);
+      if (secsLeft > 0) {
+        const h = Math.floor(secsLeft / 3600);
+        const m = Math.floor((secsLeft % 3600) / 60);
+        document.getElementById('actTimer').textContent = `${h}h ${m}m`;
+      }
+
+      const cycleStartTs = initTs + (cycle * period);
+      const currentBlock = await readProvider.getBlockNumber();
+      const secsIntoCycle = Number(now - cycleStartTs);
+      const blocksIntoCycle = Math.floor(secsIntoCycle / 12);
+      const startBlock = Math.max(currentBlock - blocksIntoCycle - 100, 0);
+
+      const logs = await readProvider.getLogs({
+        address: ADDR.DBXEN_V2,
+        topics: [BURN_EVENT_SIG],
+        fromBlock: startBlock,
+        toBlock: 'latest',
+      });
+
+      const burners = {};
+      let totalBatches = 0;
+      let totalEthFees = 0n;
+
+      for (const log of logs) {
+        const addr = ('0x' + log.topics[1].slice(26)).toLowerCase();
+        const xenAmount = BigInt(log.data);
+        const batches = Number(xenAmount / (2500000n * (10n ** 18n)));
+        if (!burners[addr]) burners[addr] = { batches: 0 };
+        burners[addr].batches += batches;
+        totalBatches += batches;
+      }
+
+      try {
+        const cycleFeesAbi = ['function cycleAccruedFees(uint256) view returns (uint256)'];
+        const dbxFees = new ethers.Contract(ADDR.DBXEN_V2, cycleFeesAbi, readProvider);
+        totalEthFees = await dbxFees.cycleAccruedFees(cycle);
+      } catch {}
+
+      const burnerCount = Object.keys(burners).length;
+      document.getElementById('actBatches').textContent = totalBatches.toLocaleString();
+      document.getElementById('actBurners').textContent = burnerCount.toString();
+      document.getElementById('actEthFees').innerHTML = fmt(totalEthFees, 4) + ' <span style="font-size:12px;color:var(--text-muted)">ETH</span>';
+
+      const myAddr = userAddr ? userAddr.toLowerCase() : '';
+      const myBatches = myAddr && burners[myAddr] ? burners[myAddr].batches : 0;
+      const myShare = totalBatches > 0 ? ((myBatches / totalBatches) * 100) : 0;
+      const myReward = totalBatches > 0 ? (myBatches / totalBatches) * parseFloat(ethers.formatEther(reward)) : 0;
+
+      document.getElementById('actYourBatches').textContent = myBatches.toString();
+      document.getElementById('actYourShare').textContent = myShare.toFixed(2) + '%';
+      document.getElementById('actYourReward').textContent = myReward.toFixed(2) + ' DXN';
+
+      const tbody = document.getElementById('burnTableBody');
+      if (burnerCount === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px 0;">No burns this cycle yet. Be the first!</td></tr>';
+        document.getElementById('burnFeedFooter').style.display = 'none';
+        return;
+      }
+
+      const sorted = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
+      let html = '';
+      for (const [addr, data] of sorted) {
+        const isYou = addr === myAddr;
+        const share = ((data.batches / totalBatches) * 100).toFixed(2);
+        const estDxn = ((data.batches / totalBatches) * parseFloat(ethers.formatEther(reward))).toFixed(2);
+        const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
+        const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
+        html += `<tr class="${isYou ? 'you-row' : ''}">
+          <td style="text-align:left"><code class="burn-addr">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
+          <td style="text-align:right;font-weight:700">${data.batches}</td>
+          <td style="text-align:right">${xenBurned}</td>
+          <td style="text-align:right">${share}%</td>
+          <td style="text-align:right;color:var(--green);font-weight:700">${estDxn}</td>
+        </tr>`;
+      }
+      tbody.innerHTML = html;
+
+      const totalXen = (totalBatches * 2.5);
+      const totalXenStr = totalXen >= 1000 ? (totalXen / 1000).toFixed(1) + 'B' : totalXen.toFixed(1) + 'M';
+      document.getElementById('burnFeedFooter').style.display = 'flex';
+      document.getElementById('actTotalSummary').textContent = `${totalBatches} batches \u00b7 ${totalXenStr} XEN \u00b7 ${fmt(totalEthFees, 4)} ETH fees`;
+    } catch (e) {
+      console.error('Activity refresh failed:', e);
+    }
+  }
+
+  // Auto-refresh activity every 30s when tab is active
+  setInterval(() => {
+    const actTab = document.getElementById('tab-activity');
+    if (actTab && actTab.classList.contains('active') && provider) {
+      refreshActivity();
+    }
+  }, 30000);
+
+  // Also trigger on tab switch
+  document.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.tab === 'activity' && provider) refreshActivity();
+    });
   });
 </script>
 </body>
