@@ -373,6 +373,12 @@ footer {
   color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center;
 }
 .footer-icon-link:hover { color: var(--cyan); }
+.footer-copy-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 5px; cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; transition: all 0.2s;
+}
+.footer-copy-btn:hover { color: var(--cyan); border-color: var(--cyan-dim); }
 .footer-link {
   display: flex; align-items: center; gap: 8px; font-size: 14px;
   color: var(--text-muted); text-decoration: none; margin-bottom: 10px;
@@ -750,35 +756,39 @@ footer {
         <div class="footer-address">
           <span class="footer-address-label">XEN:</span>
           <code>0x06450d...9a6Fb8</code>
+          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
           <a href="https://etherscan.io/address/0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
         </div>
         <div class="footer-address">
           <span class="footer-address-label">DBXenV2:</span>
           <code>0x61614...E03D0</code>
+          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x61614137edE60C65458F76a51D6431052EBE03D0');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
           <a href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
         </div>
         <div class="footer-address">
           <span class="footer-address-label">DXNv2:</span>
           <code>0x1b08d...f52ab</code>
+          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x1b08d317963cc65932f3f79f00987b2e23df52ab');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
           <a href="https://etherscan.io/address/0x1b08d317963cc65932f3f79f00987b2e23df52ab" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
         </div>
         <div class="footer-address">
           <span class="footer-address-label">Migration:</span>
           <code>0x93bc5...65a71</code>
+          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x93bc54186656DC17C300fd5F6C464c0F75965a71');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
           <a href="https://etherscan.io/address/0x93bc54186656DC17C300fd5F6C464c0F75965a71" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
         </div>
       </div>
       <div class="footer-col">
         <div class="footer-heading">Resources</div>
-        <a href="#" class="footer-link"><i data-lucide="external-link" style="width:13px;height:13px"></i> Litepaper</a>
-        <a href="#" class="footer-link"><i data-lucide="github" style="width:13px;height:13px"></i> GitHub</a>
+        <a href="https://dbxen.gitbook.io/dbxen-litepaper" target="_blank" class="footer-link"><i data-lucide="book-open" style="width:13px;height:13px"></i> Litepaper</a>
+        <a href="https://github.com/Sentenia/dbxen-v2" target="_blank" class="footer-link"><i data-lucide="github" style="width:13px;height:13px"></i> GitHub</a>
         <a href="https://xen.network" target="_blank" class="footer-link"><i data-lucide="external-link" style="width:13px;height:13px"></i> XEN Network</a>
       </div>
       <div class="footer-col">
         <div class="footer-heading">Community</div>
         <div class="footer-socials">
-          <a href="#" class="footer-social" title="X / Twitter"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-          <a href="#" class="footer-social" title="Telegram"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+          <a href="https://x.com/DBXen_crypto" target="_blank" class="footer-social" title="X / Twitter"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="https://t.me/dbxen_official" target="_blank" class="footer-social" title="Telegram"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
         </div>
       </div>
     </div>
