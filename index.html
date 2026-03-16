@@ -108,6 +108,45 @@ nav {
 }
 .btn-connect:hover { background: var(--amber-hover); transform: translateY(-1px); box-shadow: 0 8px 24px var(--amber-glow); }
 
+/* ═══ WALLET CONNECTED STATE ═══ */
+.wallet-area { position: relative; }
+.wallet-connected { display: flex; align-items: center; gap: 0; position: relative; }
+.wallet-eth {
+  padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--text-primary);
+  background: var(--bg-card); border: 1px solid var(--border); border-right: none;
+  border-radius: 10px 0 0 10px; font-family: var(--font);
+}
+.wallet-addr-btn {
+  display: flex; align-items: center; gap: 6px; padding: 10px 14px;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: 0 10px 10px 0; cursor: pointer; font-family: var(--font);
+  transition: all 0.2s;
+}
+.wallet-addr-btn:hover { background: var(--bg-card); }
+.wallet-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  display: inline-block;
+}
+.wallet-dropdown {
+  display: none; position: absolute; top: 48px; right: 0; z-index: 100;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  min-width: 220px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.wallet-dropdown.show { display: block; }
+.wallet-dropdown-addr {
+  padding: 10px 12px; font-size: 11px; color: var(--text-muted);
+  font-family: monospace; word-break: break-all; border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.wallet-dropdown-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px;
+  font-size: 13px; color: var(--text-secondary); background: none; border: none;
+  border-radius: 8px; cursor: pointer; font-family: var(--font); text-decoration: none;
+  transition: all 0.15s;
+}
+.wallet-dropdown-item:hover { background: var(--bg-deep); color: var(--text-primary); }
+
 /* ═══ HERO ═══ */
 .hero {
   text-align: center; padding: 80px 32px 48px; max-width: 720px; margin: 0 auto;
@@ -408,10 +447,32 @@ footer {
       <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
       <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
     </div>
-    <button class="btn-connect" id="connectBtn">
-      <i data-lucide="wallet" style="width:16px;height:16px"></i>
-      Connect Wallet
-    </button>
+    <div class="wallet-area" id="walletArea">
+      <button class="btn-connect" id="connectBtn">
+        <i data-lucide="wallet" style="width:16px;height:16px"></i>
+        Connect Wallet
+      </button>
+      <div class="wallet-connected" id="walletConnected" style="display:none;">
+        <div class="wallet-eth" id="walletEth">0.00 ETH</div>
+        <button class="wallet-addr-btn" id="walletAddrBtn" onclick="document.getElementById('walletDropdown').classList.toggle('show')">
+          <span class="wallet-dot"></span>
+          <span id="walletAddrText">0x000...0000</span>
+          <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
+        </button>
+        <div class="wallet-dropdown" id="walletDropdown">
+          <div class="wallet-dropdown-addr" id="walletFullAddr">0x0000...0000</div>
+          <button class="wallet-dropdown-item" onclick="navigator.clipboard.writeText(userAddr);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Address',1500)">
+            <i data-lucide="copy" style="width:14px;height:14px"></i> Copy Address
+          </button>
+          <a class="wallet-dropdown-item" id="walletEtherscanLink" href="#" target="_blank">
+            <i data-lucide="external-link" style="width:14px;height:14px"></i> View on Etherscan
+          </a>
+          <button class="wallet-dropdown-item" onclick="location.reload()">
+            <i data-lucide="log-out" style="width:14px;height:14px"></i> Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
   </nav>
 
   <!-- HERO -->
@@ -796,10 +857,17 @@ footer {
       signer = await provider.getSigner();
       userAddr = accounts[0];
 
-      // Update button
-      document.getElementById('connectBtn').innerHTML =
-        `<i data-lucide="check-circle" style="width:16px;height:16px"></i> ${userAddr.slice(0,6)}...${userAddr.slice(-4)}`;
-      document.getElementById('connectBtn').style.background = 'var(--green)';
+      // Get ETH balance
+      const ethBal = await provider.getBalance(userAddr);
+      const ethFormatted = parseFloat(ethers.formatEther(ethBal)).toFixed(4);
+
+      // Update wallet UI
+      document.getElementById('connectBtn').style.display = 'none';
+      document.getElementById('walletConnected').style.display = 'flex';
+      document.getElementById('walletEth').textContent = ethFormatted + ' ETH';
+      document.getElementById('walletAddrText').textContent = userAddr.slice(0,6) + '...' + userAddr.slice(-4);
+      document.getElementById('walletFullAddr').textContent = userAddr;
+      document.getElementById('walletEtherscanLink').href = 'https://etherscan.io/address/' + userAddr;
       lucide.createIcons();
 
       // Init contracts
@@ -1142,6 +1210,15 @@ footer {
     window.ethereum.on('accountsChanged', () => location.reload());
     window.ethereum.on('chainChanged', () => location.reload());
   }
+
+  // Close wallet dropdown on outside click
+  document.addEventListener('click', (e) => {
+    const dd = document.getElementById('walletDropdown');
+    const btn = document.getElementById('walletAddrBtn');
+    if (dd && !dd.contains(e.target) && !btn.contains(e.target)) {
+      dd.classList.remove('show');
+    }
+  });
 </script>
 </body>
 </html>
