@@ -283,7 +283,7 @@ footer a:hover { text-decoration: underline; }
 /* ═══ GAS + DISCOUNT BOXES ═══ */
 .gas-box {
   flex: 1; display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; background: var(--bg-deep); border: 1px solid var(--border);
+  padding: 14px; background: var(--bg-deep); border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 .gas-box-icon {
@@ -291,8 +291,8 @@ footer a:hover { text-decoration: underline; }
   align-items: center; justify-content: center; background: var(--bg-card);
   flex-shrink: 0;
 }
-.gas-box-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.gas-box-value { font-size: 15px; font-weight: 700; color: var(--cyan); }
+.gas-box-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.gas-box-value { font-size: 14px; font-weight: 700; color: var(--cyan); white-space: nowrap; margin-top: 2px; }
 
 /* ═══ BRIDGE STATS ═══ */
 .bridge-stats {
@@ -1149,9 +1149,8 @@ footer {
       document.getElementById('xenBalance').textContent = fmt(xenBal, 0);
       document.getElementById('xenMaxBatches').textContent = `(${maxBatches.toLocaleString()} batches)`;
 
-      // Update slider max
-      const sliderMax = Math.min(maxBatches, 10000);
-      document.getElementById('burnSlider').max = Math.max(sliderMax, 1);
+      // Slider stays at 10k max always — don't cap to wallet balance
+      document.getElementById('burnSlider').max = 10000;
 
       // DXN balance
       document.getElementById('dxnBalanceRow').style.display = 'flex';
@@ -1340,7 +1339,7 @@ footer {
         let level = 'low';
         if (gasPriceGwei > 20) level = 'high';
         else if (gasPriceGwei > 5) level = 'med';
-        document.getElementById('gasPriceDisplay').textContent = `${gasPriceGwei.toFixed(1)} gwei (${level})`;
+        document.getElementById('gasPriceDisplay').innerHTML = `${gasPriceGwei.toFixed(1)} <span style="font-size:11px;font-weight:500;color:var(--text-muted)">gwei · ${level}</span>`;
 
         // Protocol fee estimate
         const gasEstimate = 200000n + 39400n;
