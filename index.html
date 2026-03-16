@@ -1021,9 +1021,8 @@ footer {
   });
 
   // ═══ CONNECT WALLET ═══
-  document.getElementById('connectBtn').addEventListener('click', async () => {
+  async function connectWallet() {
     if (typeof window.ethereum === 'undefined') {
-      // Mobile: redirect to MetaMask in-app browser
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
         window.location.href = 'https://metamask.app.link/dapp/dbxen-v2.vercel.app';
@@ -1043,11 +1042,9 @@ footer {
       signer = await provider.getSigner();
       userAddr = accounts[0];
 
-      // Get ETH balance
       const ethBal = await provider.getBalance(userAddr);
       const ethFormatted = parseFloat(ethers.formatEther(ethBal)).toFixed(4);
 
-      // Update wallet UI
       document.getElementById('connectBtn').style.display = 'none';
       document.getElementById('walletConnected').style.display = 'flex';
       document.getElementById('walletEth').textContent = ethFormatted + ' ETH';
@@ -1056,14 +1053,12 @@ footer {
       document.getElementById('walletEtherscanLink').href = 'https://etherscan.io/address/' + userAddr;
       lucide.createIcons();
 
-      // Init contracts
       xenContract = new ethers.Contract(ADDR.XEN, ERC20_ABI, signer);
       dxnV2Contract = new ethers.Contract(ADDR.DXN_V2, ERC20_ABI, signer);
       oldDxnContract = new ethers.Contract(ADDR.OLD_DXN, ERC20_ABI, signer);
       dbxenContract = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, signer);
       migrationContract = new ethers.Contract(ADDR.MIGRATION, MIGRATION_ABI, signer);
 
-      // Enable buttons
       document.getElementById('burnBtn').disabled = false;
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
       document.getElementById('stakeBtn').disabled = false;
@@ -1081,7 +1076,21 @@ footer {
     } catch (e) {
       console.error('Connection failed:', e);
     }
-  });
+  }
+
+  document.getElementById('connectBtn').addEventListener('click', connectWallet);
+
+  // ═══ AUTO-RECONNECT ON PAGE LOAD ═══
+  (async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          await connectWallet();
+        }
+      } catch {}
+    }
+  })();
 
   // ═══ REFRESH BALANCES ═══
   async function refreshBalances() {
