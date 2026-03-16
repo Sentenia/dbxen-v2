@@ -847,8 +847,12 @@ footer {
             <span id="actYourShare">0%</span>
           </div>
           <div class="cycle-pos-row">
-            <span>Est. reward</span>
+            <span>Est. DXN reward</span>
             <span style="color:var(--green);font-weight:700" id="actYourReward">0 DXN</span>
+          </div>
+          <div class="cycle-pos-row">
+            <span>Est. ETH fees</span>
+            <span style="color:var(--cyan);font-weight:700" id="actYourEthFees">0 ETH</span>
           </div>
         </div>
       </div>
@@ -867,12 +871,14 @@ footer {
                 <th style="text-align:left">Address</th>
                 <th style="text-align:right">Batches</th>
                 <th style="text-align:right">XEN burned</th>
+                <th style="text-align:right">ETH fee</th>
                 <th style="text-align:right">Share</th>
                 <th style="text-align:right">Est. DXN</th>
+                <th style="text-align:right">Est. ETH</th>
               </tr>
             </thead>
             <tbody id="burnTableBody">
-              <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px 0;">Connect wallet to load burn activity</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px 0;">Connect wallet to load burn activity</td></tr>
             </tbody>
           </table>
         </div>
@@ -1553,14 +1559,17 @@ footer {
       const myBatches = myAddr && burners[myAddr] ? burners[myAddr].batches : 0;
       const myShare = totalBatches > 0 ? ((myBatches / totalBatches) * 100) : 0;
       const myReward = totalBatches > 0 ? (myBatches / totalBatches) * parseFloat(ethers.formatEther(reward)) : 0;
+      const totalEthFloat = parseFloat(ethers.formatEther(totalEthFees));
+      const myEthFees = totalBatches > 0 ? (myBatches / totalBatches) * totalEthFloat : 0;
 
       document.getElementById('actYourBatches').textContent = myBatches.toString();
       document.getElementById('actYourShare').textContent = myShare.toFixed(2) + '%';
       document.getElementById('actYourReward').textContent = myReward.toFixed(2) + ' DXN';
+      document.getElementById('actYourEthFees').textContent = myEthFees.toFixed(4) + ' ETH';
 
       const tbody = document.getElementById('burnTableBody');
       if (burnerCount === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px 0;">No burns this cycle yet. Be the first!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px 0;">No burns this cycle yet. Be the first!</td></tr>';
         document.getElementById('burnFeedFooter').style.display = 'none';
         return;
       }
@@ -1571,14 +1580,17 @@ footer {
         const isYou = addr === myAddr;
         const share = ((data.batches / totalBatches) * 100).toFixed(2);
         const estDxn = ((data.batches / totalBatches) * parseFloat(ethers.formatEther(reward))).toFixed(2);
+        const estEth = ((data.batches / totalBatches) * totalEthFloat).toFixed(4);
         const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
         const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
         html += `<tr class="${isYou ? 'you-row' : ''}">
           <td style="text-align:left"><code class="burn-addr">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
           <td style="text-align:right;font-weight:700">${data.batches}</td>
           <td style="text-align:right">${xenBurned}</td>
+          <td style="text-align:right">${estEth}</td>
           <td style="text-align:right">${share}%</td>
           <td style="text-align:right;color:var(--green);font-weight:700">${estDxn}</td>
+          <td style="text-align:right;color:var(--cyan);font-weight:700">${estEth}</td>
         </tr>`;
       }
       tbody.innerHTML = html;
