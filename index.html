@@ -1124,7 +1124,7 @@ footer {
       // Old DXN (bridge)
       document.getElementById('oldDxnBal').textContent = fmt(oldDxnBal);
       document.getElementById('bridgeBalanceHint').textContent = `Old DXN balance: ${fmt(oldDxnBal)}`;
-      document.getElementById('newDxnBal').textContent = fmt(dxnBal);
+      document.getElementById('newDxnBal').textContent = '0';
 
       // Rewards & stakes
       const rewards = await dbxenContract.accRewards(userAddr);
@@ -1297,6 +1297,17 @@ footer {
   document.getElementById('bridgeMaxBtn').addEventListener('click', () => {
     if (oldDxnBal > 0n) {
       document.getElementById('bridgeInput').value = ethers.formatEther(oldDxnBal);
+      document.getElementById('newDxnBal').textContent = fmt(oldDxnBal);
+    }
+  });
+
+  // Mirror bridge input to You Receive
+  document.getElementById('bridgeInput').addEventListener('input', () => {
+    const val = document.getElementById('bridgeInput').value;
+    if (val && parseFloat(val) > 0) {
+      document.getElementById('newDxnBal').textContent = parseFloat(val).toLocaleString('en-US', { maximumFractionDigits: 4 });
+    } else {
+      document.getElementById('newDxnBal').textContent = '0';
     }
   });
 
