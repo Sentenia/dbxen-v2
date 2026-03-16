@@ -810,6 +810,7 @@ footer {
     'function claimFees()',
     'function getCurrentCycle() view returns (uint256)',
     'function currentCycleReward() view returns (uint256)',
+    'function currentCycle() view returns (uint256)',
     'function accRewards(address) view returns (uint256)',
     'function accAccruedFees(address) view returns (uint256)',
     'function accWithdrawableStake(address) view returns (uint256)',
@@ -817,6 +818,8 @@ footer {
     'function accSecondStake(address) view returns (uint256)',
     'function accStakeCycle(address,uint256) view returns (uint256)',
     'function pendingStake() view returns (uint256)',
+    'function summedCycleStakes(uint256) view returns (uint256)',
+    'function totalNumberOfBatchesBurned() view returns (uint256)',
     'function i_initialTimestamp() view returns (uint256)',
     'function i_periodDuration() view returns (uint256)',
   ];
@@ -984,9 +987,27 @@ footer {
       const reward = await dbxRead.currentCycleReward();
       const initTs = await dbxRead.i_initialTimestamp();
       const period = await dbxRead.i_periodDuration();
+      const storedCycle = await dbxRead.currentCycle();
+      const totalBatches = await dbxRead.totalNumberOfBatchesBurned();
+      const pendingStakeAmt = await dbxRead.pendingStake();
 
       document.getElementById('statCycle').textContent = cycle.toString();
       document.getElementById('statReward').textContent = fmt(reward);
+
+      // XEN Burned = totalBatches * 2.5M
+      const xenBurned = totalBatches * 2500000n * (10n ** 18n);
+      document.getElementById('statBurned').textContent = xenBurned > 0n ? fmt(xenBurned, 0) : '0';
+
+      // Total DXN Staked = summedCycleStakes[currentCycle] + pendingStake - currentCycleReward
+      // (summedCycleStakes includes the reward allocation, so subtract it for user stakes only)
+      try {
+        const summedStakes = await dbxRead.summedCycleStakes(storedCycle);
+        const userStakes = summedStakes - reward + pendingStakeAmt;
+        document.getElementById('statStaked').textContent = userStakes > 0n ? fmt(userStakes) : '0';
+      } catch {
+        // If no cycle started yet, staked is just pending
+        document.getElementById('statStaked').textContent = pendingStakeAmt > 0n ? fmt(pendingStakeAmt) : '0';
+      }
 
       // Next cycle timer
       const now = BigInt(Math.floor(Date.now() / 1000));
