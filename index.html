@@ -577,6 +577,10 @@ footer {
             <span class="stat-label">Your Stake</span>
             <span class="stat-value" id="userStake">— DXN</span>
           </div>
+          <div class="stat-row" id="pendingStakeRow" style="display:none;">
+            <span class="stat-label">⏳ Pending (unlocks next cycle)</span>
+            <span class="stat-value" style="color:var(--amber)" id="userPendingStake">— DXN</span>
+          </div>
           <div class="stat-row">
             <span class="stat-label">Withdrawable</span>
             <span class="stat-value" id="userWithdrawable">— DXN</span>
@@ -809,6 +813,10 @@ footer {
     'function accRewards(address) view returns (uint256)',
     'function accAccruedFees(address) view returns (uint256)',
     'function accWithdrawableStake(address) view returns (uint256)',
+    'function accFirstStake(address) view returns (uint256)',
+    'function accSecondStake(address) view returns (uint256)',
+    'function accStakeCycle(address,uint256) view returns (uint256)',
+    'function pendingStake() view returns (uint256)',
     'function i_initialTimestamp() view returns (uint256)',
     'function i_periodDuration() view returns (uint256)',
   ];
@@ -924,17 +932,43 @@ footer {
       document.getElementById('bridgeBalanceHint').textContent = `Old DXN balance: ${fmt(oldDxnBal)}`;
       document.getElementById('newDxnBal').textContent = fmt(dxnBal);
 
-      // Rewards
+      // Rewards & stakes
       const rewards = await dbxenContract.accRewards(userAddr);
       const withdrawable = await dbxenContract.accWithdrawableStake(userAddr);
       const fees = await dbxenContract.accAccruedFees(userAddr);
       const unclaimedDxn = rewards - withdrawable;
 
+      // Pending stake calculation
+      const firstStakeCycle = await dbxenContract.accFirstStake(userAddr);
+      const secondStakeCycle = await dbxenContract.accSecondStake(userAddr);
+      const currentCycle = await dbxenContract.getCurrentCycle();
+      let pendingStakeAmount = 0n;
+
+      if (firstStakeCycle > 0n && firstStakeCycle > currentCycle) {
+        const amt = await dbxenContract.accStakeCycle(userAddr, firstStakeCycle);
+        pendingStakeAmount += amt;
+      }
+      if (secondStakeCycle > 0n && secondStakeCycle > currentCycle) {
+        const amt = await dbxenContract.accStakeCycle(userAddr, secondStakeCycle);
+        pendingStakeAmount += amt;
+      }
+
+      // Total staked = withdrawable + pending
+      const totalUserStake = withdrawable + pendingStakeAmount;
+
       document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
       document.getElementById('unclaimedFees').textContent = fmt(fees);
       document.getElementById('withdrawableStake').textContent = fmt(withdrawable) + ' DXN';
-      document.getElementById('userStake').textContent = fmt(rewards) + ' DXN';
+      document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
       document.getElementById('userWithdrawable').textContent = fmt(withdrawable) + ' DXN';
+
+      // Show pending row if there's a pending stake
+      if (pendingStakeAmount > 0n) {
+        document.getElementById('pendingStakeRow').style.display = 'flex';
+        document.getElementById('userPendingStake').textContent = fmt(pendingStakeAmount) + ' DXN';
+      } else {
+        document.getElementById('pendingStakeRow').style.display = 'none';
+      }
     } catch (e) {
       console.error('Balance refresh failed:', e);
     }
@@ -1195,6 +1229,7 @@ footer {
         document.getElementById('bridgeBtn').disabled = false;
         lucide.createIcons();
         await refreshBalances();
+        await refreshBridgeStats();
       }, 3000);
     } catch (e) {
       console.error('Migration failed:', e);
