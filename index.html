@@ -176,13 +176,13 @@ nav {
 .hero-stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ═══ CONTENT SECTIONS ═══ */
-.content { max-width: 1100px; margin: 0 auto; padding: 0 32px 80px; }
+.content { max-width: 1280px; margin: 0 auto; padding: 0 32px 80px; }
 
 .tab-panels { display: none; }
 .tab-panels.active { display: block; }
 
 /* ═══ CARD GRID ═══ */
-.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
 
 .card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
@@ -340,7 +340,7 @@ footer a:hover { text-decoration: underline; }
 
 /* ═══ HOW IT WORKS ═══ */
 .how-it-works {
-  max-width: 1100px; margin: 0 auto; padding: 64px 32px;
+  max-width: 1280px; margin: 0 auto; padding: 64px 32px;
   border-top: 1px solid var(--border);
 }
 .hiw-title {
@@ -628,17 +628,17 @@ footer {
           </div>
         </div>
         <!-- GAS + DISCOUNT BOXES -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
           <div class="gas-box">
             <div class="gas-box-icon"><i data-lucide="fuel" style="width:14px;height:14px;color:var(--cyan)"></i></div>
-            <div>
+            <div style="min-width:0;">
               <div class="gas-box-label">Gas Price</div>
               <div class="gas-box-value" id="gasPriceDisplay">— gwei</div>
             </div>
           </div>
           <div class="gas-box">
             <div class="gas-box-icon"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--green)"></i></div>
-            <div>
+            <div style="min-width:0;">
               <div class="gas-box-label">Batch Discount</div>
               <div class="gas-box-value" style="color:var(--green)" id="batchDiscountDisplay">-0.01%</div>
             </div>
