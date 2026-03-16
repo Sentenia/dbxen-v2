@@ -1206,9 +1206,26 @@ footer {
   });
 
   // ═══ LISTEN FOR ACCOUNT/NETWORK CHANGES ═══
+  let currentChainId = null;
   if (window.ethereum) {
-    window.ethereum.on('accountsChanged', () => location.reload());
-    window.ethereum.on('chainChanged', () => location.reload());
+    window.ethereum.request({ method: 'eth_chainId' }).then(id => { currentChainId = id; });
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        // User disconnected from MetaMask
+        location.reload();
+      } else {
+        // Account switched — refresh balances without full reload
+        userAddr = accounts[0];
+        refreshBalances();
+        refreshBridgeStats();
+      }
+    });
+    window.ethereum.on('chainChanged', (newChainId) => {
+      if (currentChainId && newChainId !== currentChainId) {
+        location.reload();
+      }
+      currentChainId = newChainId;
+    });
   }
 
   // Close wallet dropdown on outside click
