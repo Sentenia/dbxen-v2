@@ -496,8 +496,12 @@ footer {
         <div class="hero-stat-label">Daily Reward</div>
       </div>
       <div class="hero-stat">
-        <div class="hero-stat-value" id="statBurned">14.78T</div>
-        <div class="hero-stat-label">XEN Burned</div>
+        <div class="hero-stat-value" id="statBurnedV1">—</div>
+        <div class="hero-stat-label">V1 XEN Burned</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value" style="color:var(--cyan)" id="statBurnedV2">0</div>
+        <div class="hero-stat-label">V2 XEN Burned</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-value" id="statStaked">—</div>
@@ -1007,12 +1011,20 @@ footer {
       const totalBatches = await dbxRead.totalNumberOfBatchesBurned();
       const pendingStakeAmt = await dbxRead.pendingStake();
 
+      // Read old DBXen batches too
+      const oldDbxenAbi = ['function totalNumberOfBatchesBurned() view returns (uint256)'];
+      const oldDbxen = new ethers.Contract('0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD', oldDbxenAbi, readProvider);
+      let oldBatches = 0n;
+      try { oldBatches = await oldDbxen.totalNumberOfBatchesBurned(); } catch {}
+
       document.getElementById('statCycle').textContent = cycle.toString();
       document.getElementById('statReward').textContent = fmt(reward);
 
-      // XEN Burned = totalBatches * 2.5M
-      const xenBurned = totalBatches * 2500000n * (10n ** 18n);
-      document.getElementById('statBurned').textContent = xenBurned > 0n ? fmt(xenBurned, 0) : '0';
+      // XEN Burned — V1 and V2 separately
+      const xenBurnedV1 = oldBatches * 2500000n * (10n ** 18n);
+      const xenBurnedV2 = totalBatches * 2500000n * (10n ** 18n);
+      document.getElementById('statBurnedV1').textContent = xenBurnedV1 > 0n ? fmt(xenBurnedV1, 0) : '0';
+      document.getElementById('statBurnedV2').textContent = xenBurnedV2 > 0n ? fmt(xenBurnedV2, 0) : '0';
 
       // Total DXN Staked = summedCycleStakes[currentCycle] + pendingStake - currentCycleReward
       // (summedCycleStakes includes the reward allocation, so subtract it for user stakes only)
