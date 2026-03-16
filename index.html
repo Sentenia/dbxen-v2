@@ -280,6 +280,20 @@ footer a:hover { text-decoration: underline; }
   .card-grid { grid-template-columns: 1fr; }
 }
 
+/* ═══ GAS + DISCOUNT BOXES ═══ */
+.gas-box {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.gas-box-icon {
+  width: 32px; height: 32px; border-radius: 8px; display: flex;
+  align-items: center; justify-content: center; background: var(--bg-card);
+  flex-shrink: 0;
+}
+.gas-box-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.gas-box-value { font-size: 15px; font-weight: 700; color: var(--cyan); }
+
 /* ═══ BRIDGE STATS ═══ */
 .bridge-stats {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
@@ -613,6 +627,24 @@ footer {
             <a id="burnMaxBtn" style="cursor:pointer">Max</a>
           </div>
         </div>
+        <!-- GAS + DISCOUNT BOXES -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <div class="gas-box">
+            <div class="gas-box-icon"><i data-lucide="fuel" style="width:14px;height:14px;color:var(--cyan)"></i></div>
+            <div>
+              <div class="gas-box-label">Gas Price</div>
+              <div class="gas-box-value" id="gasPriceDisplay">— gwei</div>
+            </div>
+          </div>
+          <div class="gas-box">
+            <div class="gas-box-icon"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--green)"></i></div>
+            <div>
+              <div class="gas-box-label">Batch Discount</div>
+              <div class="gas-box-value" style="color:var(--green)" id="batchDiscountDisplay">-0.01%</div>
+            </div>
+          </div>
+        </div>
+
         <button class="btn-action primary" id="burnBtn" onclick="if(!userAddr){document.getElementById('connectBtn').click()}">
           <i data-lucide="flame" style="width:16px;height:16px"></i>
           Connect Wallet to Burn
@@ -623,8 +655,8 @@ footer {
             <span class="stat-value" id="burnCostDisplay">2,500,000 XEN</span>
           </div>
           <div class="stat-row">
-            <span class="stat-label">Protocol Fee</span>
-            <span class="stat-value">~gas based</span>
+            <span class="stat-label">Est. Protocol Fee</span>
+            <span class="stat-value" id="protocolFeeDisplay">connect wallet</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Next Cycle</span>
@@ -1083,6 +1115,7 @@ footer {
       await refreshProtocolStats();
       await refreshBridgeStats();
       await refreshActivity();
+      await updateBurnCost();
     } catch (e) {
       console.error('Connection failed:', e);
     }
@@ -1285,11 +1318,38 @@ footer {
     updateBurnCost();
   });
 
-  function updateBurnCost() {
+  async function updateBurnCost() {
     const batches = parseInt(burnInput.value) || 1;
     const xenCost = batches * 2500000;
     document.getElementById('burnCostDisplay').textContent = xenCost.toLocaleString() + ' XEN';
     document.getElementById('burnXenCost').textContent = xenCost.toLocaleString() + ' XEN';
+
+    // Batch discount: discount% = (5 * batches) / 1000
+    // The formula is batchNumber * (MAX_BPS - 5 * batchNumber) / MAX_BPS
+    // So effective discount = (5 * batches) / 100000 * 100 = batches * 0.005%
+    const discountPct = (batches * 5 / 1000).toFixed(2);
+    document.getElementById('batchDiscountDisplay').textContent = `-${discountPct}%`;
+
+    if (provider) {
+      try {
+        const feeData = await provider.getFeeData();
+        const gasPrice = feeData.gasPrice || 0n;
+        const gasPriceGwei = parseFloat(ethers.formatUnits(gasPrice, 'gwei'));
+
+        // Gas price display with level indicator
+        let level = 'low';
+        if (gasPriceGwei > 20) level = 'high';
+        else if (gasPriceGwei > 5) level = 'med';
+        document.getElementById('gasPriceDisplay').textContent = `${gasPriceGwei.toFixed(1)} gwei (${level})`;
+
+        // Protocol fee estimate
+        const gasEstimate = 200000n + 39400n;
+        const discount = BigInt(batches) * (100000n - 5n * BigInt(batches));
+        const fee = (gasEstimate * gasPrice * discount) / 100000n;
+        const feeEth = parseFloat(ethers.formatEther(fee));
+        document.getElementById('protocolFeeDisplay').textContent = `~${feeEth.toFixed(4)} ETH`;
+      } catch {}
+    }
   }
 
   // ═══ STAKE: MAX BUTTON ═══
