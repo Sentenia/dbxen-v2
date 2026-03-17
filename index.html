@@ -1275,12 +1275,17 @@ footer {
 
       // 2) Simulate fee accrual (same as updateStats fee section)
       const feeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastStarted + 1n);
-      if (currentCycle > lastStarted && lastFeeUpdate !== lastStarted + 1n && lastFeeUpdate > 0n) {
-        const userFeeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastFeeUpdate);
-        const feesDelta = feeCheckpoint - userFeeCheckpoint;
-        if (feesDelta > 0n) {
-          accFees = accFees + ((accRew * feesDelta) / SCALING);
+      if (currentCycle > lastStarted && lastFeeUpdate > 0n) {
+        if (lastFeeUpdate !== lastStarted + 1n) {
+          // User hasn't been updated to current checkpoint — calculate delta
+          const userFeeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastFeeUpdate);
+          const feesDelta = feeCheckpoint - userFeeCheckpoint;
+          if (feesDelta > 0n && accRew > 0n) {
+            accFees = accFees + ((accRew * feesDelta) / SCALING);
+          }
         }
+        // If lastFeeUpdate == lastStarted+1, fees were already rolled into accAccruedFees
+        // by a previous interaction — accFees from contract is correct
       }
 
       // 3) Simulate first stake unlock
@@ -1337,7 +1342,6 @@ footer {
 
       document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
       document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n, 6) + ' ETH';
-      document.getElementById('withdrawableStake').textContent = fmt(accWithdraw) + ' DXN';
       document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
       document.getElementById('userWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
 
