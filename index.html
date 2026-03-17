@@ -281,6 +281,12 @@ footer a:hover { text-decoration: underline; }
 }
 
 /* ═══ GAS + DISCOUNT BOXES ═══ */
+.pending-unlock-timer {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--amber);
+  background: var(--amber-glow); padding: 4px 10px; border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
 .gas-box {
   flex: 1; display: flex; align-items: center; gap: 10px;
   padding: 14px; background: var(--bg-deep); border: 1px solid var(--border);
@@ -721,6 +727,13 @@ footer {
           <div class="stat-row" id="pendingStakeRow" style="display:none;">
             <span class="stat-label">⏳ Pending (unlocks next cycle)</span>
             <span class="stat-value" style="color:var(--amber)" id="userPendingStake">— DXN</span>
+          </div>
+          <div class="stat-row" id="pendingTimerRow" style="display:none;">
+            <span class="stat-label"></span>
+            <span class="pending-unlock-timer" id="pendingUnlockTimer">
+              <i data-lucide="timer" style="width:12px;height:12px"></i>
+              <span id="pendingUnlockText">—</span>
+            </span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Withdrawable</span>
@@ -1336,8 +1349,38 @@ footer {
       if (pendingStakeAmount > 0n) {
         document.getElementById('pendingStakeRow').style.display = 'flex';
         document.getElementById('userPendingStake').textContent = fmt(pendingStakeAmount) + ' DXN';
+        document.getElementById('pendingTimerRow').style.display = 'flex';
+
+        // Calculate unlock time — stake unlocks when its cycle starts
+        // The earliest pending stake cycle determines unlock time
+        let unlockCycle = 0n;
+        if (firstStakeCycle > 0n && firstStakeCycle >= currentCycle) unlockCycle = firstStakeCycle;
+        if (secondStakeCycle > 0n && secondStakeCycle >= currentCycle) {
+          if (unlockCycle === 0n || secondStakeCycle < unlockCycle) unlockCycle = secondStakeCycle;
+        }
+
+        if (unlockCycle > 0n) {
+          const initTs = await dbxenContract.i_initialTimestamp();
+          const period = await dbxenContract.i_periodDuration();
+          // Unlocks when cycle AFTER unlockCycle starts
+          const unlockTs = initTs + ((unlockCycle + 1n) * period);
+          const nowSecs = BigInt(Math.floor(Date.now() / 1000));
+          const secsLeft = Number(unlockTs - nowSecs);
+
+          if (secsLeft > 0) {
+            const h = Math.floor(secsLeft / 3600);
+            const m = Math.floor((secsLeft % 3600) / 60);
+            const s = secsLeft % 60;
+            document.getElementById('pendingUnlockText').textContent = `Unlock in: ${h}h ${m}m ${s}s`;
+            cachedPendingUnlockTs = Number(unlockTs);
+          } else {
+            document.getElementById('pendingUnlockText').textContent = 'Unlocking soon...';
+          }
+        }
       } else {
         document.getElementById('pendingStakeRow').style.display = 'none';
+        document.getElementById('pendingTimerRow').style.display = 'none';
+        cachedPendingUnlockTs = 0;
       }
     } catch (e) {
       console.error('Balance refresh failed:', e);
@@ -1910,13 +1953,14 @@ footer {
     }
   }, 30000);
 
-  // Client-side timer tick every 60s (no RPC calls)
+  // Client-side timer tick every second (no RPC calls)
   let cachedNextCycleTs = 0;
+  let cachedPendingUnlockTs = 0;
   const origRefreshProtocol = refreshProtocolStats;
   const _origRefresh = refreshProtocolStats;
   setInterval(() => {
+    const now = Math.floor(Date.now() / 1000);
     if (cachedNextCycleTs > 0) {
-      const now = Math.floor(Date.now() / 1000);
       const secsLeft = cachedNextCycleTs - now;
       if (secsLeft > 0) {
         const h = Math.floor(secsLeft / 3600);
@@ -1930,7 +1974,22 @@ footer {
         document.getElementById('heroTimer').textContent = 'New cycle!';
       }
     }
-  }, 60000);
+    if (cachedPendingUnlockTs > 0) {
+      const secsLeft = cachedPendingUnlockTs - now;
+      const el = document.getElementById('pendingUnlockText');
+      if (el) {
+        if (secsLeft > 0) {
+          const h = Math.floor(secsLeft / 3600);
+          const m = Math.floor((secsLeft % 3600) / 60);
+          const s = secsLeft % 60;
+          el.textContent = `Unlock in: ${h}h ${m}m ${s}s`;
+        } else {
+          el.textContent = 'Unlocking soon...';
+          cachedPendingUnlockTs = 0;
+        }
+      }
+    }
+  }, 1000);
 
   // Also trigger on tab switch
   document.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
