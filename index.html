@@ -489,6 +489,14 @@ footer {
   .cycle-sidebar { width: 100%; }
 }
 
+/* ═══ WHY V2 ═══ */
+.why-v2 { max-width: 1280px; margin: 0 auto; padding: 0 32px 48px; }
+.why-v2-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; max-width: 680px; margin: 0 auto;
+  border-left: 3px solid var(--green);
+}
+
 /* ═══ ANIMATIONS ═══ */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -949,6 +957,22 @@ footer {
     </div>
   </section>
 
+  <!-- WHY V2 -->
+  <section class="why-v2">
+    <div class="why-v2-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <i data-lucide="shield-check" style="width:20px;height:20px;color:var(--green)"></i>
+        <span style="font-size:16px;font-weight:700;">Why V2?</span>
+      </div>
+      <p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px;">
+        The original DBXen was exploited on March 12, 2026 for 65.28 ETH (~$150K). The attacker used an ERC2771 sender-spoofing vulnerability combined with a fresh-address fee backdating bug. V2 removes both vulnerabilities entirely. All contracts are verified on Etherscan and fully immutable — owner renounced to address(0).
+      </p>
+      <a href="https://github.com/Sentenia/dbxen-v2" target="_blank" style="font-size:14px;color:var(--cyan);text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        Read the full details <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
+      </a>
+    </div>
+  </section>
+
   <!-- FOOTER -->
   <footer>
     <div class="footer-grid">
@@ -1392,10 +1416,24 @@ footer {
         await appTx.wait();
       }
       document.getElementById('burnBtn').textContent = 'Burning...';
-      const tx = await dbxenContract.burnBatch(batches, { value: ethers.parseEther('0.01'), gasLimit: 500000 });
+      // Calculate protocol fee dynamically based on current gas + batch count
+      // Send 2x the estimate as buffer — excess always refunded by contract
+      // Floor of 0.0005 ETH so tiny burns don't fail from rounding
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice || 1000000000n;
+      const gasEst = 200000n + 39400n;
+      const disc = BigInt(batches) * (100000n - 5n * BigInt(batches));
+      const estFee = (gasEst * gasPrice * disc) / 100000n;
+      const bufferedFee = estFee * 2n;
+      const minValue = ethers.parseEther('0.0005');
+      const value = bufferedFee > minValue ? bufferedFee : minValue;
+      const tx = await dbxenContract.burnBatch(batches, { value, gasLimit: 500000 });
       await tx.wait();
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Burned!';
       document.getElementById('burnBtn').style.background = 'var(--green)';
+      document.getElementById('burnInput').value = '1';
+      document.getElementById('burnSlider').value = '1';
+      updateBurnCost();
       lucide.createIcons();
       await refreshBalances();
       await refreshProtocolStats();
@@ -1434,6 +1472,7 @@ footer {
       const tx = await dbxenContract.stake(amount);
       await tx.wait();
       document.getElementById('stakeBtn').textContent = 'Staked!';
+      document.getElementById('stakeInput').value = '';
       await refreshBalances();
       setTimeout(async () => { document.getElementById('stakeBtn').textContent = 'Stake'; document.getElementById('stakeBtn').disabled = false; await refreshBalances(); }, 5000);
     } catch (e) {
@@ -1455,6 +1494,7 @@ footer {
       const tx = await dbxenContract.unstake(ethers.parseEther(val));
       await tx.wait();
       document.getElementById('unstakeBtn').textContent = 'Unstaked!';
+      document.getElementById('stakeInput').value = '';
       await refreshBalances();
       setTimeout(async () => { document.getElementById('unstakeBtn').textContent = 'Unstake'; document.getElementById('unstakeBtn').disabled = false; await refreshBalances(); }, 5000);
     } catch (e) {
@@ -1525,6 +1565,8 @@ footer {
       await tx.wait();
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Migrated!';
       document.getElementById('bridgeBtn').style.background = 'var(--green)';
+      document.getElementById('bridgeInput').value = '';
+      document.getElementById('newDxnBal').textContent = '0';
       lucide.createIcons();
       await refreshBalances();
       await refreshBridgeStats();
