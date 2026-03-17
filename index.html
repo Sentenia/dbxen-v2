@@ -547,7 +547,7 @@ footer {
       <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Burn</button>
       <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
       <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
-      <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener" onclick="window.open(this.href);return false;"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
+      <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener" onclick="if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){window.location.href=this.href;return false;}"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
     </div>
     <div class="wallet-area" id="walletArea">
       <button class="btn-connect" id="connectBtn">
@@ -972,7 +972,7 @@ footer {
       <p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px;">
         The original DBXen was exploited on March 12, 2026 for 65.28 ETH (~$150K). The attacker used an ERC2771 sender-spoofing vulnerability combined with a fresh-address fee backdating bug. V2 removes both vulnerabilities entirely. All contracts are verified on Etherscan and fully immutable — owner renounced to address(0).
       </p>
-      <a href="https://github.com/Sentenia/dbxen-v2" target="_blank" style="font-size:14px;color:var(--cyan);text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <a href="https://github.com/Sentenia/dbxen-v2" target="_blank" rel="noopener" onclick="if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){window.location.href=this.href;return false;}" style="font-size:14px;color:var(--cyan);text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         Read the full details <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
       </a>
     </div>
