@@ -1088,14 +1088,24 @@ footer {
     'function getCurrentCycle() view returns (uint256)',
     'function currentCycleReward() view returns (uint256)',
     'function currentCycle() view returns (uint256)',
+    'function lastStartedCycle() view returns (uint256)',
+    'function currentStartedCycle() view returns (uint256)',
+    'function previousStartedCycle() view returns (uint256)',
     'function accRewards(address) view returns (uint256)',
     'function accAccruedFees(address) view returns (uint256)',
     'function accWithdrawableStake(address) view returns (uint256)',
     'function accFirstStake(address) view returns (uint256)',
     'function accSecondStake(address) view returns (uint256)',
     'function accStakeCycle(address,uint256) view returns (uint256)',
+    'function accCycleBatchesBurned(address) view returns (uint256)',
+    'function lastActiveCycle(address) view returns (uint256)',
+    'function lastFeeUpdateCycle(address) view returns (uint256)',
     'function pendingStake() view returns (uint256)',
     'function summedCycleStakes(uint256) view returns (uint256)',
+    'function rewardPerCycle(uint256) view returns (uint256)',
+    'function cycleTotalBatchesBurned(uint256) view returns (uint256)',
+    'function cycleFeesPerStakeSummed(uint256) view returns (uint256)',
+    'function cycleAccruedFees(uint256) view returns (uint256)',
     'function totalNumberOfBatchesBurned() view returns (uint256)',
     'function i_initialTimestamp() view returns (uint256)',
     'function i_periodDuration() view returns (uint256)',
@@ -1228,35 +1238,99 @@ footer {
       document.getElementById('bridgeBalanceHint').textContent = `Old DXN balance: ${fmt(oldDxnBal)}`;
       document.getElementById('newDxnBal').textContent = '0';
 
-      // Rewards & stakes
-      const rewards = await dbxenContract.accRewards(userAddr);
-      const withdrawable = await dbxenContract.accWithdrawableStake(userAddr);
-      const fees = await dbxenContract.accAccruedFees(userAddr);
-      const unclaimedDxn = rewards - withdrawable;
-
-      // Pending stake calculation
+      // Rewards & stakes — client-side updateStats calculation
+      // Read raw contract state
+      let accRew = await dbxenContract.accRewards(userAddr);
+      let accFees = await dbxenContract.accAccruedFees(userAddr);
+      let accWithdraw = await dbxenContract.accWithdrawableStake(userAddr);
+      const lastActive = await dbxenContract.lastActiveCycle(userAddr);
+      const lastFeeUpdate = await dbxenContract.lastFeeUpdateCycle(userAddr);
+      const cycleBatchesBurned = await dbxenContract.accCycleBatchesBurned(userAddr);
       const firstStakeCycle = await dbxenContract.accFirstStake(userAddr);
       const secondStakeCycle = await dbxenContract.accSecondStake(userAddr);
+
       const currentCycle = await dbxenContract.getCurrentCycle();
+      const lastStarted = await dbxenContract.lastStartedCycle();
+
+      const SCALING = 10n ** 40n;
+
+      // 1) Simulate burn reward accrual (same as updateStats burn section)
+      if (currentCycle > lastActive && cycleBatchesBurned > 0n) {
+        const rewardForCycle = await dbxenContract.rewardPerCycle(lastActive);
+        const totalBurned = await dbxenContract.cycleTotalBatchesBurned(lastActive);
+        if (totalBurned > 0n) {
+          const lastCycleReward = (cycleBatchesBurned * rewardForCycle) / totalBurned;
+          accRew = accRew + lastCycleReward;
+        }
+      }
+
+      // 2) Simulate fee accrual (same as updateStats fee section)
+      const feeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastStarted + 1n);
+      if (currentCycle > lastStarted && lastFeeUpdate !== lastStarted + 1n && lastFeeUpdate > 0n) {
+        const userFeeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastFeeUpdate);
+        const feesDelta = feeCheckpoint - userFeeCheckpoint;
+        if (feesDelta > 0n) {
+          accFees = accFees + ((accRew * feesDelta) / SCALING);
+        }
+      }
+
+      // 3) Simulate first stake unlock
       let pendingStakeAmount = 0n;
+      let simulatedFirstStake = firstStakeCycle;
+      let simulatedSecondStake = secondStakeCycle;
 
-      if (firstStakeCycle > 0n && firstStakeCycle > currentCycle) {
-        const amt = await dbxenContract.accStakeCycle(userAddr, firstStakeCycle);
-        pendingStakeAmount += amt;
-      }
-      if (secondStakeCycle > 0n && secondStakeCycle > currentCycle) {
-        const amt = await dbxenContract.accStakeCycle(userAddr, secondStakeCycle);
-        pendingStakeAmount += amt;
+      if (simulatedFirstStake > 0n && currentCycle > simulatedFirstStake) {
+        const unlockedFirst = await dbxenContract.accStakeCycle(userAddr, simulatedFirstStake);
+        accRew = accRew + unlockedFirst;
+        accWithdraw = accWithdraw + unlockedFirst;
+
+        // Fee accrual for this stake period
+        if (lastStarted + 1n > simulatedFirstStake) {
+          const stakeFeeCp = await dbxenContract.cycleFeesPerStakeSummed(simulatedFirstStake);
+          accFees = accFees + ((unlockedFirst * (feeCheckpoint - stakeFeeCp)) / SCALING);
+        }
+
+        // Check second stake
+        if (simulatedSecondStake > 0n) {
+          if (currentCycle > simulatedSecondStake) {
+            const unlockedSecond = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
+            accRew = accRew + unlockedSecond;
+            accWithdraw = accWithdraw + unlockedSecond;
+
+            if (lastStarted + 1n > simulatedSecondStake) {
+              const stakeFeeCp2 = await dbxenContract.cycleFeesPerStakeSummed(simulatedSecondStake);
+              accFees = accFees + ((unlockedSecond * (feeCheckpoint - stakeFeeCp2)) / SCALING);
+            }
+            simulatedSecondStake = 0n;
+          } else {
+            // Second stake still pending
+            const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
+            pendingStakeAmount += pendingAmt;
+            simulatedFirstStake = simulatedSecondStake;
+            simulatedSecondStake = 0n;
+          }
+        }
+        simulatedFirstStake = 0n;
+      } else if (simulatedFirstStake > 0n && simulatedFirstStake >= currentCycle) {
+        // First stake still pending
+        const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedFirstStake);
+        pendingStakeAmount += pendingAmt;
       }
 
-      // Total staked = withdrawable + pending
-      const totalUserStake = withdrawable + pendingStakeAmount;
+      // If second stake still exists and hasn't been handled
+      if (simulatedSecondStake > 0n && currentCycle <= simulatedSecondStake) {
+        const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
+        pendingStakeAmount += pendingAmt;
+      }
+
+      const unclaimedDxn = accRew - accWithdraw;
+      const totalUserStake = accWithdraw + pendingStakeAmount;
 
       document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
-      document.getElementById('unclaimedFees').textContent = fmt(fees);
-      document.getElementById('withdrawableStake').textContent = fmt(withdrawable) + ' DXN';
+      document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n);
+      document.getElementById('withdrawableStake').textContent = fmt(accWithdraw) + ' DXN';
       document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
-      document.getElementById('userWithdrawable').textContent = fmt(withdrawable) + ' DXN';
+      document.getElementById('userWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
 
       // Show pending row if there's a pending stake
       if (pendingStakeAmount > 0n) {
