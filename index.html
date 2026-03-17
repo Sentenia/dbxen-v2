@@ -474,7 +474,9 @@ footer {
 .burn-addr {
   font-family: var(--font); font-size: 12px; background: var(--bg-deep);
   padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.2s;
 }
+.burn-addr:hover { border-color: var(--cyan-dim); color: var(--cyan); }
 .burn-you-badge {
   font-size: 10px; background: var(--cyan-glow); color: var(--cyan);
   padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;
@@ -1795,7 +1797,7 @@ footer {
           const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
           const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
           html += `<tr class="${isYou ? 'you-row' : ''}">
-            <td style="text-align:left"><code class="burn-addr">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
+            <td style="text-align:left"><code class="burn-addr" style="cursor:pointer" title="Click to copy" onclick="navigator.clipboard.writeText('${addr}');this.textContent='Copied!';setTimeout(()=>this.textContent='${shortAddr}',1200)">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
             <td style="text-align:left;font-weight:700">${data.batches}</td>
             <td style="text-align:left">${xenBurned}</td>
             <td style="text-align:right">${gasCost}</td>
