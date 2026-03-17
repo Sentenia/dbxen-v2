@@ -758,11 +758,7 @@ footer {
           </div>
           <div class="stat-row">
             <span class="stat-label">Unclaimed ETH Fees</span>
-            <span class="stat-value green" id="unclaimedFees">0.0000</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Withdrawable Stake</span>
-            <span class="stat-value" id="withdrawableStake">— DXN</span>
+            <span class="stat-value green" id="unclaimedFees">0.00000</span>
           </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -1340,7 +1336,7 @@ footer {
       const totalUserStake = accWithdraw + pendingStakeAmount;
 
       document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
-      document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n);
+      document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n, 6) + ' ETH';
       document.getElementById('withdrawableStake').textContent = fmt(accWithdraw) + ' DXN';
       document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
       document.getElementById('userWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
