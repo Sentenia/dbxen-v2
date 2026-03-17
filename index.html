@@ -484,6 +484,18 @@ footer {
   margin-top: 16px; padding: 12px; background: var(--bg-deep);
   border-radius: var(--radius); font-size: 13px; font-weight: 600;
 }
+.burn-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin-top: 14px;
+}
+.burn-page-btn {
+  background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 10px; cursor: pointer; color: var(--text-secondary);
+  display: flex; align-items: center; transition: all 0.2s;
+}
+.burn-page-btn:hover:not(:disabled) { border-color: var(--cyan-dim); color: var(--cyan); }
+.burn-page-btn:disabled { opacity: 0.3; cursor: default; }
+.burn-page-info { font-size: 13px; color: var(--text-muted); }
 
 @media (max-width: 768px) {
   .activity-layout { flex-direction: column; }
@@ -929,12 +941,24 @@ footer {
             <tbody id="burnTableBody">
               <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px 0;">Connect wallet to load burn activity</td></tr>
             </tbody>
+            <tfoot id="burnTableFoot" style="display:none">
+              <tr style="border-top:2px solid var(--border);">
+                <td style="text-align:left;color:var(--text-muted);font-weight:600;font-size:12px;">TOTAL</td>
+                <td style="text-align:left;font-weight:700" id="footBatches">—</td>
+                <td style="text-align:left;font-weight:700" id="footXen">—</td>
+                <td style="text-align:right;font-weight:700" id="footGas">—</td>
+                <td style="text-align:right;font-weight:700;color:var(--amber)" id="footProtocol">—</td>
+                <td style="text-align:right"></td>
+                <td style="text-align:right"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
-        <div class="burn-feed-footer" id="burnFeedFooter" style="display:none">
-          <span style="color:var(--text-muted)">Total this cycle</span>
-          <span id="actTotalSummary">—</span>
+        <div class="burn-pagination" id="burnPagination" style="display:none">
+          <button class="burn-page-btn" id="burnPrevBtn" disabled><i data-lucide="chevron-left" style="width:16px;height:16px"></i></button>
+          <span class="burn-page-info" id="burnPageInfo">1 / 1</span>
+          <button class="burn-page-btn" id="burnNextBtn" disabled><i data-lucide="chevron-right" style="width:16px;height:16px"></i></button>
         </div>
       </div>
     </div>
@@ -1716,38 +1740,76 @@ footer {
       document.getElementById('actYourProtocolFee').textContent = myProtocolFee.toFixed(4) + ' ETH';
 
       const tbody = document.getElementById('burnTableBody');
+      const tfoot = document.getElementById('burnTableFoot');
+      const pagination = document.getElementById('burnPagination');
       if (burnerCount === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px 0;">No burns this cycle yet. Be the first!</td></tr>';
-        document.getElementById('burnFeedFooter').style.display = 'none';
+        tfoot.style.display = 'none';
+        pagination.style.display = 'none';
         return;
       }
 
       const sorted = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
-      let html = '';
-      for (const [addr, data] of sorted) {
-        const isYou = addr === myAddr;
-        const share = ((data.batches / totalBatches) * 100).toFixed(2);
-        const estDxn = ((data.batches / totalBatches) * parseFloat(ethers.formatEther(reward))).toFixed(2);
-        const gasCost = parseFloat(ethers.formatEther(data.gasCost)).toFixed(4);
-        const protocolFee = ((data.batches / totalBatches) * totalEthFloat).toFixed(4);
-        const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
-        const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
-        html += `<tr class="${isYou ? 'you-row' : ''}">
-          <td style="text-align:left"><code class="burn-addr">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
-          <td style="text-align:left;font-weight:700">${data.batches}</td>
-          <td style="text-align:left">${xenBurned}</td>
-          <td style="text-align:right">${gasCost}</td>
-          <td style="text-align:right;color:var(--amber)">${protocolFee}</td>
-          <td style="text-align:right">${share}%</td>
-          <td style="text-align:right;color:var(--green);font-weight:700">${estDxn}</td>
-        </tr>`;
-      }
-      tbody.innerHTML = html;
 
+      // Calculate totals for footer
+      let totalGasCost = 0n;
+      for (const [, data] of sorted) { totalGasCost += data.gasCost; }
       const totalXen = (totalBatches * 2.5);
       const totalXenStr = totalXen >= 1000 ? (totalXen / 1000).toFixed(1) + 'B' : totalXen.toFixed(1) + 'M';
-      document.getElementById('burnFeedFooter').style.display = 'flex';
-      document.getElementById('actTotalSummary').textContent = `${totalBatches} batches \u00b7 ${totalXenStr} XEN \u00b7 ${fmt(totalEthFees, 4)} ETH fees`;
+
+      tfoot.style.display = '';
+      document.getElementById('footBatches').textContent = totalBatches.toLocaleString();
+      document.getElementById('footXen').textContent = totalXenStr;
+      document.getElementById('footGas').textContent = parseFloat(ethers.formatEther(totalGasCost)).toFixed(4);
+      document.getElementById('footProtocol').textContent = fmt(totalEthFees, 4);
+
+      // Pagination
+      const PAGE_SIZE = 10;
+      const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+      let currentPage = 1;
+
+      function renderPage(page) {
+        currentPage = page;
+        const start = (page - 1) * PAGE_SIZE;
+        const end = Math.min(start + PAGE_SIZE, sorted.length);
+        const pageData = sorted.slice(start, end);
+
+        let html = '';
+        for (const [addr, data] of pageData) {
+          const isYou = addr === myAddr;
+          const share = ((data.batches / totalBatches) * 100).toFixed(2);
+          const estDxn = ((data.batches / totalBatches) * parseFloat(ethers.formatEther(reward))).toFixed(2);
+          const gasCost = parseFloat(ethers.formatEther(data.gasCost)).toFixed(4);
+          const protocolFee = ((data.batches / totalBatches) * totalEthFloat).toFixed(4);
+          const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
+          const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
+          html += `<tr class="${isYou ? 'you-row' : ''}">
+            <td style="text-align:left"><code class="burn-addr">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
+            <td style="text-align:left;font-weight:700">${data.batches}</td>
+            <td style="text-align:left">${xenBurned}</td>
+            <td style="text-align:right">${gasCost}</td>
+            <td style="text-align:right;color:var(--amber)">${protocolFee}</td>
+            <td style="text-align:right">${share}%</td>
+            <td style="text-align:right;color:var(--green);font-weight:700">${estDxn}</td>
+          </tr>`;
+        }
+        tbody.innerHTML = html;
+
+        // Update pagination controls
+        if (totalPages > 1) {
+          pagination.style.display = 'flex';
+          document.getElementById('burnPageInfo').textContent = `${page} / ${totalPages}`;
+          document.getElementById('burnPrevBtn').disabled = (page <= 1);
+          document.getElementById('burnNextBtn').disabled = (page >= totalPages);
+        } else {
+          pagination.style.display = 'none';
+        }
+      }
+
+      renderPage(1);
+
+      document.getElementById('burnPrevBtn').onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
+      document.getElementById('burnNextBtn').onclick = () => { if (currentPage < totalPages) renderPage(currentPage + 1); };
     } catch (e) {
       console.error('Activity refresh failed:', e);
     }
