@@ -39,7 +39,7 @@ Holders of original DXN can swap 1:1 for DXNv2 through the migration bridge. Old
 
 ## Community
 
-- [Telegram](https://t.me/dbxen_official)
+- [Telegram](https://t.me/DBXenV2)
 - [X / Twitter](https://x.com/DBXen_crypto)
 - [Litepaper](https://dbxen.gitbook.io/dbxen-litepaper)
 
