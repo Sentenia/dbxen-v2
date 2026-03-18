@@ -1982,8 +1982,9 @@ footer {
       const cycleStartTs = initTs + (cycle * period);
       const currentBlock = await readProvider.getBlockNumber();
       const secsIntoCycle = Number(now - cycleStartTs);
-      const blocksIntoCycle = Math.floor(secsIntoCycle / 12);
-      const startBlock = Math.max(currentBlock - blocksIntoCycle - 100, 0);
+      const blockTime = CH().chainId === '0x1' ? 12 : 2; // L2s have ~2s blocks
+      const blocksIntoCycle = Math.floor(secsIntoCycle / blockTime);
+      const startBlock = Math.max(currentBlock - blocksIntoCycle - 500, 0);
 
       const logs = await readProvider.getLogs({
         address: ADDR().DBXEN_V2,
