@@ -1116,7 +1116,7 @@ footer {
     ethereum: {
       name: 'Ethereum', chainId: '0x1', color: '#627EEA', native: 'ETH',
       explorer: 'https://etherscan.io', rpc: 'https://eth.llamarpc.com',
-      xenSym: 'XEN', dxnSym: 'DXN',
+      xenSym: 'XEN', dxnSym: 'DXN', minFee: 0n,
       oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
       contracts: {
         XEN: '0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
@@ -1129,7 +1129,7 @@ footer {
     optimism: {
       name: 'Optimism', chainId: '0xa', color: '#FF0420', native: 'ETH',
       explorer: 'https://optimistic.etherscan.io', rpc: 'https://mainnet.optimism.io',
-      xenSym: 'opXEN', dxnSym: 'opDXN', oldDbxenV1: '',
+      xenSym: 'opXEN', dxnSym: 'opDXN', minFee: 100000000000000n, oldDbxenV1: '',
       contracts: {
         XEN: '0xeB585163DEbB1E637c6D617de3bEF99347cd75c8',
         DBXEN_V2: '0x61614137edE60C65458F76a51D6431052EBE03D0',
@@ -1683,10 +1683,12 @@ footer {
         else if (gasPriceGwei > 5) level = 'med';
         document.getElementById('gasPriceDisplay').innerHTML = `${gasPriceGwei.toFixed(1)} <span style="font-size:11px;font-weight:500;color:var(--text-muted)">gwei · ${level}</span>`;
 
-        // Protocol fee estimate
+        // Protocol fee estimate (apply minProtocolFee floor)
         const gasEstimate = 200000n + 39400n;
         const discount = BigInt(batches) * (100000n - 5n * BigInt(batches));
-        const fee = (gasEstimate * gasPrice * discount) / 100000n;
+        let fee = (gasEstimate * gasPrice * discount) / 100000n;
+        const minFee = CH().minFee || 0n;
+        if (fee < minFee) fee = minFee;
         const feeEth = parseFloat(ethers.formatEther(fee));
         document.getElementById('protocolFeeDisplay').textContent = `~${feeEth.toFixed(4)} ${CH().native}`;
       } catch {}
@@ -1741,7 +1743,9 @@ footer {
       const gasPrice = feeData.gasPrice || 1000000000n;
       const gasEst = 200000n + 39400n;
       const disc = BigInt(batches) * (100000n - 5n * BigInt(batches));
-      const estFee = (gasEst * gasPrice * disc) / 100000n;
+      let estFee = (gasEst * gasPrice * disc) / 100000n;
+      const chainMinFee = CH().minFee || 0n;
+      if (estFee < chainMinFee) estFee = chainMinFee;
       const bufferedFee = estFee * 2n;
       const minValue = ethers.parseEther('0.0005');
       const value = bufferedFee > minValue ? bufferedFee : minValue;
