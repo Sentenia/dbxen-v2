@@ -589,6 +589,10 @@ footer {
       <div class="nav-name">DBXen <span>V2</span></div>
     </div>
     <div class="nav-links">
+      <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Burn</button>
+      <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
+      <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
+      <a class="nav-link" id="contractLink" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
       <div class="chain-selector" id="chainSelector">
         <button class="chain-sel-btn" id="chainSelBtn" onclick="toggleChainDD()">
           <span class="chain-dot-lg" id="chainDot" style="background:#627EEA"></span>
@@ -597,10 +601,6 @@ footer {
         </button>
         <div class="chain-dd" id="chainDD"></div>
       </div>
-      <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Burn</button>
-      <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
-      <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
-      <a class="nav-link" id="contractLink" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
     </div>
     <div class="wallet-area" id="walletArea">
       <button class="btn-connect" id="connectBtn">
@@ -1684,7 +1684,9 @@ footer {
         document.getElementById('gasPriceDisplay').innerHTML = `${gasPriceGwei.toFixed(1)} <span style="font-size:11px;font-weight:500;color:var(--text-muted)">gwei · ${level}</span>`;
 
         // Protocol fee estimate (apply minProtocolFee floor)
-        const gasEstimate = 200000n + 39400n;
+        // L2 chains have higher effective gas due to L1 data posting costs
+        const isL2 = CH().chainId !== '0x1';
+        const gasEstimate = BigInt(isL2 ? 600000 : 200000) + 39400n;
         const discount = BigInt(batches) * (100000n - 5n * BigInt(batches));
         let fee = (gasEstimate * gasPrice * discount) / 100000n;
         const minFee = CH().minFee || 0n;
@@ -1741,7 +1743,8 @@ footer {
       // Floor of 0.0005 ETH so tiny burns don't fail from rounding
       const feeData = await provider.getFeeData();
       const gasPrice = feeData.gasPrice || 1000000000n;
-      const gasEst = 200000n + 39400n;
+      const isL2 = CH().chainId !== '0x1';
+      const gasEst = BigInt(isL2 ? 600000 : 200000) + 39400n;
       const disc = BigInt(batches) * (100000n - 5n * BigInt(batches));
       let estFee = (gasEst * gasPrice * disc) / 100000n;
       const chainMinFee = CH().minFee || 0n;
