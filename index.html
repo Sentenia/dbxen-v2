@@ -538,6 +538,31 @@ footer {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
   50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
 }
+
+/* ═══ CHAIN SELECTOR ═══ */
+.chain-selector { position: relative; display: inline-flex; margin-right: 8px; }
+.chain-sel-btn {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-primary); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; font-family: var(--font);
+}
+.chain-sel-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+.chain-dot-lg { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chain-dd {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 200px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 6px; z-index: 1000; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.chain-dd.show { display: block; }
+.chain-opt {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+  background: none; border: none; border-radius: 8px; color: #ccc; font-size: 13px;
+  cursor: pointer; transition: background 0.15s; font-family: var(--font); text-align: left;
+}
+.chain-opt:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+.chain-opt.active { background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; }
+.chain-opt:disabled { opacity: 0.35; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -564,10 +589,18 @@ footer {
       <div class="nav-name">DBXen <span>V2</span></div>
     </div>
     <div class="nav-links">
+      <div class="chain-selector" id="chainSelector">
+        <button class="chain-sel-btn" id="chainSelBtn" onclick="toggleChainDD()">
+          <span class="chain-dot-lg" id="chainDot" style="background:#627EEA"></span>
+          <span id="chainName">Ethereum</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="chain-dd" id="chainDD"></div>
+      </div>
       <button class="nav-link active" data-tab="protocol"><i data-lucide="flame" style="width:16px;height:16px"></i> Burn</button>
       <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
       <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
-      <a class="nav-link" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
+      <a class="nav-link" id="contractLink" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
     </div>
     <div class="wallet-area" id="walletArea">
       <button class="btn-connect" id="connectBtn">
@@ -700,7 +733,7 @@ footer {
           <div class="card-icon stake"><i data-lucide="lock" style="width:20px;height:20px;color:white"></i></div>
           <div>
             <div class="card-title">Stake DXN</div>
-            <div class="card-desc">Stake DXN to earn ETH protocol fees</div>
+            <div class="card-desc">Stake DXN to earn <span class="native-sym">ETH</span> protocol fees</div>
           </div>
         </div>
         <div class="wallet-balance" id="dxnBalanceRow" style="display:none;">
@@ -757,7 +790,7 @@ footer {
             <span class="stat-value green" id="unclaimedDxn">0.00</span>
           </div>
           <div class="stat-row">
-            <span class="stat-label">Unclaimed ETH Fees</span>
+            <span class="stat-label">Unclaimed <span class="native-sym">ETH</span> Fees</span>
             <span class="stat-value green" id="unclaimedFees">0.00000</span>
           </div>
         </div>
@@ -768,7 +801,7 @@ footer {
           </button>
           <button class="btn-action secondary" id="claimFeesBtn" disabled>
             <i data-lucide="banknote" style="width:16px;height:16px"></i>
-            Claim ETH Fees
+            Claim <span class="native-sym">ETH</span> Fees
           </button>
         </div>
       </div>
@@ -894,8 +927,8 @@ footer {
             <div class="cycle-stat-val" id="actRewardPool">— <span style="font-size:12px;color:var(--text-muted)">DXN</span></div>
           </div>
           <div class="cycle-stat-box">
-            <div class="cycle-stat-label">ETH fees</div>
-            <div class="cycle-stat-val" id="actEthFees">— <span style="font-size:12px;color:var(--text-muted)">ETH</span></div>
+            <div class="cycle-stat-label">Fees</div>
+            <div class="cycle-stat-val" id="actEthFees">— <span style="font-size:12px;color:var(--text-muted)" class="native-sym">ETH</span></div>
           </div>
         </div>
 
@@ -1078,14 +1111,133 @@ footer {
     });
   }
 
-  // ═══ CONTRACT ADDRESSES ═══
-  const ADDR = {
-    XEN:       '0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
-    DBXEN_V2:  '0x61614137edE60C65458F76a51D6431052EBE03D0',
-    DXN_V2:    '0x1b08d317963cc65932f3f79f00987b2e23df52ab',
-    OLD_DXN:   '0x80f0C1c49891dcFDD40b6e0F960F84E6042bcB6F',
-    MIGRATION: '0x93bc54186656DC17C300fd5F6C464c0F75965a71',
+  // ═══ CHAIN CONFIGURATIONS ═══
+  const CHAINS = {
+    ethereum: {
+      name: 'Ethereum', chainId: '0x1', color: '#627EEA', native: 'ETH',
+      explorer: 'https://etherscan.io', rpc: 'https://eth.llamarpc.com',
+      xenSym: 'XEN', dxnSym: 'DXN',
+      oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
+      contracts: {
+        XEN: '0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
+        DBXEN_V2: '0x61614137edE60C65458F76a51D6431052EBE03D0',
+        DXN_V2: '0x1b08d317963cc65932f3f79f00987b2e23df52ab',
+        OLD_DXN: '0x80f0C1c49891dcFDD40b6e0F960F84E6042bcB6F',
+        MIGRATION: '0x93bc54186656DC17C300fd5F6C464c0F75965a71',
+      },
+    },
+    optimism: {
+      name: 'Optimism', chainId: '0xa', color: '#FF0420', native: 'ETH',
+      explorer: 'https://optimistic.etherscan.io', rpc: 'https://mainnet.optimism.io',
+      xenSym: 'opXEN', dxnSym: 'opDXN', oldDbxenV1: '',
+      contracts: {
+        XEN: '0xeB585163DEbB1E637c6D617de3bEF99347cd75c8',
+        DBXEN_V2: '0x61614137edE60C65458F76a51D6431052EBE03D0',
+        DXN_V2: '0x1B08d317963CC65932F3f79F00987B2E23df52Ab',
+        OLD_DXN: '0xc418B123885d732ED042b16e12e259741863F723',
+        MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
+      },
+      addChain: { chainId: '0xa', chainName: 'OP Mainnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://mainnet.optimism.io'], blockExplorerUrls: ['https://optimistic.etherscan.io'] },
+    },
+    base: {
+      name: 'Base', chainId: '0x2105', color: '#0052FF', native: 'ETH',
+      explorer: 'https://basescan.org', rpc: 'https://mainnet.base.org',
+      xenSym: 'cbXEN', dxnSym: 'cbDXN', oldDbxenV1: '',
+      contracts: {
+        XEN: '0xffcbF84650cE02DaFE96926B37a0ac5E34932fa5',
+        DBXEN_V2: '',
+        DXN_V2: '',
+        OLD_DXN: '0x9430A7e6283Fb704Fd1D9302868Bc39d16FE82Ba',
+        MIGRATION: '',
+      },
+      addChain: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://mainnet.base.org'], blockExplorerUrls: ['https://basescan.org'] },
+    },
+    pulsechain: {
+      name: 'PulseChain', chainId: '0x171', color: '#00FF00', native: 'PLS',
+      explorer: 'https://scan.pulsechain.com', rpc: 'https://rpc.pulsechain.com',
+      xenSym: 'pXEN', dxnSym: 'pDXN', oldDbxenV1: '',
+      contracts: {
+        XEN: '0x8a7FDcA264e87b6da72D000f22186B4403081A2a',
+        DBXEN_V2: '',
+        DXN_V2: '',
+        OLD_DXN: '0x6fE0ae3D5c993a3073333134db70613B0cb88a31',
+        MIGRATION: '',
+      },
+      addChain: { chainId: '0x171', chainName: 'PulseChain', nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 }, rpcUrls: ['https://rpc.pulsechain.com'], blockExplorerUrls: ['https://scan.pulsechain.com'] },
+    },
+    avalanche: {
+      name: 'Avalanche', chainId: '0xa86a', color: '#E84142', native: 'AVAX',
+      explorer: 'https://snowtrace.io', rpc: 'https://api.avax.network/ext/bc/C/rpc',
+      xenSym: 'aXEN', dxnSym: 'aDXN', oldDbxenV1: '',
+      contracts: {
+        XEN: '0xC0C5AA69Dbe4d6DDdfBc89c0957686ec60F24389',
+        DBXEN_V2: '',
+        DXN_V2: '',
+        OLD_DXN: '0x80f0C1c49891dcFDD40b6e0F960F84E6042bcB6F',
+        MIGRATION: '',
+      },
+      addChain: { chainId: '0xa86a', chainName: 'Avalanche C-Chain', nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 }, rpcUrls: ['https://api.avax.network/ext/bc/C/rpc'], blockExplorerUrls: ['https://snowtrace.io'] },
+    },
   };
+
+  let currentChainKey = 'ethereum';
+  function CH() { return CHAINS[currentChainKey]; }
+  function ADDR() { return CHAINS[currentChainKey].contracts; }
+
+  // ═══ CHAIN SELECTOR LOGIC ═══
+  function toggleChainDD() {
+    const dd = document.getElementById('chainDD');
+    if (dd.classList.contains('show')) { dd.classList.remove('show'); return; }
+    dd.innerHTML = Object.entries(CHAINS).map(([k, c]) => {
+      const active = k === currentChainKey ? ' active' : '';
+      const deployed = c.contracts.DBXEN_V2 ? '' : ' (soon)';
+      const dis = c.contracts.DBXEN_V2 ? '' : ' disabled';
+      return `<button class="chain-opt${active}" ${dis} onclick="switchChain('${k}')"><span class="chain-dot-lg" style="background:${c.color}"></span>${c.name}${deployed}</button>`;
+    }).join('');
+    dd.classList.add('show');
+    setTimeout(() => document.addEventListener('click', function cl(e) {
+      if (!e.target.closest('#chainSelector')) { dd.classList.remove('show'); document.removeEventListener('click', cl); }
+    }), 0);
+  }
+
+  async function switchChain(key) {
+    const c = CHAINS[key];
+    if (!c || !c.contracts.DBXEN_V2) return;
+    document.getElementById('chainDD').classList.remove('show');
+    try {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: c.chainId }] });
+    } catch (err) {
+      if (err.code === 4902 && c.addChain) {
+        try { await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] }); } catch {}
+      }
+    }
+  }
+
+  function detectChain(hexId) {
+    const match = Object.entries(CHAINS).find(([, c]) => c.chainId.toLowerCase() === hexId.toLowerCase());
+    if (match) {
+      currentChainKey = match[0];
+      applyChainUI();
+      return true;
+    }
+    return false;
+  }
+
+  function applyChainUI() {
+    const c = CH();
+    document.getElementById('chainDot').style.background = c.color;
+    document.getElementById('chainName').textContent = c.name;
+    // Update native token labels
+    document.querySelectorAll('.native-sym').forEach(el => el.textContent = c.native);
+    // Update contract link in nav
+    if (c.contracts.DBXEN_V2) {
+      document.getElementById('contractLink').href = c.explorer + '/address/' + c.contracts.DBXEN_V2 + '#code';
+    }
+    // Update hero badge
+    const badge = document.querySelector('.hero-badge .pulse-dot');
+    if (badge && badge.parentElement) badge.parentElement.innerHTML = '<span class="pulse-dot"></span> Live on ' + c.name;
+  }
+
   const BATCH_SIZE = 2500000n * (10n ** 18n); // 2.5M XEN per batch
   const ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)'];
   const DBXEN_ABI = [
@@ -1161,8 +1313,8 @@ footer {
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0x1' && parseInt(chainId) !== 1) {
-        alert('Please switch to Ethereum Mainnet');
+      if (!detectChain(chainId)) {
+        alert('Unsupported network. Please switch to Ethereum, Optimism, Base, PulseChain, or Avalanche.');
         return;
       }
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -1174,20 +1326,20 @@ footer {
 
       document.getElementById('connectBtn').style.display = 'none';
       document.getElementById('walletConnected').style.display = 'flex';
-      document.getElementById('walletEth').textContent = ethFormatted + ' ETH';
+      document.getElementById('walletEth').textContent = ethFormatted + ' ' + CH().native;
       document.getElementById('walletAddrText').textContent = userAddr.slice(0,6) + '...' + userAddr.slice(-4);
       document.getElementById('walletFullAddr').textContent = userAddr;
-      document.getElementById('walletEtherscanLink').href = 'https://etherscan.io/address/' + userAddr;
+      document.getElementById('walletEtherscanLink').href = CH().explorer + '/address/' + userAddr;
       lucide.createIcons();
 
-      xenContract = new ethers.Contract(ADDR.XEN, ERC20_ABI, signer);
-      dxnV2Contract = new ethers.Contract(ADDR.DXN_V2, ERC20_ABI, signer);
-      oldDxnContract = new ethers.Contract(ADDR.OLD_DXN, ERC20_ABI, signer);
-      dbxenContract = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, signer);
-      migrationContract = new ethers.Contract(ADDR.MIGRATION, MIGRATION_ABI, signer);
+      xenContract = new ethers.Contract(ADDR().XEN, ERC20_ABI, signer);
+      dxnV2Contract = new ethers.Contract(ADDR().DXN_V2, ERC20_ABI, signer);
+      oldDxnContract = new ethers.Contract(ADDR().OLD_DXN, ERC20_ABI, signer);
+      dbxenContract = new ethers.Contract(ADDR().DBXEN_V2, DBXEN_ABI, signer);
+      migrationContract = new ethers.Contract(ADDR().MIGRATION, MIGRATION_ABI, signer);
 
       document.getElementById('burnBtn').disabled = false;
-      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn ' + CH().xenSym;
       document.getElementById('stakeBtn').disabled = false;
       document.getElementById('unstakeBtn').disabled = false;
       document.getElementById('claimDxnBtn').disabled = false;
@@ -1341,7 +1493,7 @@ footer {
       const totalUserStake = accWithdraw + pendingStakeAmount;
 
       document.getElementById('unclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
-      document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n, 6) + ' ETH';
+      document.getElementById('unclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n, 6) + ' ' + CH().native;
       document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
       document.getElementById('userWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
 
@@ -1374,7 +1526,10 @@ footer {
             document.getElementById('pendingUnlockText').textContent = `Unlock in: ${h}h ${m}m ${s}s`;
             cachedPendingUnlockTs = Number(unlockTs);
           } else {
-            document.getElementById('pendingUnlockText').textContent = 'Unlocking soon...';
+            // Timer expired — auto-refresh will handle moving to withdrawable
+            document.getElementById('pendingUnlockText').textContent = 'Now withdrawable';
+            cachedPendingUnlockTs = 0;
+            setTimeout(() => { refreshBalances(); }, 3000);
           }
         }
       } else {
@@ -1391,7 +1546,7 @@ footer {
   async function refreshProtocolStats() {
     try {
       const readProvider = new ethers.BrowserProvider(window.ethereum);
-      const dbxRead = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, readProvider);
+      const dbxRead = new ethers.Contract(ADDR().DBXEN_V2, DBXEN_ABI, readProvider);
 
       const cycle = await dbxRead.getCurrentCycle();
       const reward = await dbxRead.currentCycleReward();
@@ -1401,11 +1556,15 @@ footer {
       const totalBatches = await dbxRead.totalNumberOfBatchesBurned();
       const pendingStakeAmt = await dbxRead.pendingStake();
 
-      // Read old DBXen batches too
+      // Read old DBXen batches too (if V1 address exists for this chain)
       const oldDbxenAbi = ['function totalNumberOfBatchesBurned() view returns (uint256)'];
-      const oldDbxen = new ethers.Contract('0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD', oldDbxenAbi, readProvider);
       let oldBatches = 0n;
-      try { oldBatches = await oldDbxen.totalNumberOfBatchesBurned(); } catch {}
+      if (CH().oldDbxenV1) {
+        try {
+          const oldDbxen = new ethers.Contract(CH().oldDbxenV1, oldDbxenAbi, readProvider);
+          oldBatches = await oldDbxen.totalNumberOfBatchesBurned();
+        } catch {}
+      }
 
       document.getElementById('statCycle').textContent = cycle.toString();
       document.getElementById('statReward').textContent = fmt(reward);
@@ -1447,11 +1606,11 @@ footer {
   async function refreshBridgeStats() {
     try {
       const readProvider = new ethers.BrowserProvider(window.ethereum);
-      const migRead = new ethers.Contract(ADDR.MIGRATION, MIGRATION_ABI, readProvider);
-      const dxnV2Read = new ethers.Contract(ADDR.DXN_V2, ERC20_ABI, readProvider);
+      const migRead = new ethers.Contract(ADDR().MIGRATION, MIGRATION_ABI, readProvider);
+      const dxnV2Read = new ethers.Contract(ADDR().DXN_V2, ERC20_ABI, readProvider);
 
       const totalSwapped = await migRead.totalSwapped();
-      const poolBalance = await dxnV2Read.balanceOf(ADDR.MIGRATION);
+      const poolBalance = await dxnV2Read.balanceOf(ADDR().MIGRATION);
       const deadline = await migRead.deadline();
 
       document.getElementById('totalMigrated').textContent = fmt(totalSwapped) + ' DXN';
@@ -1529,7 +1688,7 @@ footer {
         const discount = BigInt(batches) * (100000n - 5n * BigInt(batches));
         const fee = (gasEstimate * gasPrice * discount) / 100000n;
         const feeEth = parseFloat(ethers.formatEther(fee));
-        document.getElementById('protocolFeeDisplay').textContent = `~${feeEth.toFixed(4)} ETH`;
+        document.getElementById('protocolFeeDisplay').textContent = `~${feeEth.toFixed(4)} ${CH().native}`;
       } catch {}
     }
   }
@@ -1569,9 +1728,9 @@ footer {
       document.getElementById('burnBtn').textContent = 'Approving XEN...';
       document.getElementById('burnBtn').disabled = true;
       // Check allowance
-      const allowance = await xenContract.allowance(userAddr, ADDR.DBXEN_V2);
+      const allowance = await xenContract.allowance(userAddr, ADDR().DBXEN_V2);
       if (allowance < xenNeeded) {
-        const appTx = await xenContract.approve(ADDR.DBXEN_V2, ethers.MaxUint256);
+        const appTx = await xenContract.approve(ADDR().DBXEN_V2, ethers.MaxUint256);
         await appTx.wait();
       }
       document.getElementById('burnBtn').textContent = 'Burning...';
@@ -1597,7 +1756,7 @@ footer {
       await refreshBalances();
       await refreshProtocolStats();
       setTimeout(async () => {
-        document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+        document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn ' + CH().xenSym;
         document.getElementById('burnBtn').style.background = '';
         document.getElementById('burnBtn').disabled = false;
         lucide.createIcons();
@@ -1606,7 +1765,7 @@ footer {
       }, 5000);
     } catch (e) {
       console.error('Burn failed:', e);
-      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn XEN';
+      document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn ' + CH().xenSym;
       document.getElementById('burnBtn').disabled = false;
       lucide.createIcons();
       alert('Transaction failed: ' + (e.reason || e.message));
@@ -1622,9 +1781,9 @@ footer {
     try {
       document.getElementById('stakeBtn').textContent = 'Approving...';
       document.getElementById('stakeBtn').disabled = true;
-      const allowance = await dxnV2Contract.allowance(userAddr, ADDR.DBXEN_V2);
+      const allowance = await dxnV2Contract.allowance(userAddr, ADDR().DBXEN_V2);
       if (allowance < amount) {
-        const appTx = await dxnV2Contract.approve(ADDR.DBXEN_V2, ethers.MaxUint256);
+        const appTx = await dxnV2Contract.approve(ADDR().DBXEN_V2, ethers.MaxUint256);
         await appTx.wait();
       }
       document.getElementById('stakeBtn').textContent = 'Staking...';
@@ -1694,10 +1853,10 @@ footer {
       await tx.wait();
       document.getElementById('claimFeesBtn').textContent = 'Claimed!';
       await refreshBalances();
-      setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
+      setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ' + CH().native + ' Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
     } catch (e) {
       console.error('Claim fees failed:', e);
-      document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ETH Fees';
+      document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ' + CH().native + ' Fees';
       document.getElementById('claimFeesBtn').disabled = false;
       lucide.createIcons();
       alert('Transaction failed: ' + (e.reason || e.message));
@@ -1714,9 +1873,9 @@ footer {
     try {
       document.getElementById('bridgeBtn').textContent = 'Approving old DXN...';
       document.getElementById('bridgeBtn').disabled = true;
-      const allowance = await oldDxnContract.allowance(userAddr, ADDR.MIGRATION);
+      const allowance = await oldDxnContract.allowance(userAddr, ADDR().MIGRATION);
       if (allowance < amount) {
-        const appTx = await oldDxnContract.approve(ADDR.MIGRATION, ethers.MaxUint256);
+        const appTx = await oldDxnContract.approve(ADDR().MIGRATION, ethers.MaxUint256);
         await appTx.wait();
       }
       document.getElementById('bridgeBtn').textContent = 'Migrating...';
@@ -1761,10 +1920,13 @@ footer {
       }
     });
     window.ethereum.on('chainChanged', (newChainId) => {
-      if (currentChainId && newChainId !== currentChainId) {
-        location.reload();
-      }
       currentChainId = newChainId;
+      if (detectChain(newChainId)) {
+        // Reconnect on the new chain
+        connectWallet();
+      } else {
+        alert('Unsupported network. Switch to Ethereum, Optimism, Base, PulseChain, or Avalanche.');
+      }
     });
   }
 
@@ -1784,7 +1946,7 @@ footer {
     if (!provider) return;
     try {
       const readProvider = new ethers.BrowserProvider(window.ethereum);
-      const dbxRead = new ethers.Contract(ADDR.DBXEN_V2, DBXEN_ABI, readProvider);
+      const dbxRead = new ethers.Contract(ADDR().DBXEN_V2, DBXEN_ABI, readProvider);
 
       const cycle = await dbxRead.getCurrentCycle();
       const reward = await dbxRead.currentCycleReward();
@@ -1811,7 +1973,7 @@ footer {
       const startBlock = Math.max(currentBlock - blocksIntoCycle - 100, 0);
 
       const logs = await readProvider.getLogs({
-        address: ADDR.DBXEN_V2,
+        address: ADDR().DBXEN_V2,
         topics: [BURN_EVENT_SIG],
         fromBlock: startBlock,
         toBlock: 'latest',
@@ -1846,14 +2008,14 @@ footer {
 
       try {
         const cycleFeesAbi = ['function cycleAccruedFees(uint256) view returns (uint256)'];
-        const dbxFees = new ethers.Contract(ADDR.DBXEN_V2, cycleFeesAbi, readProvider);
+        const dbxFees = new ethers.Contract(ADDR().DBXEN_V2, cycleFeesAbi, readProvider);
         totalEthFees = await dbxFees.cycleAccruedFees(cycle);
       } catch {}
 
       const burnerCount = Object.keys(burners).length;
       document.getElementById('actBatches').textContent = totalBatches.toLocaleString();
       document.getElementById('actBurners').textContent = burnerCount.toString();
-      document.getElementById('actEthFees').innerHTML = fmt(totalEthFees, 4) + ' <span style="font-size:12px;color:var(--text-muted)">ETH</span>';
+      document.getElementById('actEthFees').innerHTML = fmt(totalEthFees, 4) + ' <span style="font-size:12px;color:var(--text-muted)">' + CH().native + '</span>';
 
       const myAddr = userAddr ? userAddr.toLowerCase() : '';
       const myBatches = myAddr && burners[myAddr] ? burners[myAddr].batches : 0;
@@ -1866,8 +2028,8 @@ footer {
       document.getElementById('actYourBatches').textContent = myBatches.toString();
       document.getElementById('actYourShare').textContent = myShare.toFixed(2) + '%';
       document.getElementById('actYourReward').textContent = myReward.toFixed(2) + ' DXN';
-      document.getElementById('actYourGasCost').textContent = parseFloat(ethers.formatEther(myGasCost)).toFixed(4) + ' ETH';
-      document.getElementById('actYourProtocolFee').textContent = myProtocolFee.toFixed(4) + ' ETH';
+      document.getElementById('actYourGasCost').textContent = parseFloat(ethers.formatEther(myGasCost)).toFixed(4) + ' ' + CH().native;
+      document.getElementById('actYourProtocolFee').textContent = myProtocolFee.toFixed(4) + ' ' + CH().native;
 
       const tbody = document.getElementById('burnTableBody');
       const tfoot = document.getElementById('burnTableFoot');
@@ -1984,8 +2146,9 @@ footer {
           const s = secsLeft % 60;
           el.textContent = `Unlock in: ${h}h ${m}m ${s}s`;
         } else {
-          el.textContent = 'Unlocking soon...';
           cachedPendingUnlockTs = 0;
+          // Wait 3 seconds for chain to catch up, then auto-refresh
+          setTimeout(() => { refreshBalances(); }, 3000);
         }
       }
     }
