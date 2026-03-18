@@ -1051,30 +1051,7 @@ footer {
     <div class="footer-grid">
       <div class="footer-col">
         <div class="footer-heading">Contract Addresses</div>
-        <div class="footer-address">
-          <span class="footer-address-label">XEN:</span>
-          <code>0x06450...a6Fb8</code>
-          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
-          <a href="https://etherscan.io/address/0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
-        </div>
-        <div class="footer-address">
-          <span class="footer-address-label">DBXenV2:</span>
-          <code>0x61614...E03D0</code>
-          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x61614137edE60C65458F76a51D6431052EBE03D0');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
-          <a href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
-        </div>
-        <div class="footer-address">
-          <span class="footer-address-label">DXNv2:</span>
-          <code>0x1b08d...f52ab</code>
-          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x1b08d317963cc65932f3f79f00987b2e23df52ab');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
-          <a href="https://etherscan.io/address/0x1b08d317963cc65932f3f79f00987b2e23df52ab" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
-        </div>
-        <div class="footer-address">
-          <span class="footer-address-label">Migration:</span>
-          <code>0x93bc5...65a71</code>
-          <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('0x93bc54186656DC17C300fd5F6C464c0F75965a71');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
-          <a href="https://etherscan.io/address/0x93bc54186656DC17C300fd5F6C464c0F75965a71" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
-        </div>
+        <div id="footerContracts"></div>
       </div>
       <div class="footer-col">
         <div class="footer-heading">Resources</div>
@@ -1236,6 +1213,32 @@ footer {
     // Update hero badge
     const badge = document.querySelector('.hero-badge .pulse-dot');
     if (badge && badge.parentElement) badge.parentElement.innerHTML = '<span class="pulse-dot"></span> Live on ' + c.name;
+    // Update footer contracts
+    updateFooterContracts();
+  }
+
+  function updateFooterContracts() {
+    const c = CH();
+    const ex = c.explorer;
+    const ct = c.contracts;
+    const rows = [
+      { label: c.xenSym + ':', addr: ct.XEN },
+      { label: 'DBXenV2:', addr: ct.DBXEN_V2 },
+      { label: c.dxnSym + 'v2:', addr: ct.DXN_V2 },
+      { label: 'Migration:', addr: ct.MIGRATION },
+    ];
+    const container = document.getElementById('footerContracts');
+    if (!container) return;
+    container.innerHTML = rows.filter(r => r.addr).map(r => {
+      const short = r.addr.slice(0, 7) + '...' + r.addr.slice(-5);
+      return `<div class="footer-address">
+        <span class="footer-address-label">${r.label}</span>
+        <code>${short}</code>
+        <button class="footer-copy-btn" onclick="navigator.clipboard.writeText('${r.addr}');this.innerHTML='<i data-lucide=&quot;check&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons();setTimeout(()=>{this.innerHTML='<i data-lucide=&quot;copy&quot; style=&quot;width:12px;height:12px&quot;></i>';lucide.createIcons()},1500)"><i data-lucide="copy" style="width:12px;height:12px"></i></button>
+        <a href="${ex}/address/${r.addr}" target="_blank" class="footer-icon-link"><i data-lucide="external-link" style="width:12px;height:12px"></i></a>
+      </div>`;
+    }).join('');
+    lucide.createIcons();
   }
 
   const BATCH_SIZE = 2500000n * (10n ** 18n); // 2.5M XEN per batch
@@ -1359,6 +1362,9 @@ footer {
   }
 
   document.getElementById('connectBtn').addEventListener('click', connectWallet);
+
+  // ═══ INITIAL FOOTER RENDER ═══
+  updateFooterContracts();
 
   // ═══ AUTO-RECONNECT ON PAGE LOAD ═══
   (async () => {
