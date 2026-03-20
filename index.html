@@ -791,7 +791,7 @@ footer {
             <span class="stat-value" id="userWithdrawable">— DXN</span>
           </div>
           <div class="stat-row">
-            <span class="stat-label">Est. Staking APY</span>
+            <span class="stat-label">Est. APY (24h)</span>
             <span class="stat-value green" id="stakingApy">—</span>
           </div>
         </div>
@@ -1755,7 +1755,7 @@ footer {
         const userStakes = summedStakes - reward + pendingStakeAmt;
         document.getElementById('statStaked').textContent = userStakes > 0n ? fmt(userStakes) : '0';
 
-        // APY estimate: (fees per cycle / total staked) * 365 * 100
+        // APY: based on last cycle's fees
         try {
           const lastFees = await dbxRead.cycleAccruedFees(storedCycle > 0n ? storedCycle : cycle);
           if (userStakes > 0n && lastFees > 0n) {
