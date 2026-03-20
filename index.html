@@ -808,6 +808,68 @@ footer {
     </div>
   </section>
 
+  <!-- LEGACY V2 SECTION (PulseChain only — hidden on other chains) -->
+  <section class="content tab-panels active" id="legacySection" style="display:none;">
+    <div style="max-width:1280px;margin:0 auto 20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <i data-lucide="clock" style="width:20px;height:20px;color:var(--amber)"></i>
+        <span style="font-size:16px;font-weight:700;color:var(--amber);">Legacy V2 (2.5M Batches) — Closing <span id="legacyCountdown" style="color:var(--red)"></span></span>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Withdraw your staked DXN and claim rewards from the old 2.5M-batch contract. This section will be removed after the migration deadline.</p>
+      <div class="card-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <!-- LEGACY STAKE CARD -->
+        <div class="card" style="border-color:var(--amber-glow);opacity:0.85;">
+          <div class="card-header">
+            <div class="card-icon" style="background:linear-gradient(135deg,var(--amber),#d97706)"><i data-lucide="unlock" style="width:20px;height:20px;color:white"></i></div>
+            <div>
+              <div class="card-title">Legacy Stake (old V2)</div>
+              <div class="card-desc">Withdraw your staked pDXNv2 from the old contract</div>
+            </div>
+          </div>
+          <div class="wallet-balance" id="legacyDxnBalRow" style="display:none;">
+            <i data-lucide="wallet" style="width:14px;height:14px;color:var(--amber)"></i>
+            <span>Old pDXNv2: <strong id="legacyDxnBal">—</strong></span>
+          </div>
+          <div class="input-group">
+            <div class="input-label">Amount to Unstake</div>
+            <input class="input-field" id="legacyUnstakeInput" type="text" placeholder="0.00">
+            <div class="input-hint">
+              <span id="legacyStakeHint">Withdrawable: —</span>
+              <a id="legacyUnstakeMaxBtn" style="cursor:pointer">Max</a>
+            </div>
+          </div>
+          <button class="btn-action secondary" id="legacyUnstakeBtn" disabled>Unstake from Legacy</button>
+          <div style="margin-top:12px;">
+            <div class="stat-row"><span class="stat-label">Your Legacy Stake</span><span class="stat-value" id="legacyUserStake">— DXN</span></div>
+            <div class="stat-row"><span class="stat-label">Withdrawable</span><span class="stat-value" id="legacyUserWithdrawable">— DXN</span></div>
+          </div>
+        </div>
+        <!-- LEGACY REWARDS CARD -->
+        <div class="card" style="border-color:var(--amber-glow);opacity:0.85;">
+          <div class="card-header">
+            <div class="card-icon" style="background:linear-gradient(135deg,var(--amber),#d97706)"><i data-lucide="gift" style="width:20px;height:20px;color:white"></i></div>
+            <div>
+              <div class="card-title">Legacy Rewards (old V2)</div>
+              <div class="card-desc">Claim remaining rewards from old contract</div>
+            </div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <div class="stat-row"><span class="stat-label">Unclaimed DXN</span><span class="stat-value green" id="legacyUnclaimedDxn">0.00</span></div>
+            <div class="stat-row"><span class="stat-label">Unclaimed PLS Fees</span><span class="stat-value green" id="legacyUnclaimedFees">0.00000</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn-action primary" id="legacyClaimDxnBtn" disabled style="background:var(--amber);">
+              <i data-lucide="coins" style="width:16px;height:16px"></i> Claim Legacy DXN
+            </button>
+            <button class="btn-action secondary" id="legacyClaimFeesBtn" disabled>
+              <i data-lucide="banknote" style="width:16px;height:16px"></i> Claim Legacy PLS Fees
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- BRIDGE TAB -->
   <section class="content tab-panels" id="tab-bridge">
     <div class="bridge-card fade-up">
@@ -824,11 +886,24 @@ footer {
       <div class="bridge-token">
         <div class="bridge-token-icon old">v1</div>
         <div>
-          <div class="bridge-token-name">DXN (Old)</div>
-          <div class="bridge-token-sub">0x80f0...cB6F</div>
+          <div class="bridge-token-name" id="bridgeOldName">DXN (Old)</div>
+          <div class="bridge-token-sub" id="bridgeOldSub">0x80f0...cB6F</div>
         </div>
         <div style="margin-left:auto; text-align:right;">
           <div style="font-weight:700; font-size:16px;" id="oldDxnBal">—</div>
+          <div style="font-size:12px; color:var(--text-muted);">Balance</div>
+        </div>
+      </div>
+
+      <!-- PulseChain dual: old V2 token row (hidden on other chains) -->
+      <div class="bridge-token" id="bridgeOldV2Row" style="display:none;margin-top:8px;border-color:var(--amber-glow);">
+        <div class="bridge-token-icon" style="background:var(--amber);color:var(--bg-deep);font-weight:800;font-size:12px;">v2</div>
+        <div>
+          <div class="bridge-token-name">pDXNv2 (Old 2.5M)</div>
+          <div class="bridge-token-sub">0x1B08...52Ab</div>
+        </div>
+        <div style="margin-left:auto; text-align:right;">
+          <div style="font-weight:700; font-size:16px;" id="oldV2DxnBal">—</div>
           <div style="font-size:12px; color:var(--text-muted);">Balance</div>
         </div>
       </div>
@@ -840,8 +915,8 @@ footer {
       <div class="bridge-token" style="border-color: var(--cyan-dim);">
         <div class="bridge-token-icon new">v2</div>
         <div>
-          <div class="bridge-token-name">DXNv2 (New)</div>
-          <div class="bridge-token-sub">0x1b08...52ab</div>
+          <div class="bridge-token-name" id="bridgeNewName">DXNv2 (New)</div>
+          <div class="bridge-token-sub" id="bridgeNewSub">0x1b08...52ab</div>
         </div>
         <div style="margin-left:auto; text-align:right;">
           <div style="font-weight:700; font-size:16px;" id="newDxnBal">—</div>
@@ -850,6 +925,15 @@ footer {
       </div>
 
       <div class="bridge-rate">Swap rate: <span>1 DXN = 1 DXNv2</span> — always.</div>
+
+      <!-- PulseChain: token source selector -->
+      <div id="bridgeSourceSelector" style="display:none;margin-bottom:12px;">
+        <div class="input-label">Migrate From</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-action secondary" id="bridgeSrcV1Btn" style="flex:1;padding:10px;font-size:13px;" onclick="setBridgeSource('v1')">V1 pDXN</button>
+          <button class="btn-action secondary" id="bridgeSrcV2Btn" style="flex:1;padding:10px;font-size:13px;" onclick="setBridgeSource('v2')">Old pDXNv2</button>
+        </div>
+      </div>
 
       <div class="input-group">
         <div class="input-label">Amount to Migrate</div>
@@ -1015,7 +1099,7 @@ footer {
       <div class="hiw-step fade-up fade-up-1">
         <div class="hiw-number">1</div>
         <div class="hiw-step-title">Burn XEN</div>
-        <div class="hiw-step-desc">Burn XEN in batches of 2.5M to earn DXN rewards.</div>
+        <div class="hiw-step-desc">Burn XEN in batches to earn DXN rewards.</div>
       </div>
       <div class="hiw-step fade-up fade-up-2">
         <div class="hiw-number">2</div>
@@ -1133,13 +1217,21 @@ footer {
       name: 'PulseChain', chainId: '0x171', color: '#00FF00', native: 'PLS',
       explorer: 'https://scan.pulsechain.com', rpc: 'https://rpc.pulsechain.com',
       xenSym: 'pXEN', dxnSym: 'pDXN', minFee: 1000000000000000000000n, oldDbxenV1: '0x6d38Ab9f5b5Edfb22e57a44c3c747f9584de1f1a',
+      batchSize: 250000000n,
       contracts: {
         XEN: '0x8a7FDcA264e87b6da72D000f22186B4403081A2a',
+        DBXEN_V2: '0x6054A1dBC14bd1b1653727f3E4690DB4174d8F0c',
+        DXN_V2: '0xfe7714618a8cceD29788aa6D490BBF7c5522aA77',
+        OLD_DXN: '0x6fE0ae3D5c993a3073333134db70613B0cb88a31',
+        MIGRATION: '0x3b093387654674873ddf51E4A8c509714a21932a',
+      },
+      // Legacy V2 (2.5M batch deploy) — for withdrawal/claim UI only
+      legacy: {
         DBXEN_V2: '0x61614137edE60C65458F76a51D6431052EBE03D0',
         DXN_V2: '0x1B08d317963CC65932F3f79F00987B2E23df52Ab',
-        OLD_DXN: '0x6fE0ae3D5c993a3073333134db70613B0cb88a31',
         MIGRATION: '0x302c1c777FC144492E29148b4F2a95466e06d970',
       },
+      dualMigration: true,
       addChain: { chainId: '0x171', chainName: 'PulseChain', nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 }, rpcUrls: ['https://rpc.pulsechain.com'], blockExplorerUrls: ['https://scan.pulsechain.com'] },
     },
     avalanche: {
@@ -1254,7 +1346,8 @@ footer {
     lucide.createIcons();
   }
 
-  const BATCH_SIZE = 2500000n * (10n ** 18n); // 2.5M XEN per batch
+  function getBatchSize() { return (CH().batchSize || 2500000n) * (10n ** 18n); }
+  function getBatchDisplay() { return Number(CH().batchSize || 2500000n); }
   const ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)'];
   const DBXEN_ABI = [
     'function burnBatch(uint256) payable',
@@ -1288,11 +1381,13 @@ footer {
     'function i_periodDuration() view returns (uint256)',
   ];
   const MIGRATION_ABI = ['function swap(uint256)', 'function totalSwapped() view returns (uint256)', 'function deadline() view returns (uint256)', 'function active() view returns (bool)'];
+  const DUAL_MIGRATION_ABI = ['function swapV1(uint256)', 'function swapV2(uint256)', 'function totalSwappedV1() view returns (uint256)', 'function totalSwappedV2() view returns (uint256)', 'function deadline() view returns (uint256)', 'function active() view returns (bool)'];
 
   // ═══ STATE ═══
   let provider, signer, userAddr;
   let xenContract, dxnV2Contract, oldDxnContract, dbxenContract, migrationContract;
-  let xenBal = 0n, dxnBal = 0n, oldDxnBal = 0n;
+  let legacyDbxenContract, legacyDxnContract, oldV2DxnContract;
+  let xenBal = 0n, dxnBal = 0n, oldDxnBal = 0n, oldV2DxnBal = 0n;
   let maxBatches = 0;
 
   // ═══ HELPERS ═══
@@ -1352,7 +1447,15 @@ footer {
       dxnV2Contract = new ethers.Contract(ADDR().DXN_V2, ERC20_ABI, signer);
       oldDxnContract = new ethers.Contract(ADDR().OLD_DXN, ERC20_ABI, signer);
       dbxenContract = new ethers.Contract(ADDR().DBXEN_V2, DBXEN_ABI, signer);
-      migrationContract = new ethers.Contract(ADDR().MIGRATION, MIGRATION_ABI, signer);
+      if (CH().dualMigration) {
+        migrationContract = new ethers.Contract(ADDR().MIGRATION, DUAL_MIGRATION_ABI, signer);
+        oldV2DxnContract = new ethers.Contract(CH().legacy.DXN_V2, ERC20_ABI, signer);
+        legacyDbxenContract = new ethers.Contract(CH().legacy.DBXEN_V2, DBXEN_ABI, signer);
+        legacyDxnContract = new ethers.Contract(CH().legacy.DXN_V2, ERC20_ABI, signer);
+      } else {
+        migrationContract = new ethers.Contract(ADDR().MIGRATION, MIGRATION_ABI, signer);
+        oldV2DxnContract = null; legacyDbxenContract = null; legacyDxnContract = null;
+      }
 
       document.getElementById('burnBtn').disabled = false;
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn ' + CH().xenSym;
@@ -1400,7 +1503,7 @@ footer {
       oldDxnBal = await oldDxnContract.balanceOf(userAddr);
 
       // XEN balance + batch calc
-      maxBatches = Number(xenBal / BATCH_SIZE);
+      maxBatches = Number(xenBal / getBatchSize());
       document.getElementById('xenBalanceRow').style.display = 'flex';
       document.getElementById('xenBalance').textContent = fmt(xenBal, 0);
       document.getElementById('xenMaxBatches').textContent = `(${maxBatches.toLocaleString()} batches)`;
@@ -1574,7 +1677,7 @@ footer {
       document.getElementById('statReward').textContent = fmt(reward);
 
       const xenBurnedV1 = oldBatches * 2500000n * (10n ** 18n);
-      const xenBurnedV2 = totalBatches * 2500000n * (10n ** 18n);
+      const xenBurnedV2 = totalBatches * getBatchSize();
       document.getElementById('statBurnedV1').textContent = xenBurnedV1 > 0n ? fmt(xenBurnedV1, 0) : '0';
       document.getElementById('statBurnedV2').textContent = xenBurnedV2 > 0n ? fmt(xenBurnedV2, 0) : '0';
 
@@ -1605,10 +1708,18 @@ footer {
   async function refreshBridgeStats() {
     try {
       const readProvider = new ethers.BrowserProvider(window.ethereum);
-      const migRead = new ethers.Contract(ADDR().MIGRATION, MIGRATION_ABI, readProvider);
+      const migAbi = CH().dualMigration ? DUAL_MIGRATION_ABI : MIGRATION_ABI;
+      const migRead = new ethers.Contract(ADDR().MIGRATION, migAbi, readProvider);
       const dxnV2Read = new ethers.Contract(ADDR().DXN_V2, ERC20_ABI, readProvider);
 
-      const totalSwapped = await migRead.totalSwapped();
+      let totalSwapped;
+      if (CH().dualMigration) {
+        const v1Swapped = await migRead.totalSwappedV1();
+        const v2Swapped = await migRead.totalSwappedV2();
+        totalSwapped = v1Swapped + v2Swapped;
+      } else {
+        totalSwapped = await migRead.totalSwapped();
+      }
       const poolBalance = await dxnV2Read.balanceOf(ADDR().MIGRATION);
       const deadline = await migRead.deadline();
 
@@ -1660,7 +1771,7 @@ footer {
 
   async function updateBurnCost() {
     const batches = parseInt(burnInput.value) || 1;
-    const xenCost = batches * 2500000;
+    const xenCost = batches * getBatchDisplay();
     document.getElementById('burnCostDisplay').textContent = xenCost.toLocaleString() + ' XEN';
     document.getElementById('burnXenCost').textContent = xenCost.toLocaleString() + ' XEN';
 
@@ -1699,9 +1810,11 @@ footer {
 
   // ═══ BRIDGE: MAX BUTTON ═══
   document.getElementById('bridgeMaxBtn').addEventListener('click', () => {
-    if (oldDxnBal > 0n) {
-      document.getElementById('bridgeInput').value = ethers.formatEther(oldDxnBal);
-      document.getElementById('newDxnBal').textContent = fmt(oldDxnBal);
+    const isDual = CH().dualMigration;
+    const bal = (isDual && bridgeSource === 'v2') ? oldV2DxnBal : oldDxnBal;
+    if (bal > 0n) {
+      document.getElementById('bridgeInput').value = ethers.formatEther(bal);
+      document.getElementById('newDxnBal').textContent = fmt(bal);
     }
   });
 
@@ -1718,7 +1831,7 @@ footer {
   document.getElementById('burnBtn').addEventListener('click', async () => {
     if (!signer) return;
     const batches = parseInt(burnInput.value) || 1;
-    const xenNeeded = BigInt(batches) * BATCH_SIZE;
+    const xenNeeded = BigInt(batches) * getBatchSize();
     if (xenBal < xenNeeded) { alert(`Not enough XEN. Need ${fmt(xenNeeded, 0)}, have ${fmt(xenBal, 0)}`); return; }
     try {
       document.getElementById('burnBtn').textContent = 'Approving XEN...';
@@ -1864,17 +1977,30 @@ footer {
     const val = document.getElementById('bridgeInput').value;
     if (!val || parseFloat(val) <= 0) { alert('Enter an amount to migrate'); return; }
     const amount = ethers.parseEther(val);
-    if (oldDxnBal < amount) { alert('Not enough old DXN'); return; }
+
+    // Determine which token to swap from
+    const isDual = CH().dualMigration;
+    const swapFromV2 = isDual && bridgeSource === 'v2';
+    const srcContract = swapFromV2 ? oldV2DxnContract : oldDxnContract;
+    const srcBal = swapFromV2 ? oldV2DxnBal : oldDxnBal;
+    const srcLabel = swapFromV2 ? 'old pDXNv2' : 'old DXN';
+
+    if (srcBal < amount) { alert('Not enough ' + srcLabel); return; }
     try {
-      document.getElementById('bridgeBtn').textContent = 'Approving old DXN...';
+      document.getElementById('bridgeBtn').textContent = 'Approving ' + srcLabel + '...';
       document.getElementById('bridgeBtn').disabled = true;
-      const allowance = await oldDxnContract.allowance(userAddr, ADDR().MIGRATION);
+      const allowance = await srcContract.allowance(userAddr, ADDR().MIGRATION);
       if (allowance < amount) {
-        const appTx = await oldDxnContract.approve(ADDR().MIGRATION, ethers.MaxUint256);
+        const appTx = await srcContract.approve(ADDR().MIGRATION, ethers.MaxUint256);
         await appTx.wait();
       }
       document.getElementById('bridgeBtn').textContent = 'Migrating...';
-      const tx = await migrationContract.swap(amount);
+      let tx;
+      if (isDual) {
+        tx = swapFromV2 ? await migrationContract.swapV2(amount) : await migrationContract.swapV1(amount);
+      } else {
+        tx = await migrationContract.swap(amount);
+      }
       await tx.wait();
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Migrated!';
       document.getElementById('bridgeBtn').style.background = 'var(--green)';
@@ -1981,7 +2107,7 @@ footer {
       for (const log of logs) {
         const addr = ('0x' + log.topics[1].slice(26)).toLowerCase();
         const xenAmount = BigInt(log.data);
-        const batches = Number(xenAmount / (2500000n * (10n ** 18n)));
+        const batches = Number(xenAmount / getBatchSize());
         if (!burners[addr]) burners[addr] = { batches: 0, gasCost: 0n, txCount: 0 };
         burners[addr].batches += batches;
         burners[addr].txCount += 1;
@@ -2147,6 +2273,159 @@ footer {
     btn.addEventListener('click', () => {
       if (btn.dataset.tab === 'activity' && provider) refreshActivity();
     });
+  });
+
+  // ═══ PULSECHAIN DUAL MIGRATION + LEGACY SUPPORT ═══
+  let bridgeSource = 'v1'; // 'v1' or 'v2' — which old token to swap from
+
+  function setBridgeSource(src) {
+    bridgeSource = src;
+    document.getElementById('bridgeSrcV1Btn').style.background = src === 'v1' ? 'var(--cyan)' : '';
+    document.getElementById('bridgeSrcV1Btn').style.color = src === 'v1' ? 'var(--bg-deep)' : 'var(--cyan)';
+    document.getElementById('bridgeSrcV2Btn').style.background = src === 'v2' ? 'var(--cyan)' : '';
+    document.getElementById('bridgeSrcV2Btn').style.color = src === 'v2' ? 'var(--bg-deep)' : 'var(--cyan)';
+    const bal = src === 'v1' ? oldDxnBal : oldV2DxnBal;
+    document.getElementById('bridgeBalanceHint').textContent = (src === 'v1' ? 'V1 pDXN: ' : 'Old pDXNv2: ') + fmt(bal);
+    document.getElementById('bridgeInput').value = '';
+    document.getElementById('newDxnBal').textContent = '0';
+  }
+
+  function applyPulseChainUI() {
+    const isPulse = CH().dualMigration;
+    document.getElementById('legacySection').style.display = isPulse ? 'block' : 'none';
+    document.getElementById('bridgeOldV2Row').style.display = isPulse ? 'flex' : 'none';
+    document.getElementById('bridgeSourceSelector').style.display = isPulse ? 'block' : 'none';
+    if (isPulse) {
+      setBridgeSource('v1');
+      document.getElementById('bridgeOldName').textContent = 'pDXN (V1)';
+      document.getElementById('bridgeOldSub').textContent = '0x6fE0...8a31';
+      document.getElementById('bridgeNewName').textContent = 'pDXNv2 (New 250M)';
+      document.getElementById('bridgeNewSub').textContent = '0xfe77...aA77';
+    }
+  }
+
+  // Override applyChainUI to also call PulseChain UI setup
+  const _origApplyChainUI = applyChainUI;
+  applyChainUI = function() {
+    _origApplyChainUI();
+    applyPulseChainUI();
+  };
+
+  // Refresh legacy balances on PulseChain
+  async function refreshLegacyBalances() {
+    if (!CH().dualMigration || !legacyDbxenContract || !userAddr) return;
+    try {
+      oldV2DxnBal = await oldV2DxnContract.balanceOf(userAddr);
+      document.getElementById('oldV2DxnBal').textContent = fmt(oldV2DxnBal);
+      document.getElementById('legacyDxnBalRow').style.display = 'flex';
+      document.getElementById('legacyDxnBal').textContent = fmt(oldV2DxnBal);
+
+      // Legacy rewards
+      let accRew = await legacyDbxenContract.accRewards(userAddr);
+      let accWithdraw = await legacyDbxenContract.accWithdrawableStake(userAddr);
+      let accFees = await legacyDbxenContract.accAccruedFees(userAddr);
+      const unclaimedDxn = accRew - accWithdraw;
+
+      document.getElementById('legacyUnclaimedDxn').textContent = fmt(unclaimedDxn > 0n ? unclaimedDxn : 0n);
+      document.getElementById('legacyUnclaimedFees').textContent = fmt(accFees > 0n ? accFees : 0n, 6) + ' PLS';
+      document.getElementById('legacyUserStake').textContent = fmt(accWithdraw) + ' DXN';
+      document.getElementById('legacyUserWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
+      document.getElementById('legacyStakeHint').textContent = 'Withdrawable: ' + fmt(accWithdraw) + ' DXN';
+
+      // Enable buttons if balances exist
+      document.getElementById('legacyUnstakeBtn').disabled = !(accWithdraw > 0n);
+      document.getElementById('legacyClaimDxnBtn').disabled = !(unclaimedDxn > 0n);
+      document.getElementById('legacyClaimFeesBtn').disabled = !(accFees > 0n);
+
+      // Legacy countdown from migration deadline
+      try {
+        const oldMigContract = new ethers.Contract(CH().legacy.MIGRATION, MIGRATION_ABI, signer);
+        const dl = await oldMigContract.deadline();
+        if (dl > 0n) {
+          const now = BigInt(Math.floor(Date.now() / 1000));
+          const secsLeft = Number(dl - now);
+          if (secsLeft > 0) {
+            const days = Math.floor(secsLeft / 86400);
+            const hours = Math.floor((secsLeft % 86400) / 3600);
+            document.getElementById('legacyCountdown').textContent = `(${days}d ${hours}h remaining)`;
+          } else {
+            document.getElementById('legacyCountdown').textContent = '(CLOSED)';
+          }
+        }
+      } catch {}
+    } catch (e) {
+      console.error('Legacy balance refresh failed:', e);
+    }
+  }
+
+  // Hook legacy refresh into the main refresh cycle
+  const _origRefreshBalances = refreshBalances;
+  refreshBalances = async function() {
+    await _origRefreshBalances();
+    await refreshLegacyBalances();
+  };
+
+  // Legacy unstake
+  document.getElementById('legacyUnstakeBtn').addEventListener('click', async () => {
+    if (!legacyDbxenContract) return;
+    const val = document.getElementById('legacyUnstakeInput').value;
+    if (!val || parseFloat(val) <= 0) { alert('Enter an amount'); return; }
+    try {
+      document.getElementById('legacyUnstakeBtn').textContent = 'Unstaking...';
+      document.getElementById('legacyUnstakeBtn').disabled = true;
+      const tx = await legacyDbxenContract.unstake(ethers.parseEther(val));
+      await tx.wait();
+      document.getElementById('legacyUnstakeBtn').textContent = 'Unstaked!';
+      document.getElementById('legacyUnstakeInput').value = '';
+      await refreshBalances();
+      setTimeout(() => { document.getElementById('legacyUnstakeBtn').textContent = 'Unstake from Legacy'; document.getElementById('legacyUnstakeBtn').disabled = false; }, 5000);
+    } catch (e) {
+      document.getElementById('legacyUnstakeBtn').textContent = 'Unstake from Legacy';
+      document.getElementById('legacyUnstakeBtn').disabled = false;
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  document.getElementById('legacyUnstakeMaxBtn').addEventListener('click', () => {
+    const el = document.getElementById('legacyStakeHint').textContent;
+    const match = el.match(/([\d,.]+)/);
+    if (match) document.getElementById('legacyUnstakeInput').value = match[1].replace(/,/g, '');
+  });
+
+  // Legacy claim DXN
+  document.getElementById('legacyClaimDxnBtn').addEventListener('click', async () => {
+    if (!legacyDbxenContract) return;
+    try {
+      document.getElementById('legacyClaimDxnBtn').textContent = 'Claiming...';
+      document.getElementById('legacyClaimDxnBtn').disabled = true;
+      const tx = await legacyDbxenContract.claimRewards();
+      await tx.wait();
+      document.getElementById('legacyClaimDxnBtn').textContent = 'Claimed!';
+      await refreshBalances();
+      setTimeout(() => { document.getElementById('legacyClaimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim Legacy DXN'; document.getElementById('legacyClaimDxnBtn').disabled = false; lucide.createIcons(); }, 5000);
+    } catch (e) {
+      document.getElementById('legacyClaimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim Legacy DXN';
+      document.getElementById('legacyClaimDxnBtn').disabled = false; lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
+  });
+
+  // Legacy claim PLS fees
+  document.getElementById('legacyClaimFeesBtn').addEventListener('click', async () => {
+    if (!legacyDbxenContract) return;
+    try {
+      document.getElementById('legacyClaimFeesBtn').textContent = 'Claiming...';
+      document.getElementById('legacyClaimFeesBtn').disabled = true;
+      const tx = await legacyDbxenContract.claimFees();
+      await tx.wait();
+      document.getElementById('legacyClaimFeesBtn').textContent = 'Claimed!';
+      await refreshBalances();
+      setTimeout(() => { document.getElementById('legacyClaimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim Legacy PLS Fees'; document.getElementById('legacyClaimFeesBtn').disabled = false; lucide.createIcons(); }, 5000);
+    } catch (e) {
+      document.getElementById('legacyClaimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim Legacy PLS Fees';
+      document.getElementById('legacyClaimFeesBtn').disabled = false; lucide.createIcons();
+      alert('Transaction failed: ' + (e.reason || e.message));
+    }
   });
 </script>
 </body>
