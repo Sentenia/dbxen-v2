@@ -593,6 +593,8 @@ footer {
       <button class="nav-link bridge-link" data-tab="bridge"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Bridge</button>
       <button class="nav-link" data-tab="activity"><i data-lucide="activity" style="width:16px;height:16px"></i> Activity</button>
       <a class="nav-link" id="contractLink" href="https://etherscan.io/address/0x61614137edE60C65458F76a51D6431052EBE03D0#code" target="_blank" rel="noopener"><i data-lucide="file-code" style="width:16px;height:16px"></i> Contract</a>
+    </div>
+    <div class="wallet-area" id="walletArea" style="display:flex;align-items:center;gap:8px;">
       <div class="chain-selector" id="chainSelector">
         <button class="chain-sel-btn" id="chainSelBtn" onclick="toggleChainDD()">
           <span class="chain-dot-lg" id="chainDot" style="background:#627EEA"></span>
@@ -601,8 +603,6 @@ footer {
         </button>
         <div class="chain-dd" id="chainDD"></div>
       </div>
-    </div>
-    <div class="wallet-area" id="walletArea">
       <button class="btn-connect" id="connectBtn">
         <i data-lucide="wallet" style="width:16px;height:16px"></i>
         Connect Wallet
@@ -2168,8 +2168,7 @@ footer {
 
       let totalGasCost = 0n;
       for (const [, data] of sorted) { totalGasCost += data.gasCost; }
-      const totalXen = (totalBatches * 2.5);
-      const totalXenStr = totalXen >= 1000 ? (totalXen / 1000).toFixed(1) + 'B' : totalXen.toFixed(1) + 'M';
+      const totalXenStr = fmt(BigInt(totalBatches) * getBatchSize(), 0);
 
       tfoot.style.display = '';
       document.getElementById('footBatches').textContent = totalBatches.toLocaleString();
@@ -2194,7 +2193,7 @@ footer {
           const estDxn = ((data.batches / totalBatches) * parseFloat(ethers.formatEther(reward))).toFixed(2);
           const gasCost = parseFloat(ethers.formatEther(data.gasCost)).toFixed(4);
           const protocolFee = ((data.batches / totalBatches) * totalEthFloat).toFixed(4);
-          const xenBurned = (data.batches * 2.5).toFixed(1) + 'M';
+          const xenBurned = fmt(BigInt(data.batches) * getBatchSize(), 0);
           const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
           html += `<tr class="${isYou ? 'you-row' : ''}">
             <td style="text-align:left"><code class="burn-addr" style="cursor:pointer" title="Click to copy" onclick="navigator.clipboard.writeText('${addr}');this.textContent='Copied!';setTimeout(()=>this.textContent='${shortAddr}',1200)">${shortAddr}</code>${isYou ? '<span class="burn-you-badge">you</span>' : ''}</td>
