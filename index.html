@@ -1330,6 +1330,11 @@ footer {
       { label: c.dxnSym + 'v2:', addr: ct.DXN_V2 },
       { label: 'Migration:', addr: ct.MIGRATION },
     ];
+    if (c.legacy) {
+      rows.push({ label: 'Old DBXenV2:', addr: c.legacy.DBXEN_V2 });
+      rows.push({ label: 'Old ' + c.dxnSym + 'v2:', addr: c.legacy.DXN_V2 });
+      rows.push({ label: 'Old Migration:', addr: c.legacy.MIGRATION });
+    }
     const container = document.getElementById('footerContracts');
     if (!container) return;
     container.innerHTML = rows.filter(r => r.addr).map(r => {
