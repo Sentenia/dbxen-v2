@@ -1155,6 +1155,19 @@ footer {
       },
       addChain: { chainId: '0xa86a', chainName: 'Avalanche C-Chain', nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 }, rpcUrls: ['https://api.avax.network/ext/bc/C/rpc'], blockExplorerUrls: ['https://snowtrace.io'] },
     },
+    polygon: {
+      name: 'Polygon', chainId: '0x89', color: '#8247E5', native: 'POL',
+      explorer: 'https://polygonscan.com', rpc: 'https://polygon-bor-rpc.publicnode.com',
+      xenSym: 'mXEN', dxnSym: 'mDXN', minFee: 100000000000000n, oldDbxenV1: '0x4f3ce26d9749c0f36012c9abb41bf9938476c462',
+      contracts: {
+        XEN: '0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
+        DBXEN_V2: '0x61614137edE60C65458F76a51D6431052EBE03D0',
+        DXN_V2: '0x1B08d317963CC65932F3f79F00987B2E23df52Ab',
+        OLD_DXN: '0x47DD60FA40A050c0677dE19921Eb4cc512947729',
+        MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
+      },
+      addChain: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 }, rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] },
+    },
   };
 
   let currentChainKey = 'ethereum';
@@ -1317,7 +1330,7 @@ footer {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       if (!detectChain(chainId)) {
-        alert('Unsupported network. Please switch to Ethereum, Optimism, Base, PulseChain, or Avalanche.');
+        alert('Unsupported network. Please switch to Ethereum, Optimism, Base, PulseChain, Avalanche, or Polygon.');
         return;
       }
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -1406,7 +1419,6 @@ footer {
       document.getElementById('newDxnBal').textContent = '0';
 
       // Rewards & stakes — client-side updateStats calculation
-      // Read raw contract state
       let accRew = await dbxenContract.accRewards(userAddr);
       let accFees = await dbxenContract.accAccruedFees(userAddr);
       let accWithdraw = await dbxenContract.accWithdrawableStake(userAddr);
@@ -1421,7 +1433,7 @@ footer {
 
       const SCALING = 10n ** 40n;
 
-      // 1) Simulate burn reward accrual (same as updateStats burn section)
+      // 1) Simulate burn reward accrual
       if (currentCycle > lastActive && cycleBatchesBurned > 0n) {
         const rewardForCycle = await dbxenContract.rewardPerCycle(lastActive);
         const totalBurned = await dbxenContract.cycleTotalBatchesBurned(lastActive);
@@ -1431,19 +1443,16 @@ footer {
         }
       }
 
-      // 2) Simulate fee accrual (same as updateStats fee section)
+      // 2) Simulate fee accrual
       const feeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastStarted + 1n);
       if (currentCycle > lastStarted && lastFeeUpdate > 0n) {
         if (lastFeeUpdate !== lastStarted + 1n) {
-          // User hasn't been updated to current checkpoint — calculate delta
           const userFeeCheckpoint = await dbxenContract.cycleFeesPerStakeSummed(lastFeeUpdate);
           const feesDelta = feeCheckpoint - userFeeCheckpoint;
           if (feesDelta > 0n && accRew > 0n) {
             accFees = accFees + ((accRew * feesDelta) / SCALING);
           }
         }
-        // If lastFeeUpdate == lastStarted+1, fees were already rolled into accAccruedFees
-        // by a previous interaction — accFees from contract is correct
       }
 
       // 3) Simulate first stake unlock
@@ -1456,13 +1465,11 @@ footer {
         accRew = accRew + unlockedFirst;
         accWithdraw = accWithdraw + unlockedFirst;
 
-        // Fee accrual for this stake period
         if (lastStarted + 1n > simulatedFirstStake) {
           const stakeFeeCp = await dbxenContract.cycleFeesPerStakeSummed(simulatedFirstStake);
           accFees = accFees + ((unlockedFirst * (feeCheckpoint - stakeFeeCp)) / SCALING);
         }
 
-        // Check second stake
         if (simulatedSecondStake > 0n) {
           if (currentCycle > simulatedSecondStake) {
             const unlockedSecond = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
@@ -1475,7 +1482,6 @@ footer {
             }
             simulatedSecondStake = 0n;
           } else {
-            // Second stake still pending
             const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
             pendingStakeAmount += pendingAmt;
             simulatedFirstStake = simulatedSecondStake;
@@ -1484,12 +1490,10 @@ footer {
         }
         simulatedFirstStake = 0n;
       } else if (simulatedFirstStake > 0n && simulatedFirstStake >= currentCycle) {
-        // First stake still pending
         const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedFirstStake);
         pendingStakeAmount += pendingAmt;
       }
 
-      // If second stake still exists and hasn't been handled
       if (simulatedSecondStake > 0n && currentCycle <= simulatedSecondStake) {
         const pendingAmt = await dbxenContract.accStakeCycle(userAddr, simulatedSecondStake);
         pendingStakeAmount += pendingAmt;
@@ -1503,14 +1507,11 @@ footer {
       document.getElementById('userStake').textContent = fmt(totalUserStake) + ' DXN';
       document.getElementById('userWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
 
-      // Show pending row if there's a pending stake
       if (pendingStakeAmount > 0n) {
         document.getElementById('pendingStakeRow').style.display = 'flex';
         document.getElementById('userPendingStake').textContent = fmt(pendingStakeAmount) + ' DXN';
         document.getElementById('pendingTimerRow').style.display = 'flex';
 
-        // Calculate unlock time — stake unlocks when its cycle starts
-        // The earliest pending stake cycle determines unlock time
         let unlockCycle = 0n;
         if (firstStakeCycle > 0n && firstStakeCycle >= currentCycle) unlockCycle = firstStakeCycle;
         if (secondStakeCycle > 0n && secondStakeCycle >= currentCycle) {
@@ -1520,7 +1521,6 @@ footer {
         if (unlockCycle > 0n) {
           const initTs = await dbxenContract.i_initialTimestamp();
           const period = await dbxenContract.i_periodDuration();
-          // Unlocks when cycle AFTER unlockCycle starts
           const unlockTs = initTs + ((unlockCycle + 1n) * period);
           const nowSecs = BigInt(Math.floor(Date.now() / 1000));
           const secsLeft = Number(unlockTs - nowSecs);
@@ -1532,7 +1532,6 @@ footer {
             document.getElementById('pendingUnlockText').textContent = `Unlock in: ${h}h ${m}m ${s}s`;
             cachedPendingUnlockTs = Number(unlockTs);
           } else {
-            // Timer expired — auto-refresh will handle moving to withdrawable
             document.getElementById('pendingUnlockText').textContent = 'Now withdrawable';
             cachedPendingUnlockTs = 0;
             setTimeout(() => { refreshBalances(); }, 3000);
@@ -1562,7 +1561,6 @@ footer {
       const totalBatches = await dbxRead.totalNumberOfBatchesBurned();
       const pendingStakeAmt = await dbxRead.pendingStake();
 
-      // Read old DBXen batches too (if V1 address exists for this chain)
       const oldDbxenAbi = ['function totalNumberOfBatchesBurned() view returns (uint256)'];
       let oldBatches = 0n;
       if (CH().oldDbxenV1) {
@@ -1575,24 +1573,19 @@ footer {
       document.getElementById('statCycle').textContent = cycle.toString();
       document.getElementById('statReward').textContent = fmt(reward);
 
-      // XEN Burned — V1 and V2 separately
       const xenBurnedV1 = oldBatches * 2500000n * (10n ** 18n);
       const xenBurnedV2 = totalBatches * 2500000n * (10n ** 18n);
       document.getElementById('statBurnedV1').textContent = xenBurnedV1 > 0n ? fmt(xenBurnedV1, 0) : '0';
       document.getElementById('statBurnedV2').textContent = xenBurnedV2 > 0n ? fmt(xenBurnedV2, 0) : '0';
 
-      // Total DXN Staked = summedCycleStakes[currentCycle] + pendingStake - currentCycleReward
-      // (summedCycleStakes includes the reward allocation, so subtract it for user stakes only)
       try {
         const summedStakes = await dbxRead.summedCycleStakes(storedCycle);
         const userStakes = summedStakes - reward + pendingStakeAmt;
         document.getElementById('statStaked').textContent = userStakes > 0n ? fmt(userStakes) : '0';
       } catch {
-        // If no cycle started yet, staked is just pending
         document.getElementById('statStaked').textContent = pendingStakeAmt > 0n ? fmt(pendingStakeAmt) : '0';
       }
 
-      // Next cycle timer
       const now = BigInt(Math.floor(Date.now() / 1000));
       const nextCycleTs = initTs + ((cycle + 1n) * period);
       cachedNextCycleTs = Number(nextCycleTs);
@@ -1671,9 +1664,6 @@ footer {
     document.getElementById('burnCostDisplay').textContent = xenCost.toLocaleString() + ' XEN';
     document.getElementById('burnXenCost').textContent = xenCost.toLocaleString() + ' XEN';
 
-    // Batch discount: discount% = (5 * batches) / 1000
-    // The formula is batchNumber * (MAX_BPS - 5 * batchNumber) / MAX_BPS
-    // So effective discount = (5 * batches) / 100000 * 100 = batches * 0.005%
     const discountPct = (batches * 5 / 1000).toFixed(2);
     document.getElementById('batchDiscountDisplay').textContent = `-${discountPct}%`;
 
@@ -1683,14 +1673,11 @@ footer {
         const gasPrice = feeData.gasPrice || 0n;
         const gasPriceGwei = parseFloat(ethers.formatUnits(gasPrice, 'gwei'));
 
-        // Gas price display with level indicator
         let level = 'low';
         if (gasPriceGwei > 20) level = 'high';
         else if (gasPriceGwei > 5) level = 'med';
         document.getElementById('gasPriceDisplay').innerHTML = `${gasPriceGwei.toFixed(1)} <span style="font-size:11px;font-weight:500;color:var(--text-muted)">gwei · ${level}</span>`;
 
-        // Protocol fee estimate (apply minProtocolFee floor)
-        // L2 chains have higher effective gas due to L1 data posting costs
         const isL2 = CH().chainId !== '0x1';
         const gasEstimate = BigInt(isL2 ? 600000 : 200000) + 39400n;
         const discount = BigInt(batches) * (100000n - 5n * BigInt(batches));
@@ -1718,7 +1705,6 @@ footer {
     }
   });
 
-  // Mirror bridge input to You Receive
   document.getElementById('bridgeInput').addEventListener('input', () => {
     const val = document.getElementById('bridgeInput').value;
     if (val && parseFloat(val) > 0) {
@@ -1737,16 +1723,12 @@ footer {
     try {
       document.getElementById('burnBtn').textContent = 'Approving XEN...';
       document.getElementById('burnBtn').disabled = true;
-      // Check allowance
       const allowance = await xenContract.allowance(userAddr, ADDR().DBXEN_V2);
       if (allowance < xenNeeded) {
         const appTx = await xenContract.approve(ADDR().DBXEN_V2, ethers.MaxUint256);
         await appTx.wait();
       }
       document.getElementById('burnBtn').textContent = 'Burning...';
-      // Calculate protocol fee dynamically based on current gas + batch count
-      // Send 2x the estimate as buffer — excess always refunded by contract
-      // Floor of 0.0005 ETH so tiny burns don't fail from rounding
       const feeData = await provider.getFeeData();
       const gasPrice = feeData.gasPrice || 1000000000n;
       const isL2 = CH().chainId !== '0x1';
@@ -1935,10 +1917,9 @@ footer {
     window.ethereum.on('chainChanged', (newChainId) => {
       currentChainId = newChainId;
       if (detectChain(newChainId)) {
-        // Reconnect on the new chain
         connectWallet();
       } else {
-        alert('Unsupported network. Switch to Ethereum, Optimism, Base, PulseChain, or Avalanche.');
+        alert('Unsupported network. Switch to Ethereum, Optimism, Base, PulseChain, Avalanche, or Polygon.');
       }
     });
   }
@@ -1982,7 +1963,7 @@ footer {
       const cycleStartTs = initTs + (cycle * period);
       const currentBlock = await readProvider.getBlockNumber();
       const secsIntoCycle = Number(now - cycleStartTs);
-      const blockTime = CH().chainId === '0x1' ? 12 : 2; // L2s have ~2s blocks
+      const blockTime = CH().chainId === '0x1' ? 12 : 2;
       const blocksIntoCycle = Math.floor(secsIntoCycle / blockTime);
       const startBlock = Math.max(currentBlock - blocksIntoCycle - 500, 0);
 
@@ -2007,7 +1988,6 @@ footer {
         totalBatches += batches;
       }
 
-      // Get gas costs from transaction receipts (batch to limit RPC calls)
       const receiptPromises = logs.map(log =>
         readProvider.getTransactionReceipt(log.transactionHash).catch(() => null)
       );
@@ -2057,7 +2037,6 @@ footer {
 
       const sorted = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
 
-      // Calculate totals for footer
       let totalGasCost = 0n;
       for (const [, data] of sorted) { totalGasCost += data.gasCost; }
       const totalXen = (totalBatches * 2.5);
@@ -2069,7 +2048,6 @@ footer {
       document.getElementById('footGas').textContent = parseFloat(ethers.formatEther(totalGasCost)).toFixed(4);
       document.getElementById('footProtocol').textContent = fmt(totalEthFees, 4);
 
-      // Pagination
       const PAGE_SIZE = 10;
       const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
       let currentPage = 1;
@@ -2101,7 +2079,6 @@ footer {
         }
         tbody.innerHTML = html;
 
-        // Update pagination controls
         if (totalPages > 1) {
           pagination.style.display = 'flex';
           document.getElementById('burnPageInfo').textContent = `${page} / ${totalPages}`;
@@ -2129,11 +2106,9 @@ footer {
     }
   }, 30000);
 
-  // Client-side timer tick every second (no RPC calls)
+  // Client-side timer tick every second
   let cachedNextCycleTs = 0;
   let cachedPendingUnlockTs = 0;
-  const origRefreshProtocol = refreshProtocolStats;
-  const _origRefresh = refreshProtocolStats;
   setInterval(() => {
     const now = Math.floor(Date.now() / 1000);
     if (cachedNextCycleTs > 0) {
@@ -2161,7 +2136,6 @@ footer {
           el.textContent = `Unlock in: ${h}h ${m}m ${s}s`;
         } else {
           cachedPendingUnlockTs = 0;
-          // Wait 3 seconds for chain to catch up, then auto-refresh
           setTimeout(() => { refreshBalances(); }, 3000);
         }
       }
