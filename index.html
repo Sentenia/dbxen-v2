@@ -563,6 +563,23 @@ footer {
 .chain-opt:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
 .chain-opt.active { background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; }
 .chain-opt:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ═══ TOAST NOTIFICATIONS ═══ */
+.toast-container {
+  position: fixed; top: 20px; right: 20px; z-index: 10000;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 14px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500;
+  font-family: var(--font); display: flex; align-items: center; gap: 10px;
+  animation: toastIn 0.3s ease-out; min-width: 280px; max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.success { background: #065f46; color: #a7f3d0; border: 1px solid #34d399; }
+.toast.error { background: #7f1d1d; color: #fca5a5; border: 1px solid #f87171; }
+.toast.info { background: #1e3a5f; color: #93c5fd; border: 1px solid #60a5fa; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(40px); } }
 </style>
 </head>
 <body>
@@ -579,6 +596,7 @@ footer {
 </div>
 <div class="glow-orb cyan"></div>
 <div class="glow-orb amber"></div>
+<div class="toast-container" id="toastContainer"></div>
 
 <div class="app">
 
@@ -772,6 +790,10 @@ footer {
             <span class="stat-label">Withdrawable</span>
             <span class="stat-value" id="userWithdrawable">— DXN</span>
           </div>
+          <div class="stat-row">
+            <span class="stat-label">Est. Staking APY</span>
+            <span class="stat-value green" id="stakingApy">—</span>
+          </div>
         </div>
       </div>
 
@@ -802,6 +824,10 @@ footer {
           <button class="btn-action secondary" id="claimFeesBtn" disabled>
             <i data-lucide="banknote" style="width:16px;height:16px"></i>
             Claim <span class="native-sym">ETH</span> Fees
+          </button>
+          <button class="btn-action" id="addTokenBtn" style="background:none;border:1px solid var(--border);color:var(--text-muted);font-size:13px;padding:10px;" onclick="addTokenToWallet()">
+            <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
+            Add DXNv2 to Wallet
           </button>
         </div>
       </div>
@@ -978,6 +1004,21 @@ footer {
             <div class="bridge-stat-label">DXNv2 Burned After Close</div>
             <div class="bridge-stat-value bridge-burn-note" id="burnAfterClose">Unclaimed DXNv2 sent to 0xdead</div>
           </div>
+        </div>
+      </div>
+
+      <!-- MIGRATION PROGRESS BAR -->
+      <div id="migrationProgress" style="margin-bottom:16px;padding:14px;background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--radius);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;">
+          <span style="color:var(--text-muted);">Migration Progress</span>
+          <span style="color:var(--cyan);font-weight:600;" id="migrationPct">0%</span>
+        </div>
+        <div style="width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div id="migrationBar" style="height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:4px;transition:width 0.5s;width:0%;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-muted);">
+          <span id="migrationSwapped">0 migrated</span>
+          <span id="migrationTotal">of 0 total</span>
         </div>
       </div>
 
@@ -1160,6 +1201,17 @@ footer {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <script>
   lucide.createIcons();
+
+  // ═══ TOAST NOTIFICATIONS ═══
+  function showToast(msg, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const icons = { success: '✓', error: '✗', info: 'ℹ' };
+    toast.innerHTML = `<span style="font-size:18px">${icons[type] || 'ℹ'}</span><span>${msg}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.animation = 'toastOut 0.3s ease-in forwards'; setTimeout(() => toast.remove(), 300); }, duration);
+  }
 
   // ═══ MOBILE: Fix all external links for MetaMask browser ═══
   if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
@@ -1353,6 +1405,18 @@ footer {
 
   function getBatchSize() { return (CH().batchSize || 2500000n) * (10n ** 18n); }
   function getBatchDisplay() { return Number(CH().batchSize || 2500000n); }
+
+  // ═══ ADD TOKEN TO WALLET ═══
+  async function addTokenToWallet() {
+    if (!window.ethereum || !ADDR().DXN_V2) return;
+    try {
+      await window.ethereum.request({
+        method: 'wallet_watchAsset',
+        params: { type: 'ERC20', options: { address: ADDR().DXN_V2, symbol: CH().dxnSym + 'v2', decimals: 18 } },
+      });
+      showToast('Token added to wallet!', 'success');
+    } catch (e) { showToast('Failed to add token', 'error'); }
+  }
   const ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)'];
   const DBXEN_ABI = [
     'function burnBatch(uint256) payable',
@@ -1422,7 +1486,7 @@ footer {
       if (isMobile) {
         window.location.href = 'https://metamask.app.link/dapp/dbxen-v2.vercel.app';
       } else {
-        alert('No wallet detected. Please install MetaMask from metamask.io');
+        showToast('No wallet detected. Please install MetaMask from metamask.io', 'error');
       }
       return;
     }
@@ -1430,7 +1494,7 @@ footer {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       if (!detectChain(chainId)) {
-        alert('Unsupported network. Please switch to Ethereum, Optimism, Base, PulseChain, Avalanche, or Polygon.');
+        showToast('Unsupported network. Switch to a supported chain.', 'error');
         return;
       }
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -1690,8 +1754,21 @@ footer {
         const summedStakes = await dbxRead.summedCycleStakes(storedCycle);
         const userStakes = summedStakes - reward + pendingStakeAmt;
         document.getElementById('statStaked').textContent = userStakes > 0n ? fmt(userStakes) : '0';
+
+        // APY estimate: (fees per cycle / total staked) * 365 * 100
+        try {
+          const lastFees = await dbxRead.cycleAccruedFees(storedCycle > 0n ? storedCycle : cycle);
+          if (userStakes > 0n && lastFees > 0n) {
+            const dailyRate = parseFloat(ethers.formatEther(lastFees)) / parseFloat(ethers.formatEther(userStakes));
+            const apy = (dailyRate * 365 * 100).toFixed(1);
+            document.getElementById('stakingApy').textContent = apy + '%';
+          } else {
+            document.getElementById('stakingApy').textContent = '—';
+          }
+        } catch { document.getElementById('stakingApy').textContent = '—'; }
       } catch {
         document.getElementById('statStaked').textContent = pendingStakeAmt > 0n ? fmt(pendingStakeAmt) : '0';
+        document.getElementById('stakingApy').textContent = '—';
       }
 
       const now = BigInt(Math.floor(Date.now() / 1000));
@@ -1730,6 +1807,16 @@ footer {
 
       document.getElementById('totalMigrated').textContent = fmt(totalSwapped) + ' DXN';
       document.getElementById('poolRemaining').textContent = fmt(poolBalance) + ' DXNv2';
+
+      // Migration progress bar
+      const totalPool = totalSwapped + poolBalance;
+      if (totalPool > 0n) {
+        const pct = Number((totalSwapped * 10000n) / totalPool) / 100;
+        document.getElementById('migrationPct').textContent = pct.toFixed(2) + '%';
+        document.getElementById('migrationBar').style.width = Math.min(pct, 100).toFixed(2) + '%';
+        document.getElementById('migrationSwapped').textContent = fmt(totalSwapped) + ' migrated';
+        document.getElementById('migrationTotal').textContent = 'of ' + fmt(totalPool) + ' total';
+      }
 
       if (deadline === 0n) {
         document.getElementById('bridgeDeadline').textContent = 'No deadline set';
@@ -1837,7 +1924,7 @@ footer {
     if (!signer) return;
     const batches = parseInt(burnInput.value) || 1;
     const xenNeeded = BigInt(batches) * getBatchSize();
-    if (xenBal < xenNeeded) { alert(`Not enough XEN. Need ${fmt(xenNeeded, 0)}, have ${fmt(xenBal, 0)}`); return; }
+    if (xenBal < xenNeeded) { showToast(`Not enough XEN. Need ${fmt(xenNeeded, 0)}, have ${fmt(xenBal, 0)}`, 'error'); return; }
     try {
       document.getElementById('burnBtn').textContent = 'Approving XEN...';
       document.getElementById('burnBtn').disabled = true;
@@ -1862,6 +1949,7 @@ footer {
       await tx.wait();
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Burned!';
       document.getElementById('burnBtn').style.background = 'var(--green)';
+      showToast('XEN burned successfully!', 'success');
       document.getElementById('burnInput').value = '1';
       document.getElementById('burnSlider').value = '1';
       updateBurnCost();
@@ -1881,7 +1969,7 @@ footer {
       document.getElementById('burnBtn').innerHTML = '<i data-lucide="flame" style="width:16px;height:16px"></i> Burn ' + CH().xenSym;
       document.getElementById('burnBtn').disabled = false;
       lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -1889,7 +1977,7 @@ footer {
   document.getElementById('stakeBtn').addEventListener('click', async () => {
     if (!signer) return;
     const val = document.getElementById('stakeInput').value;
-    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to stake'); return; }
+    if (!val || parseFloat(val) <= 0) { showToast('Enter an amount to stake', 'error'); return; }
     const amount = ethers.parseEther(val);
     try {
       document.getElementById('stakeBtn').textContent = 'Approving...';
@@ -1902,7 +1990,7 @@ footer {
       document.getElementById('stakeBtn').textContent = 'Staking...';
       const tx = await dbxenContract.stake(amount);
       await tx.wait();
-      document.getElementById('stakeBtn').textContent = 'Staked!';
+      document.getElementById('stakeBtn').textContent = 'Staked!'; showToast('DXN staked successfully!', 'success');
       document.getElementById('stakeInput').value = '';
       await refreshBalances();
       setTimeout(async () => { document.getElementById('stakeBtn').textContent = 'Stake'; document.getElementById('stakeBtn').disabled = false; await refreshBalances(); }, 5000);
@@ -1910,7 +1998,7 @@ footer {
       console.error('Stake failed:', e);
       document.getElementById('stakeBtn').textContent = 'Stake';
       document.getElementById('stakeBtn').disabled = false;
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -1918,13 +2006,13 @@ footer {
   document.getElementById('unstakeBtn').addEventListener('click', async () => {
     if (!signer) return;
     const val = document.getElementById('stakeInput').value;
-    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to unstake'); return; }
+    if (!val || parseFloat(val) <= 0) { showToast('Enter an amount to unstake', 'error'); return; }
     try {
       document.getElementById('unstakeBtn').textContent = 'Unstaking...';
       document.getElementById('unstakeBtn').disabled = true;
       const tx = await dbxenContract.unstake(ethers.parseEther(val));
       await tx.wait();
-      document.getElementById('unstakeBtn').textContent = 'Unstaked!';
+      document.getElementById('unstakeBtn').textContent = 'Unstaked!'; showToast('DXN unstaked successfully!', 'success');
       document.getElementById('stakeInput').value = '';
       await refreshBalances();
       setTimeout(async () => { document.getElementById('unstakeBtn').textContent = 'Unstake'; document.getElementById('unstakeBtn').disabled = false; await refreshBalances(); }, 5000);
@@ -1932,7 +2020,7 @@ footer {
       console.error('Unstake failed:', e);
       document.getElementById('unstakeBtn').textContent = 'Unstake';
       document.getElementById('unstakeBtn').disabled = false;
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -1944,7 +2032,7 @@ footer {
       document.getElementById('claimDxnBtn').disabled = true;
       const tx = await dbxenContract.claimRewards();
       await tx.wait();
-      document.getElementById('claimDxnBtn').textContent = 'Claimed!';
+      document.getElementById('claimDxnBtn').textContent = 'Claimed!'; showToast('DXN rewards claimed!', 'success');
       await refreshBalances();
       setTimeout(async () => { document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards'; document.getElementById('claimDxnBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
     } catch (e) {
@@ -1952,7 +2040,7 @@ footer {
       document.getElementById('claimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim DXN Rewards';
       document.getElementById('claimDxnBtn').disabled = false;
       lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -1964,7 +2052,7 @@ footer {
       document.getElementById('claimFeesBtn').disabled = true;
       const tx = await dbxenContract.claimFees();
       await tx.wait();
-      document.getElementById('claimFeesBtn').textContent = 'Claimed!';
+      document.getElementById('claimFeesBtn').textContent = 'Claimed!'; showToast('Fees claimed!', 'success');
       await refreshBalances();
       setTimeout(async () => { document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ' + CH().native + ' Fees'; document.getElementById('claimFeesBtn').disabled = false; lucide.createIcons(); await refreshBalances(); }, 5000);
     } catch (e) {
@@ -1972,7 +2060,7 @@ footer {
       document.getElementById('claimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim ' + CH().native + ' Fees';
       document.getElementById('claimFeesBtn').disabled = false;
       lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -1980,7 +2068,7 @@ footer {
   document.getElementById('bridgeBtn').addEventListener('click', async () => {
     if (!signer) return;
     const val = document.getElementById('bridgeInput').value;
-    if (!val || parseFloat(val) <= 0) { alert('Enter an amount to migrate'); return; }
+    if (!val || parseFloat(val) <= 0) { showToast('Enter an amount to migrate', 'error'); return; }
     const amount = ethers.parseEther(val);
 
     // Determine which token to swap from
@@ -1990,7 +2078,7 @@ footer {
     const srcBal = swapFromV2 ? oldV2DxnBal : oldDxnBal;
     const srcLabel = swapFromV2 ? 'old pDXNv2' : 'old DXN';
 
-    if (srcBal < amount) { alert('Not enough ' + srcLabel); return; }
+    if (srcBal < amount) { showToast('Not enough ' + srcLabel, 'error'); return; }
     try {
       document.getElementById('bridgeBtn').textContent = 'Approving ' + srcLabel + '...';
       document.getElementById('bridgeBtn').disabled = true;
@@ -2009,6 +2097,7 @@ footer {
       await tx.wait();
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px"></i> Migrated!';
       document.getElementById('bridgeBtn').style.background = 'var(--green)';
+      showToast('DXN migrated successfully!', 'success');
       document.getElementById('bridgeInput').value = '';
       document.getElementById('newDxnBal').textContent = '0';
       lucide.createIcons();
@@ -2027,7 +2116,7 @@ footer {
       document.getElementById('bridgeBtn').innerHTML = '<i data-lucide="arrow-left-right" style="width:16px;height:16px"></i> Migrate DXN → DXNv2';
       document.getElementById('bridgeBtn').disabled = false;
       lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -2050,7 +2139,7 @@ footer {
       if (detectChain(newChainId)) {
         connectWallet();
       } else {
-        alert('Unsupported network. Switch to Ethereum, Optimism, Base, PulseChain, Avalanche, or Polygon.');
+        showToast('Unsupported network. Switch to a supported chain.', 'error');
       }
     });
   }
@@ -2477,7 +2566,7 @@ footer {
   document.getElementById('legacyUnstakeBtn').addEventListener('click', async () => {
     if (!legacyDbxenContract) return;
     const val = document.getElementById('legacyUnstakeInput').value;
-    if (!val || parseFloat(val) <= 0) { alert('Enter an amount'); return; }
+    if (!val || parseFloat(val) <= 0) { showToast('Enter an amount', 'error'); return; }
     try {
       document.getElementById('legacyUnstakeBtn').textContent = 'Unstaking...';
       document.getElementById('legacyUnstakeBtn').disabled = true;
@@ -2490,7 +2579,7 @@ footer {
     } catch (e) {
       document.getElementById('legacyUnstakeBtn').textContent = 'Unstake from Legacy';
       document.getElementById('legacyUnstakeBtn').disabled = false;
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -2516,7 +2605,7 @@ footer {
     } catch (e) {
       document.getElementById('legacyClaimDxnBtn').innerHTML = '<i data-lucide="coins" style="width:16px;height:16px"></i> Claim Legacy DXN';
       document.getElementById('legacyClaimDxnBtn').disabled = false; lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 
@@ -2534,7 +2623,7 @@ footer {
     } catch (e) {
       document.getElementById('legacyClaimFeesBtn').innerHTML = '<i data-lucide="banknote" style="width:16px;height:16px"></i> Claim Legacy PLS Fees';
       document.getElementById('legacyClaimFeesBtn').disabled = false; lucide.createIcons();
-      alert('Transaction failed: ' + (e.reason || e.message));
+      showToast('Transaction failed: ' + (e.reason || e.message), 'error');
     }
   });
 </script>
