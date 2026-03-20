@@ -806,11 +806,9 @@ footer {
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- LEGACY V2 SECTION (PulseChain only — hidden on other chains) -->
-  <section class="content tab-panels active" id="legacySection" style="display:none;">
-    <div style="max-width:1280px;margin:0 auto 20px;">
+    <!-- LEGACY V2 SECTION (PulseChain only — hidden on other chains) -->
+    <div id="legacySection" style="display:none;margin-top:24px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
         <i data-lucide="clock" style="width:20px;height:20px;color:var(--amber)"></i>
         <span style="font-size:16px;font-weight:700;color:var(--amber);">Legacy V2 (2.5M Batches) — Closing <span id="legacyCountdown" style="color:var(--red)"></span></span>
@@ -2331,6 +2329,7 @@ footer {
       document.getElementById('legacyUserStake').textContent = fmt(accWithdraw) + ' DXN';
       document.getElementById('legacyUserWithdrawable').textContent = fmt(accWithdraw) + ' DXN';
       document.getElementById('legacyStakeHint').textContent = 'Withdrawable: ' + fmt(accWithdraw) + ' DXN';
+      legacyWithdrawableVal = accWithdraw;
 
       // Enable buttons if balances exist
       document.getElementById('legacyUnstakeBtn').disabled = !(accWithdraw > 0n);
@@ -2386,10 +2385,12 @@ footer {
     }
   });
 
+  let legacyWithdrawableVal = 0n;
+
   document.getElementById('legacyUnstakeMaxBtn').addEventListener('click', () => {
-    const el = document.getElementById('legacyStakeHint').textContent;
-    const match = el.match(/([\d,.]+)/);
-    if (match) document.getElementById('legacyUnstakeInput').value = match[1].replace(/,/g, '');
+    if (legacyWithdrawableVal > 0n) {
+      document.getElementById('legacyUnstakeInput').value = ethers.formatEther(legacyWithdrawableVal);
+    }
   });
 
   // Legacy claim DXN
