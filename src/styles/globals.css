@@ -417,6 +417,10 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
   .wallet-addr-btn { border-radius: 10px; }
   .btn-connect { padding: 8px 14px; font-size: 13px; }
   .chain-sel-btn { padding: 6px 10px; font-size: 12px; }
+  .chain-dd { right: auto; left: 0; min-width: 180px; }
+  .chain-opt { min-height: 48px; padding: 12px 14px; font-size: 15px; }
+  .wallet-dropdown { right: 0; }
+  .wallet-dropdown-item { min-height: 48px; }
 
   /* ─── TICKER ─── */
   .stats-ticker { display: none; }

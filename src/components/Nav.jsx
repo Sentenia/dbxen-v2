@@ -10,10 +10,11 @@ export default function Nav({ activeTab, setActiveTab }) {
   const dropRef = useRef(null);
 
   useEffect(() => {
+    if (!dropdownOpen) return;
     const handler = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false); };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, []);
+    const id = requestAnimationFrame(() => document.addEventListener('pointerdown', handler));
+    return () => { cancelAnimationFrame(id); document.removeEventListener('pointerdown', handler); };
+  }, [dropdownOpen]);
 
   return (
     <nav>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { CHAINS } from '../config/chains';
 import { useWallet } from '../hooks/WalletContext';
@@ -9,11 +9,26 @@ export default function ChainSelector() {
   const ref = useRef(null);
   const chain = CHAINS[chainKey];
 
+  // Close on outside tap — use pointerdown (fires before click, reliable on mobile)
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, []);
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    // Delay listener attachment so the opening tap doesn't immediately close
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('pointerdown', handler);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('pointerdown', handler);
+    };
+  }, [open]);
+
+  const handleSelect = useCallback((k) => {
+    setOpen(false);
+    if (k !== chainKey) switchChain(k);
+  }, [chainKey, switchChain]);
 
   return (
     <div className="chain-selector" ref={ref}>
@@ -28,7 +43,7 @@ export default function ChainSelector() {
             <button
               key={k}
               className={`chain-opt${k === chainKey ? ' active' : ''}`}
-              onClick={() => { switchChain(k); setOpen(false); }}
+              onClick={(e) => { e.stopPropagation(); handleSelect(k); }}
             >
               <span className="chain-dot-lg" style={{ background: c.color }} />
               {c.name}

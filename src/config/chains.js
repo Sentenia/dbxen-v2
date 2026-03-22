@@ -28,7 +28,7 @@ export const CHAINS = {
   },
   base: {
     name: 'Base', chainId: '0x2105', color: '#0052FF', native: 'ETH',
-    explorer: 'https://basescan.org', rpc: 'https://mainnet.base.org',
+    explorer: 'https://basescan.org', rpc: 'https://rpc.ankr.com/base',
     xenSym: 'cbXEN', dxnSym: 'cbDXN', minFee: 100000000000000n,
     oldDbxenV1: '0x30782c020FE90614f08a863B41CbB07A2D2D94fF',
     contracts: {
