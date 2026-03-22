@@ -59,7 +59,7 @@ export default function ActivityDashboard() {
       const now = BigInt(Math.floor(Date.now() / 1000));
       const cycleStartTs = initTs + (cycle * period);
       const secsIntoCycle = Number(now - cycleStartTs);
-      const blockTimes = { '0x1': 12, '0x38': 3, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
+      const blockTimes = { '0x1': 12, '0x38': 1, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
       const blockTime = blockTimes[c.chainId] || 2;
 
       // For BSC: get block number via raw fetch, otherwise use wallet provider
