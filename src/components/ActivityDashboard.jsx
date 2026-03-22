@@ -35,7 +35,15 @@ export default function ActivityDashboard() {
     const { provider, isFallback } = getReadProvider();
     if (!provider) return;
     const c = CHAINS[chainKey];
-    const logProvider = provider;
+    let logProvider = provider;
+    if (c.chainId === '0x38') {
+      try {
+        logProvider = new ethers.JsonRpcProvider(c.rpc, 56, { staticNetwork: true });
+        await logProvider.getBlockNumber();
+      } catch {
+        logProvider = provider;
+      }
+    }
     const isStale = () => epoch !== epochRef.current;
     try {
       const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
