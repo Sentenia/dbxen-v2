@@ -74,6 +74,36 @@ export function WalletProvider({ children }) {
   // Helper: check if chain changed during an async operation
   const isStale = (epoch) => epoch !== chainEpochRef.current;
 
+  // ═══ BUILD CONTRACTS HELPER ═══
+  const buildContracts = useCallback(async (key, address) => {
+    const c = CHAINS[key];
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const bal = await provider.getBalance(address);
+    setEthBal(parseFloat(ethers.formatEther(bal)).toFixed(4));
+
+    const xenC = new ethers.Contract(c.contracts.XEN, ERC20_ABI, signer);
+    const dxnV2C = new ethers.Contract(c.contracts.DXN_V2, ERC20_ABI, signer);
+    const oldDxnC = new ethers.Contract(c.contracts.OLD_DXN, ERC20_ABI, signer);
+    const dbxenC = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, signer);
+
+    let migC, oldV2DxnC, legacyDbxenC, legacyDxnC;
+    if (c.dualMigration) {
+      migC = new ethers.Contract(c.contracts.MIGRATION, DUAL_MIGRATION_ABI, signer);
+      oldV2DxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
+      legacyDbxenC = new ethers.Contract(c.legacy.DBXEN_V2, DBXEN_ABI, signer);
+      legacyDxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
+    } else {
+      migC = new ethers.Contract(c.contracts.MIGRATION, MIGRATION_ABI, signer);
+    }
+
+    contractsRef.current = {
+      provider, signer, xen: xenC, dxnV2: dxnV2C, oldDxn: oldDxnC, dbxen: dbxenC,
+      migration: migC, oldV2Dxn: oldV2DxnC, legacyDbxen: legacyDbxenC, legacyDxn: legacyDxnC,
+    };
+  }, []);
+
   // ═══ CONNECT ═══
   const connectWallet = useCallback(async () => {
     if (typeof window.ethereum === 'undefined') {
@@ -91,40 +121,14 @@ export function WalletProvider({ children }) {
       if (!key) { toast.error('Unsupported network.'); return; }
 
       setChainKey(key);
-      const c = CHAINS[key];
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
       const address = accounts[0];
-
-      const bal = await provider.getBalance(address);
-      setEthBal(parseFloat(ethers.formatEther(bal)).toFixed(4));
+      await buildContracts(key, address);
       setUserAddr(address);
       setConnected(true);
-
-      // Build contracts
-      const xenC = new ethers.Contract(c.contracts.XEN, ERC20_ABI, signer);
-      const dxnV2C = new ethers.Contract(c.contracts.DXN_V2, ERC20_ABI, signer);
-      const oldDxnC = new ethers.Contract(c.contracts.OLD_DXN, ERC20_ABI, signer);
-      const dbxenC = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, signer);
-
-      let migC, oldV2DxnC, legacyDbxenC, legacyDxnC;
-      if (c.dualMigration) {
-        migC = new ethers.Contract(c.contracts.MIGRATION, DUAL_MIGRATION_ABI, signer);
-        oldV2DxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
-        legacyDbxenC = new ethers.Contract(c.legacy.DBXEN_V2, DBXEN_ABI, signer);
-        legacyDxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
-      } else {
-        migC = new ethers.Contract(c.contracts.MIGRATION, MIGRATION_ABI, signer);
-      }
-
-      contractsRef.current = {
-        provider, signer, xen: xenC, dxnV2: dxnV2C, oldDxn: oldDxnC, dbxen: dbxenC,
-        migration: migC, oldV2Dxn: oldV2DxnC, legacyDbxen: legacyDbxenC, legacyDxn: legacyDxnC,
-      };
     } catch (e) {
       console.error('Connection failed:', e);
     }
-  }, []);
+  }, [buildContracts]);
 
   // ═══ REFRESH BALANCES + USER STATS ═══
   const refreshBalances = useCallback(async () => {
@@ -629,10 +633,24 @@ export function WalletProvider({ children }) {
       } catch {}
     })();
 
-    const handleChainChanged = (newId) => {
+    const handleChainChanged = async (newId) => {
       const key = detectChainKey(newId);
-      if (key) { setChainKey(key); connectWallet(); }
-      else toast.error('Unsupported network.');
+      if (!key) { toast.error('Unsupported network.'); return; }
+      // Wait for MetaMask to fully switch internally
+      await new Promise(r => setTimeout(r, 100));
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          // Rebuild provider/signer/contracts BEFORE state updates trigger refreshes
+          await buildContracts(key, accounts[0]);
+          setUserAddr(accounts[0]);
+          setConnected(true);
+        }
+      } catch (e) {
+        console.error('Chain switch rebuild failed:', e);
+      }
+      // Setting chainKey triggers the useEffect that refreshes protocol/bridge/balances
+      setChainKey(key);
     };
     const handleAccountsChanged = (accounts) => {
       if (accounts.length === 0) location.reload();
@@ -645,7 +663,7 @@ export function WalletProvider({ children }) {
       window.ethereum.removeListener('chainChanged', handleChainChanged);
       window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
     };
-  }, [connectWallet]);
+  }, [connectWallet, buildContracts]);
 
   // Refresh when userAddr changes
   useEffect(() => {
