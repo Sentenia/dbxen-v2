@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Flame, ArrowLeftRight, Activity, BarChart3 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { WalletProvider } from './hooks/WalletContext';
 import WaveBackground from './components/WaveBackground';
@@ -63,6 +64,25 @@ function TabContent({ activeTab }) {
   );
 }
 
+const bottomTabs = [
+  { key: 'protocol', icon: Flame },
+  { key: 'bridge', icon: ArrowLeftRight },
+  { key: 'activity', icon: Activity },
+  { key: 'analytics', icon: BarChart3 },
+];
+
+function BottomTabBar({ activeTab, setActiveTab }) {
+  return (
+    <div className="bottom-tab-bar">
+      {bottomTabs.map(({ key, icon: Icon }) => (
+        <button key={key} className={`bottom-tab${activeTab === key ? ' active' : ''}`} onClick={() => setActiveTab(key)}>
+          <Icon size={22} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('protocol');
 
@@ -86,6 +106,7 @@ export default function App() {
         <WhyV2 />
         <Footer />
       </div>
+      <BottomTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
     </WalletProvider>
   );
 }
