@@ -1,7 +1,8 @@
 export const CHAINS = {
   ethereum: {
     name: 'Ethereum', chainId: '0x1', color: '#627EEA', native: 'ETH',
-    explorer: 'https://etherscan.io', rpc: 'https://rpc.ankr.com/eth',
+    explorer: 'https://etherscan.io',
+    rpc: 'https://rpc.ankr.com/eth', rpcBackup: 'https://cloudflare-eth.com',
     xenSym: 'XEN', dxnSym: 'DXN', minFee: 0n,
     oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
     contracts: {
@@ -14,7 +15,8 @@ export const CHAINS = {
   },
   optimism: {
     name: 'Optimism', chainId: '0xa', color: '#FF0420', native: 'ETH',
-    explorer: 'https://optimistic.etherscan.io', rpc: 'https://mainnet.optimism.io',
+    explorer: 'https://optimistic.etherscan.io',
+    rpc: 'https://mainnet.optimism.io', rpcBackup: 'https://rpc.ankr.com/optimism',
     xenSym: 'opXEN', dxnSym: 'opDXN', minFee: 100000000000000n,
     oldDbxenV1: '0x2A9C55b6Dc56da178f9f9a566F1161237b73Ba66',
     contracts: {
@@ -28,7 +30,8 @@ export const CHAINS = {
   },
   base: {
     name: 'Base', chainId: '0x2105', color: '#0052FF', native: 'ETH',
-    explorer: 'https://basescan.org', rpc: 'https://rpc.ankr.com/base',
+    explorer: 'https://basescan.org',
+    rpc: 'https://rpc.ankr.com/base', rpcBackup: 'https://base.meowrpc.com',
     xenSym: 'cbXEN', dxnSym: 'cbDXN', minFee: 100000000000000n,
     oldDbxenV1: '0x30782c020FE90614f08a863B41CbB07A2D2D94fF',
     contracts: {
@@ -42,7 +45,8 @@ export const CHAINS = {
   },
   pulsechain: {
     name: 'PulseChain', chainId: '0x171', color: '#00FF00', native: 'PLS',
-    explorer: 'https://scan.pulsechain.com', rpc: 'https://rpc.pulsechain.com',
+    explorer: 'https://scan.pulsechain.com',
+    rpc: 'https://rpc.pulsechain.com', rpcBackup: 'https://rpc-pulsechain.g4mm4.io',
     xenSym: 'pXEN', dxnSym: 'pDXN', minFee: 1000000000000000000000n,
     oldDbxenV1: '0x6d38Ab9f5b5Edfb22e57a44c3c747f9584de1f1a',
     batchSize: 250000000n,
@@ -63,7 +67,8 @@ export const CHAINS = {
   },
   avalanche: {
     name: 'Avalanche', chainId: '0xa86a', color: '#E84142', native: 'AVAX',
-    explorer: 'https://snowtrace.io', rpc: 'https://rpc.ankr.com/avalanche',
+    explorer: 'https://snowtrace.io',
+    rpc: 'https://rpc.ankr.com/avalanche', rpcBackup: 'https://avalanche.public-rpc.com',
     xenSym: 'aXEN', dxnSym: 'aDXN', minFee: 1000000000000000n,
     oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
     contracts: {
@@ -77,7 +82,8 @@ export const CHAINS = {
   },
   polygon: {
     name: 'Polygon', chainId: '0x89', color: '#8247E5', native: 'POL',
-    explorer: 'https://polygonscan.com', rpc: 'https://polygon-rpc.com',
+    explorer: 'https://polygonscan.com',
+    rpc: 'https://polygon-rpc.com', rpcBackup: 'https://rpc.ankr.com/polygon',
     xenSym: 'mXEN', dxnSym: 'mDXN', minFee: 100000000000000n,
     oldDbxenV1: '0x4f3ce26d9749c0f36012c9abb41bf9938476c462',
     contracts: {

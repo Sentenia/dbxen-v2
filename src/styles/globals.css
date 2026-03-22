@@ -76,7 +76,7 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 .wallet-addr-btn { display: flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--text-primary); background: var(--bg-deep); border: 1px solid var(--border); border-radius: 0 10px 10px 0; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
 .wallet-addr-btn:hover { background: var(--bg-card); }
 .wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
-.wallet-dropdown { display: none; position: absolute; top: 48px; right: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); min-width: 220px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.wallet-dropdown { display: none; position: absolute; top: 48px; right: 0; z-index: 1002; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); min-width: 220px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
 .wallet-dropdown.show { display: block; }
 .wallet-dropdown-addr { padding: 10px 12px; font-size: 11px; color: var(--text-muted); font-family: monospace; word-break: break-all; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
 .wallet-dropdown-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; font-size: 13px; color: var(--text-secondary); background: none; border: none; border-radius: 8px; cursor: pointer; font-family: var(--font); text-decoration: none; transition: all 0.15s; }
@@ -222,12 +222,15 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .footer-social:hover { color: var(--text-primary); border-color: var(--border-glow); background: var(--bg-card-hover); }
 .footer-bottom { text-align: center; font-size: 13px; color: var(--text-muted); padding-top: 24px; border-top: 1px solid var(--border); }
 
+/* ═══ DROPDOWN OVERLAY (shared by chain selector + wallet dropdown) ═══ */
+.chain-overlay { position: fixed; inset: 0; z-index: 1001; background: transparent; }
+
 /* ═══ CHAIN SELECTOR ═══ */
 .chain-selector { position: relative; display: inline-flex; margin-right: 8px; }
 .chain-sel-btn { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--font); }
 .chain-sel-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
 .chain-dot-lg { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.chain-dd { display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; z-index: 1000; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.chain-dd { display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; z-index: 1002; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
 .chain-dd.show { display: block; }
 .chain-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: none; border-radius: 8px; color: #ccc; font-size: 13px; cursor: pointer; transition: background 0.15s; font-family: var(--font); text-align: left; }
 .chain-opt:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
@@ -7,14 +7,6 @@ import ChainSelector from './ChainSelector';
 export default function Nav({ activeTab, setActiveTab }) {
   const { chain, userAddr, ethBal, connected, connectWallet } = useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropRef = useRef(null);
-
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false); };
-    const id = requestAnimationFrame(() => document.addEventListener('pointerdown', handler));
-    return () => { cancelAnimationFrame(id); document.removeEventListener('pointerdown', handler); };
-  }, [dropdownOpen]);
 
   return (
     <nav>
@@ -46,7 +38,7 @@ export default function Nav({ activeTab, setActiveTab }) {
             <Wallet size={16} /> Connect Wallet
           </button>
         ) : (
-          <div className="wallet-connected" ref={dropRef}>
+          <div className="wallet-connected">
             <div className="wallet-eth">{ethBal} {chain.native}</div>
             <button className="wallet-addr-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
               <span className="wallet-dot" />
@@ -54,18 +46,21 @@ export default function Nav({ activeTab, setActiveTab }) {
               <ChevronDown size={14} />
             </button>
             {dropdownOpen && (
-              <div className="wallet-dropdown show">
-                <div className="wallet-dropdown-addr">{userAddr}</div>
-                <button className="wallet-dropdown-item" onClick={() => { navigator.clipboard.writeText(userAddr); }}>
-                  <Copy size={14} /> Copy Address
-                </button>
-                <a className="wallet-dropdown-item" href={`${chain.explorer}/address/${userAddr}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink size={14} /> View on Explorer
-                </a>
-                <button className="wallet-dropdown-item" onClick={() => location.reload()}>
-                  <LogOut size={14} /> Disconnect
-                </button>
-              </div>
+              <>
+                <div className="chain-overlay" onClick={() => setDropdownOpen(false)} />
+                <div className="wallet-dropdown show">
+                  <div className="wallet-dropdown-addr">{userAddr}</div>
+                  <button className="wallet-dropdown-item" onClick={() => { navigator.clipboard.writeText(userAddr); setDropdownOpen(false); }}>
+                    <Copy size={14} /> Copy Address
+                  </button>
+                  <a className="wallet-dropdown-item" href={`${chain.explorer}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
+                    <ExternalLink size={14} /> View on Explorer
+                  </a>
+                  <button className="wallet-dropdown-item" onClick={() => location.reload()}>
+                    <LogOut size={14} /> Disconnect
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}

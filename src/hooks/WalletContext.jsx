@@ -47,42 +47,55 @@ export function WalletProvider({ children }) {
 
   // Contract refs (signer-based, for write txns)
   const contractsRef = useRef({});
-  // Fallback read-only provider cache (keyed by chainKey)
+  // Fallback read-only provider cache
   const fallbackProviderRef = useRef(null);
   // Chain-switch abort: incremented on every chain change, checked after awaits
   const chainEpochRef = useRef(0);
-  // Tracks current chainKey for duplicate-detection in handleChainChanged
+  // Always-current chainKey (updated eagerly, before React re-render)
   const chainKeyRef = useRef(chainKey);
 
   const chain = CHAINS[chainKey];
   const addr = chain.contracts;
 
   // ═══ TWO-TIER PROVIDER ═══
-  // TIER 1: wallet's BrowserProvider (Infura/Alchemy via MetaMask) — primary
-  // TIER 2: public JsonRpcProvider — fallback only when no wallet
+  // Simple: use wallet provider if connected, else create/cache a fallback JsonRpcProvider.
+  // Fallback tries primary RPC, if that fails tries backup RPC.
   const getReadProvider = useCallback(() => {
-    // Prefer wallet provider — but only if it was built for the current chain
+    // If wallet is connected, use its provider (always talks to MetaMask's current chain)
     const walletProvider = contractsRef.current.provider;
-    if (walletProvider && walletProvider._chainKey === chainKey) {
-      return { provider: walletProvider, isFallback: false };
+    if (walletProvider) return { provider: walletProvider, isFallback: false };
+
+    // No wallet — use fallback JsonRpcProvider for current chain
+    const key = chainKeyRef.current;
+    if (fallbackProviderRef.current && fallbackProviderRef.current._forChain === key) {
+      return { provider: fallbackProviderRef.current, isFallback: true };
     }
-    // Fallback: build/reuse a JsonRpcProvider for current chain
-    if (!fallbackProviderRef.current || fallbackProviderRef.current._chainKey !== chainKey) {
-      const p = new ethers.JsonRpcProvider(CHAINS[chainKey].rpc);
-      p._chainKey = chainKey;
-      fallbackProviderRef.current = p;
-    }
-    return { provider: fallbackProviderRef.current, isFallback: true };
+    const c = CHAINS[key];
+    const p = new ethers.JsonRpcProvider(c.rpc);
+    p._forChain = key;
+    fallbackProviderRef.current = p;
+    return { provider: p, isFallback: true };
   }, [chainKey]);
+
+  // Try backup RPC if primary fails (called from refresh functions on catch)
+  const getFallbackWithBackup = useCallback((key) => {
+    const c = CHAINS[key];
+    if (!c.rpcBackup) return null;
+    const p = new ethers.JsonRpcProvider(c.rpcBackup);
+    p._forChain = key;
+    fallbackProviderRef.current = p;
+    return p;
+  }, []);
 
   // Helper: check if chain changed during an async operation
   const isStale = (epoch) => epoch !== chainEpochRef.current;
 
-  // ═══ BUILD CONTRACTS HELPER ═══
-  const buildContracts = useCallback(async (key, address) => {
+  // ═══ FULL RECONNECT ═══
+  // Creates fresh BrowserProvider + signer + all contracts for the given chain key.
+  // Called by both connectWallet and handleChainChanged.
+  const fullReconnect = useCallback(async (key, address) => {
     const c = CHAINS[key];
     const provider = new ethers.BrowserProvider(window.ethereum);
-    provider._chainKey = key; // Tag for stale-provider detection in getReadProvider
     const signer = await provider.getSigner();
 
     const bal = await provider.getBalance(address);
@@ -125,16 +138,17 @@ export function WalletProvider({ children }) {
       const key = detectChainKey(hexId);
       if (!key) { toast.error('Unsupported network.'); return; }
 
-      chainKeyRef.current = key; // Eagerly update ref so handleChainChanged can skip duplicates
-      setChainKey(key);
-      const address = accounts[0];
-      await buildContracts(key, address);
-      setUserAddr(address);
+      chainKeyRef.current = key;
+      await fullReconnect(key, accounts[0]);
+      // Clear fallback cache so getReadProvider uses the fresh wallet provider
+      fallbackProviderRef.current = null;
+      setUserAddr(accounts[0]);
       setConnected(true);
+      setChainKey(key);
     } catch (e) {
       console.error('Connection failed:', e);
     }
-  }, [buildContracts]);
+  }, [fullReconnect]);
 
   // ═══ REFRESH BALANCES + USER STATS ═══
   const refreshBalances = useCallback(async () => {
@@ -237,15 +251,16 @@ export function WalletProvider({ children }) {
   // Two-tier: wallet provider uses Promise.all, fallback uses sequential
   const refreshProtocolStats = useCallback(async () => {
     const epoch = chainEpochRef.current;
-    const c = CHAINS[chainKey];
-    const { provider: readProvider, isFallback } = getReadProvider();
-    try {
-      const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, readProvider);
+    const key = chainKeyRef.current;
+    const c = CHAINS[key];
+    let { provider: readProvider, isFallback } = getReadProvider();
+
+    const tryWithProvider = async (provider, sequential) => {
+      const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
 
       let cycle, reward, initTs, period, storedCycle, totalBatches, pendingStakeAmt;
 
-      if (isFallback) {
-        // Sequential calls for public RPCs to avoid batch/rate-limit issues
+      if (sequential) {
         cycle = await dbxRead.getCurrentCycle();
         if (isStale(epoch)) return;
         reward = await dbxRead.currentCycleReward();
@@ -261,7 +276,6 @@ export function WalletProvider({ children }) {
         pendingStakeAmt = await dbxRead.pendingStake();
         if (isStale(epoch)) return;
       } else {
-        // Wallet provider (Infura/Alchemy) — batched is fine
         [cycle, reward, initTs, period, storedCycle, totalBatches, pendingStakeAmt] = await Promise.all([
           dbxRead.getCurrentCycle(), dbxRead.currentCycleReward(), dbxRead.i_initialTimestamp(),
           dbxRead.i_periodDuration(), dbxRead.currentCycle(), dbxRead.totalNumberOfBatchesBurned(),
@@ -273,7 +287,7 @@ export function WalletProvider({ children }) {
       let oldBatches = 0n;
       if (c.oldDbxenV1) {
         try {
-          const oldC = new ethers.Contract(c.oldDbxenV1, OLD_DBXEN_ABI, readProvider);
+          const oldC = new ethers.Contract(c.oldDbxenV1, OLD_DBXEN_ABI, provider);
           oldBatches = await oldC.totalNumberOfBatchesBurned();
           if (isStale(epoch)) return;
         } catch {}
@@ -302,25 +316,38 @@ export function WalletProvider({ children }) {
       setProtocolStats({
         cycle: Number(cycle), reward, xenBurnedV1, xenBurnedV2, totalStaked, apy, nextCycleTs,
       });
+    };
+
+    try {
+      await tryWithProvider(readProvider, isFallback);
     } catch (e) {
-      console.error('Protocol stats failed:', e);
+      console.error('Protocol stats failed (primary):', e);
+      // If fallback RPC failed, try backup
+      if (isFallback) {
+        const backup = getFallbackWithBackup(key);
+        if (backup) {
+          try { await tryWithProvider(backup, true); }
+          catch (e2) { console.error('Protocol stats failed (backup):', e2); }
+        }
+      }
     }
-  }, [chainKey, getReadProvider]);
+  }, [chainKey, getReadProvider, getFallbackWithBackup]);
 
   // ═══ REFRESH BRIDGE STATS ═══
   const refreshBridgeStats = useCallback(async () => {
     const epoch = chainEpochRef.current;
-    const c = CHAINS[chainKey];
-    const { provider: readProvider, isFallback } = getReadProvider();
-    try {
+    const key = chainKeyRef.current;
+    const c = CHAINS[key];
+    let { provider: readProvider, isFallback } = getReadProvider();
+
+    const tryWithProvider = async (provider, sequential) => {
       const migAbi = c.dualMigration ? DUAL_MIGRATION_ABI : MIGRATION_ABI;
-      const migRead = new ethers.Contract(c.contracts.MIGRATION, migAbi, readProvider);
-      const dxnRead = new ethers.Contract(c.contracts.DXN_V2, ERC20_ABI, readProvider);
+      const migRead = new ethers.Contract(c.contracts.MIGRATION, migAbi, provider);
+      const dxnRead = new ethers.Contract(c.contracts.DXN_V2, ERC20_ABI, provider);
 
       let totalSwapped, poolBal, deadline;
 
-      if (isFallback) {
-        // Sequential for public RPCs
+      if (sequential) {
         if (c.dualMigration) {
           const v1 = await migRead.totalSwappedV1();
           if (isStale(epoch)) return;
@@ -336,7 +363,6 @@ export function WalletProvider({ children }) {
         deadline = await migRead.deadline();
         if (isStale(epoch)) return;
       } else {
-        // Wallet provider — batched
         if (c.dualMigration) {
           const [v1, v2] = await Promise.all([migRead.totalSwappedV1(), migRead.totalSwappedV2()]);
           totalSwapped = v1 + v2;
@@ -354,10 +380,21 @@ export function WalletProvider({ children }) {
         totalMigrated: totalSwapped, poolRemaining: poolBal,
         deadline, totalPool: totalSwapped + poolBal,
       });
+    };
+
+    try {
+      await tryWithProvider(readProvider, isFallback);
     } catch (e) {
-      console.error('Bridge stats failed:', e);
+      console.error('Bridge stats failed (primary):', e);
+      if (isFallback) {
+        const backup = getFallbackWithBackup(key);
+        if (backup) {
+          try { await tryWithProvider(backup, true); }
+          catch (e2) { console.error('Bridge stats failed (backup):', e2); }
+        }
+      }
     }
-  }, [chainKey, getReadProvider]);
+  }, [chainKey, getReadProvider, getFallbackWithBackup]);
 
   // ═══ REFRESH LEGACY (PULSECHAIN) ═══
   const refreshLegacy = useCallback(async () => {
@@ -609,15 +646,13 @@ export function WalletProvider({ children }) {
     }
   }, [getReadProvider]);
 
-  // ═══ INCREMENT EPOCH ON CHAIN CHANGE ═══
+  // ═══ CHAIN CHANGE EFFECT ═══
   useEffect(() => {
     const isFirstRender = chainKeyRef.current === chainKey && chainEpochRef.current === 0;
     chainKeyRef.current = chainKey;
     chainEpochRef.current += 1;
-    // Invalidate fallback provider cache on chain change
-    if (fallbackProviderRef.current && fallbackProviderRef.current._chainKey !== chainKey) {
-      fallbackProviderRef.current = null;
-    }
+    // Clear cached fallback provider so getReadProvider creates one for the new chain
+    fallbackProviderRef.current = null;
     // Always refresh protocol + bridge stats on chain change (and on mount)
     refreshProtocolStats();
     refreshBridgeStats();
@@ -641,22 +676,27 @@ export function WalletProvider({ children }) {
     const handleChainChanged = async (newId) => {
       const key = detectChainKey(newId);
       if (!key) { toast.error('Unsupported network.'); return; }
-      // Skip if connectWallet already set this chain (mobile race condition)
-      if (key === chainKeyRef.current) return;
-      // Wait for MetaMask to fully switch internally
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for MetaMask to fully settle
+      await new Promise(r => setTimeout(r, 150));
+      // Full reconnect: new provider, new signer, new contracts
+      chainKeyRef.current = key;
+      fallbackProviderRef.current = null;
       try {
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
-          // Rebuild provider/signer/contracts BEFORE state updates trigger refreshes
-          await buildContracts(key, accounts[0]);
+          await fullReconnect(key, accounts[0]);
           setUserAddr(accounts[0]);
           setConnected(true);
+        } else {
+          // No wallet connected — clear contracts so getReadProvider uses fallback
+          contractsRef.current = {};
         }
       } catch (e) {
         console.error('Chain switch rebuild failed:', e);
+        // Even on failure, clear stale contracts so fallback provider is used
+        contractsRef.current = {};
       }
-      // Setting chainKey triggers the useEffect that refreshes protocol/bridge/balances
+      // Setting chainKey triggers the useEffect that refreshes everything
       setChainKey(key);
     };
     const handleAccountsChanged = (accounts) => {
@@ -670,7 +710,7 @@ export function WalletProvider({ children }) {
       window.ethereum.removeListener('chainChanged', handleChainChanged);
       window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
     };
-  }, [connectWallet, buildContracts]);
+  }, [connectWallet, fullReconnect]);
 
   // Refresh when userAddr changes
   useEffect(() => {
