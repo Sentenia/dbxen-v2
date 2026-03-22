@@ -35,6 +35,7 @@ export default function ActivityDashboard() {
     const { provider, isFallback } = getReadProvider();
     if (!provider) return;
     const c = CHAINS[chainKey];
+    const logProvider = new ethers.JsonRpcProvider(c.rpc);
     const isStale = () => epoch !== epochRef.current;
     try {
       const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
@@ -58,7 +59,7 @@ export default function ActivityDashboard() {
 
       const now = BigInt(Math.floor(Date.now() / 1000));
       const cycleStartTs = initTs + (cycle * period);
-      const currentBlock = await provider.getBlockNumber();
+      const currentBlock = await logProvider.getBlockNumber();
       if (isStale()) return;
       const secsIntoCycle = Number(now - cycleStartTs);
       const blockTimes = { '0x1': 12, '0x38': 3, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
@@ -66,12 +67,12 @@ export default function ActivityDashboard() {
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime) + 500;
       const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
-      // Chunk getLogs for RPCs with block range limits (BSC = 5000 max)
-      const MAX_BLOCK_RANGE = c.chainId === '0x38' ? 4999 : 49999;
+      // Chunk getLogs for RPCs with block range limits
+      const MAX_BLOCK_RANGE = 4999;
       let logs = [];
       for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
         const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
-        const chunk = await provider.getLogs({
+        const chunk = await logProvider.getLogs({
           address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to,
         });
         logs = logs.concat(chunk);
