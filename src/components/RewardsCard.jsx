@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Gift, Coins, Banknote, PlusCircle } from 'lucide-react';
+import { Gift, Coins, Banknote, PlusCircle, Zap } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt } from '../utils/helpers';
 import toast from 'react-hot-toast';
@@ -7,6 +7,27 @@ import toast from 'react-hot-toast';
 export default function RewardsCard() {
   const { chain, connected, userStats, claimDxn, claimFees, addTokenToWallet } = useWallet();
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState('');
+
+  const handleClaimAll = async () => {
+    setBusy(true);
+    try {
+      if (userStats.unclaimedDxn > 0n) {
+        setBusyLabel('Claiming DXN...');
+        await claimDxn();
+      }
+      if (userStats.unclaimedFees > 0n) {
+        setBusyLabel('Claiming Fees...');
+        await claimFees();
+      }
+      toast.success('All rewards claimed!');
+    } catch (e) {
+      toast.error('Claim failed: ' + (e.reason || e.message));
+    } finally {
+      setBusy(false);
+      setBusyLabel('');
+    }
+  };
 
   const handleClaimDxn = async () => {
     setBusy(true);
@@ -19,6 +40,8 @@ export default function RewardsCard() {
     try { await claimFees(); } catch (e) { toast.error('Claim failed: ' + (e.reason || e.message)); }
     finally { setBusy(false); }
   };
+
+  const hasRewards = userStats.unclaimedDxn > 0n || userStats.unclaimedFees > 0n;
 
   return (
     <div className="card card-hover fade-up fade-up-4">
@@ -42,6 +65,9 @@ export default function RewardsCard() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button className="btn-action primary btn-shimmer" onClick={handleClaimAll} disabled={!connected || busy || !hasRewards}>
+          <Zap size={16} /> {busy && busyLabel ? busyLabel : 'Claim All Rewards'}
+        </button>
         <button className="btn-action primary" onClick={handleClaimDxn} disabled={!connected || busy}>
           <Coins size={16} /> Claim DXN Rewards
         </button>

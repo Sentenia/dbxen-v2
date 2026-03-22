@@ -4,6 +4,7 @@ export const CHAINS = {
     explorer: 'https://etherscan.io',
     rpc: 'https://rpc.ankr.com/eth', rpcBackup: 'https://cloudflare-eth.com',
     xenSym: 'XEN', dxnSym: 'DXN', minFee: 0n,
+    dexUrl: 'https://app.uniswap.org/swap?chain=mainnet&outputCurrency=0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
     oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
     contracts: {
       XEN: '0x06450dEe7FD2Fb8E39061434BAbCFC05599a6Fb8',
@@ -18,6 +19,7 @@ export const CHAINS = {
     explorer: 'https://polygonscan.com',
     rpc: 'https://polygon-rpc.com', rpcBackup: 'https://rpc.ankr.com/polygon',
     xenSym: 'mXEN', dxnSym: 'mDXN', minFee: 100000000000000n,
+    dexUrl: 'https://app.uniswap.org/swap?chain=polygon&outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
     oldDbxenV1: '0x4f3ce26d9749c0f36012c9abb41bf9938476c462',
     contracts: {
       XEN: '0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
@@ -33,6 +35,7 @@ export const CHAINS = {
     explorer: 'https://snowtrace.io',
     rpc: 'https://rpc.ankr.com/avalanche', rpcBackup: 'https://avalanche.public-rpc.com',
     xenSym: 'aXEN', dxnSym: 'aDXN', minFee: 1000000000000000n,
+    dexUrl: 'https://traderjoexyz.com/avalanche/trade?outputCurrency=0xC0C5AA69Dbe4d6DDdfBc89c0957686ec60F24389',
     oldDbxenV1: '0xF5c80c305803280B587F8cabBcCdC4d9BF522AbD',
     contracts: {
       XEN: '0xC0C5AA69Dbe4d6DDdfBc89c0957686ec60F24389',
@@ -48,6 +51,7 @@ export const CHAINS = {
     explorer: 'https://bscscan.com',
     rpc: 'https://bsc-dataseed.binance.org', rpcBackup: 'https://bsc-dataseed1.defibit.io',
     xenSym: 'bXEN', dxnSym: 'bDXN', minFee: 100000000000000n,
+    dexUrl: 'https://pancakeswap.finance/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e&chain=bsc',
     oldDbxenV1: '0x9caf6C4e5B9E3A6f83182Befd782304c7A8EE6De',
     contracts: {
       XEN: '0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
@@ -63,6 +67,7 @@ export const CHAINS = {
     explorer: 'https://mainnet.ethwscan.com',
     rpc: 'https://mainnet.ethereumpow.org', rpcBackup: 'https://mainnet.ethereumpow.org',
     xenSym: 'vvXEN', dxnSym: 'vvDXN', minFee: 100000000000000n,
+    dexUrl: 'https://app.uniswap.org/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
     oldDbxenV1: '0x2A9C55b6Dc56da178f9f9a566F1161237b73Ba66',
     contracts: {
       XEN: '0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
@@ -78,6 +83,7 @@ export const CHAINS = {
     explorer: 'https://basescan.org',
     rpc: 'https://rpc.ankr.com/base', rpcBackup: 'https://base.meowrpc.com',
     xenSym: 'cbXEN', dxnSym: 'cbDXN', minFee: 100000000000000n,
+    dexUrl: 'https://app.uniswap.org/swap?chain=base&outputCurrency=0xffcbF84650cE02DaFE96926B37a0ac5E34932fa5',
     oldDbxenV1: '0x30782c020FE90614f08a863B41CbB07A2D2D94fF',
     contracts: {
       XEN: '0xffcbF84650cE02DaFE96926B37a0ac5E34932fa5',
@@ -93,6 +99,7 @@ export const CHAINS = {
     explorer: 'https://optimistic.etherscan.io',
     rpc: 'https://mainnet.optimism.io', rpcBackup: 'https://rpc.ankr.com/optimism',
     xenSym: 'opXEN', dxnSym: 'opDXN', minFee: 100000000000000n,
+    dexUrl: 'https://app.uniswap.org/swap?chain=optimism&outputCurrency=0xeB585163DEbB1E637c6D617de3bEF99347cd75c8',
     oldDbxenV1: '0x2A9C55b6Dc56da178f9f9a566F1161237b73Ba66',
     contracts: {
       XEN: '0xeB585163DEbB1E637c6D617de3bEF99347cd75c8',
@@ -108,6 +115,7 @@ export const CHAINS = {
     explorer: 'https://scan.pulsechain.com',
     rpc: 'https://rpc.pulsechain.com', rpcBackup: 'https://rpc-pulsechain.g4mm4.io',
     xenSym: 'pXEN', dxnSym: 'pDXN', minFee: 1000000000000000000000n,
+    dexUrl: 'https://app.9inch.io/swap?chain=pulse&outputCurrency=0x8a7FDcA264e87b6da72D000f22186B4403081A2a',
     oldDbxenV1: '0x6d38Ab9f5b5Edfb22e57a44c3c747f9584de1f1a',
     batchSize: 250000000n,
     contracts: {

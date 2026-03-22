@@ -76,6 +76,11 @@ export default function BurnCard() {
           <span className="balance-sub">({maxBatches.toLocaleString()} batches)</span>
         </div>
       )}
+      {chain.dexUrl && (
+        <a href={chain.dexUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none', marginTop: 4, marginBottom: 8 }}>
+          Get {chain.xenSym} <span style={{ fontSize: 10 }}>&#8599;</span>
+        </a>
+      )}
 
       <div className="input-group">
         <div className="input-label">Number of Batches</div>

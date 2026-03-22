@@ -54,6 +54,11 @@ export default function StakeCard() {
           <span>Your DXNv2: <strong>{fmt(dxnBal)}</strong></span>
         </div>
       )}
+      {chain.dexUrl && (
+        <a href={chain.dexUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none', marginTop: 4, marginBottom: 8 }}>
+          Get {chain.dxnSym} <span style={{ fontSize: 10 }}>&#8599;</span>
+        </a>
+      )}
 
       <div className="input-group">
         <div className="input-label">Amount to Stake</div>
