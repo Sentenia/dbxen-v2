@@ -51,6 +51,8 @@ export function WalletProvider({ children }) {
   const fallbackProviderRef = useRef(null);
   // Chain-switch abort: incremented on every chain change, checked after awaits
   const chainEpochRef = useRef(0);
+  // Tracks current chainKey for duplicate-detection in handleChainChanged
+  const chainKeyRef = useRef(chainKey);
 
   const chain = CHAINS[chainKey];
   const addr = chain.contracts;
@@ -59,9 +61,11 @@ export function WalletProvider({ children }) {
   // TIER 1: wallet's BrowserProvider (Infura/Alchemy via MetaMask) — primary
   // TIER 2: public JsonRpcProvider — fallback only when no wallet
   const getReadProvider = useCallback(() => {
-    // Prefer wallet provider
+    // Prefer wallet provider — but only if it was built for the current chain
     const walletProvider = contractsRef.current.provider;
-    if (walletProvider) return { provider: walletProvider, isFallback: false };
+    if (walletProvider && walletProvider._chainKey === chainKey) {
+      return { provider: walletProvider, isFallback: false };
+    }
     // Fallback: build/reuse a JsonRpcProvider for current chain
     if (!fallbackProviderRef.current || fallbackProviderRef.current._chainKey !== chainKey) {
       const p = new ethers.JsonRpcProvider(CHAINS[chainKey].rpc);
@@ -78,6 +82,7 @@ export function WalletProvider({ children }) {
   const buildContracts = useCallback(async (key, address) => {
     const c = CHAINS[key];
     const provider = new ethers.BrowserProvider(window.ethereum);
+    provider._chainKey = key; // Tag for stale-provider detection in getReadProvider
     const signer = await provider.getSigner();
 
     const bal = await provider.getBalance(address);
@@ -120,6 +125,7 @@ export function WalletProvider({ children }) {
       const key = detectChainKey(hexId);
       if (!key) { toast.error('Unsupported network.'); return; }
 
+      chainKeyRef.current = key; // Eagerly update ref so handleChainChanged can skip duplicates
       setChainKey(key);
       const address = accounts[0];
       await buildContracts(key, address);
@@ -604,7 +610,6 @@ export function WalletProvider({ children }) {
   }, [getReadProvider]);
 
   // ═══ INCREMENT EPOCH ON CHAIN CHANGE ═══
-  const chainKeyRef = useRef(chainKey);
   useEffect(() => {
     const isFirstRender = chainKeyRef.current === chainKey && chainEpochRef.current === 0;
     chainKeyRef.current = chainKey;
@@ -636,6 +641,8 @@ export function WalletProvider({ children }) {
     const handleChainChanged = async (newId) => {
       const key = detectChainKey(newId);
       if (!key) { toast.error('Unsupported network.'); return; }
+      // Skip if connectWallet already set this chain (mobile race condition)
+      if (key === chainKeyRef.current) return;
       // Wait for MetaMask to fully switch internally
       await new Promise(r => setTimeout(r, 100));
       try {

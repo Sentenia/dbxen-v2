@@ -34,9 +34,17 @@ export default function BridgeCard() {
   }, [bridgeStats.deadline]);
 
   const hasLoadedOnce = useRef(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+
+  // Hide skeletons after 5s even if fetch failed
+  useEffect(() => {
+    const id = setTimeout(() => { if (!hasLoadedOnce.current) setLoadTimedOut(true); }, 5000);
+    return () => clearTimeout(id);
+  }, []);
+
   const pct = bridgeStats.totalPool > 0n ? (Number((bridgeStats.totalMigrated * 10000n) / bridgeStats.totalPool) / 100) : 0;
   if (bridgeStats.totalPool > 0n) hasLoadedOnce.current = true;
-  const loaded = hasLoadedOnce.current;
+  const loaded = hasLoadedOnce.current || loadTimedOut;
 
   const handleMigrate = async () => {
     if (!connected) { connectWallet(); return; }

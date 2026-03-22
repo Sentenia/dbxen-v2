@@ -10,6 +10,7 @@ export default function Hero() {
   const { chain, protocolStats } = useWallet();
   const [timerStr, setTimerStr] = useState('—');
   const hasLoadedOnce = useRef(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
 
   useEffect(() => {
     if (!protocolStats.nextCycleTs) return;
@@ -22,12 +23,19 @@ export default function Hero() {
     return () => clearInterval(id);
   }, [protocolStats.nextCycleTs]);
 
+  // Hide skeletons after 5s even if fetch failed — show "—" fallback instead of infinite shimmer
+  useEffect(() => {
+    const id = setTimeout(() => { if (!hasLoadedOnce.current) setLoadTimedOut(true); }, 5000);
+    return () => clearTimeout(id);
+  }, []);
+
   if (protocolStats.cycle > 0) hasLoadedOnce.current = true;
-  const loaded = hasLoadedOnce.current;
-  const rewardFloat = protocolStats.reward ? parseFloat(ethers.formatEther(protocolStats.reward)) : 0;
-  const v1Float = protocolStats.xenBurnedV1 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV1)) : 0;
-  const v2Float = protocolStats.xenBurnedV2 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV2)) : 0;
-  const stakedFloat = protocolStats.totalStaked > 0n ? parseFloat(ethers.formatEther(protocolStats.totalStaked)) : 0;
+  const loaded = hasLoadedOnce.current || loadTimedOut;
+  const hasData = hasLoadedOnce.current;
+  const rewardFloat = protocolStats.reward ? parseFloat(ethers.formatEther(protocolStats.reward)) : (hasData ? 0 : null);
+  const v1Float = protocolStats.xenBurnedV1 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV1)) : (hasData ? 0 : null);
+  const v2Float = protocolStats.xenBurnedV2 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV2)) : (hasData ? 0 : null);
+  const stakedFloat = protocolStats.totalStaked > 0n ? parseFloat(ethers.formatEther(protocolStats.totalStaked)) : (hasData ? 0 : null);
 
   return (
     <section className="hero fade-up">
@@ -42,7 +50,7 @@ export default function Hero() {
       <div className="hero-stats fade-up fade-up-2">
         <div className="hero-stat">
           <div className="hero-stat-value">
-            {loaded ? <AnimatedNumber value={protocolStats.cycle} decimals={0} /> : <Skeleton width="40px" />}
+            {loaded ? <AnimatedNumber value={protocolStats.cycle || null} decimals={0} /> : <Skeleton width="40px" />}
           </div>
           <div className="hero-stat-label">Current Cycle</div>
         </div>
