@@ -66,10 +66,17 @@ export default function ActivityDashboard() {
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime) + 500;
       const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
-      const logs = await provider.getLogs({
-        address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: startBlock, toBlock: 'latest',
-      });
-      if (isStale()) return;
+      // Chunk getLogs for RPCs with block range limits (BSC = 5000 max)
+      const MAX_BLOCK_RANGE = c.chainId === '0x38' ? 4999 : 49999;
+      let logs = [];
+      for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
+        const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
+        const chunk = await provider.getLogs({
+          address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to,
+        });
+        logs = logs.concat(chunk);
+        if (isStale()) return;
+      }
 
       // Get gas price once for estimating gas costs
       const feeData = await provider.getFeeData();
