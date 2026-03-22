@@ -8,7 +8,6 @@ import { DBXEN_ABI } from '../config/abis';
 import { fmt } from '../utils/helpers';
 import Skeleton from './Skeleton';
 
-const RECENT_CYCLES = 30;
 
 const tooltipStyle = {
   contentStyle: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#1e293b' },
@@ -29,13 +28,12 @@ export default function AnalyticsPage() {
   const { chain, chainKey, protocolStats, getReadProvider } = useWallet();
   const [cycleData, setCycleData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState('recent'); // 'recent' | 'all'
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches
   useEffect(() => { epochRef.current += 1; setCycleData(null); setLoading(true); }, [chainKey]);
 
-  const fetchCycleHistory = useCallback(async (fetchRange) => {
+  const fetchCycleHistory = useCallback(async () => {
     const epoch = ++epochRef.current;
     const isStale = () => epoch !== epochRef.current;
     setLoading(true);
@@ -49,22 +47,15 @@ export default function AnalyticsPage() {
       const cycleNum = Number(currentCycle);
       if (cycleNum < 1) { setLoading(false); return; }
 
-      // Determine start cycle
-      let startCycle;
-      if (fetchRange === 'all') {
-        // Binary search for first active cycle
-        let lo = 1, hi = cycleNum, firstActive = cycleNum;
-        while (lo <= hi) {
-          if (isStale()) return;
-          const mid = Math.floor((lo + hi) / 2);
-          const b = await dbx.cycleTotalBatchesBurned(mid).catch(() => 0n);
-          if (isStale()) return;
-          if (b > 0n) { firstActive = mid; hi = mid - 1; }
-          else { lo = mid + 1; }
-        }
-        startCycle = firstActive;
-      } else {
-        startCycle = Math.max(1, cycleNum - RECENT_CYCLES + 1);
+      // Binary search for first active cycle
+      let lo = 1, hi = cycleNum, startCycle = cycleNum;
+      while (lo <= hi) {
+        if (isStale()) return;
+        const mid = Math.floor((lo + hi) / 2);
+        const b = await dbx.cycleTotalBatchesBurned(mid).catch(() => 0n);
+        if (isStale()) return;
+        if (b > 0n) { startCycle = mid; hi = mid - 1; }
+        else { lo = mid + 1; }
       }
 
       const results = [];
@@ -132,8 +123,7 @@ export default function AnalyticsPage() {
     if (!isStale()) setLoading(false);
   }, [chainKey, getReadProvider]);
 
-  // Fetch on mount and when range/chain changes
-  useEffect(() => { fetchCycleHistory(range); }, [range, fetchCycleHistory]);
+  useEffect(() => { fetchCycleHistory(); }, [fetchCycleHistory]);
 
   // Computed stats
   const nonZeroRewards = cycleData?.filter(d => d.reward > 0) || [];
@@ -149,24 +139,9 @@ export default function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
-      {/* Header + range toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BarChart3 size={22} style={{ color: 'var(--cyan)' }} />
-          <span style={{ fontSize: 20, fontWeight: 800 }}>Protocol Analytics</span>
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button
-            className={`nav-link${range === 'recent' ? ' active' : ''}`}
-            onClick={() => setRange('recent')}
-            style={{ padding: '6px 14px', fontSize: 13 }}
-          >30 cycles</button>
-          <button
-            className={`nav-link${range === 'all' ? ' active' : ''}`}
-            onClick={() => setRange('all')}
-            style={{ padding: '6px 14px', fontSize: 13 }}
-          >All time</button>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+        <BarChart3 size={22} style={{ color: 'var(--cyan)' }} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Protocol Analytics</span>
       </div>
 
       {/* 4 stat boxes */}
