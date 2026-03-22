@@ -36,14 +36,18 @@ function TabContent({ activeTab }) {
   return (
     <div className={`tab-transition ${visible ? 'tab-visible' : 'tab-hidden'}`}>
       {rendered === 'protocol' && (
-        <section className="content">
-          <div className="card-grid">
-            <BurnCard />
-            <StakeCard />
-            <RewardsCard />
-          </div>
-          <LegacySection />
-        </section>
+        <>
+          <section className="content">
+            <div className="card-grid">
+              <BurnCard />
+              <StakeCard />
+              <RewardsCard />
+            </div>
+            <LegacySection />
+          </section>
+          <HowItWorks />
+          <WhyV2 />
+        </>
       )}
       {rendered === 'bridge' && (
         <section className="content">
@@ -102,8 +106,6 @@ export default function App() {
         <StatsTicker />
         <Hero />
         <TabContent activeTab={activeTab} />
-        <HowItWorks />
-        <WhyV2 />
         <Footer />
       </div>
       <BottomTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
