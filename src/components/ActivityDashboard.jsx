@@ -85,22 +85,25 @@ export default function ActivityDashboard() {
       for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
         const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
         if (c.chainId === '0x38') {
+          const bscRpcs = ['https://bsc.drpc.org', 'https://bsc.blockrazor.xyz', 'https://1rpc.io/bnb'];
+          const rpc = bscRpcs[Math.floor((from - startBlock) / (MAX_BLOCK_RANGE + 1)) % bscRpcs.length];
           let json;
           for (let retry = 0; retry < 3; retry++) {
             if (retry > 0) await new Promise(r => setTimeout(r, 1000));
-            const resp = await fetch(c.rpc, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{
-                address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG],
-                fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16),
-              }] }),
-            });
-            json = await resp.json();
-            if (json.result) break;
-            if (!json.error) break;
+            try {
+              const resp = await fetch(rpc, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{
+                  address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG],
+                  fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16),
+                }] }),
+              });
+              json = await resp.json();
+              if (json.result) break;
+            } catch {}
           }
           if (json?.result) logs = logs.concat(json.result);
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
         } else {
           const chunk = await provider.getLogs({
             address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to,
