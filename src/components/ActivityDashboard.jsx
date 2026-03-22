@@ -38,7 +38,7 @@ export default function ActivityDashboard() {
     let logProvider = provider;
     if (c.chainId === '0x38') {
       try {
-        const bscNet = new ethers.Network('bnb', 56);
+        const bscNet = ethers.Network.from(56);
         logProvider = new ethers.JsonRpcProvider(c.rpc, bscNet, { staticNetwork: bscNet });
         await logProvider.getBlockNumber();
       } catch {
