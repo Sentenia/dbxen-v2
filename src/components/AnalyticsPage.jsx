@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BarChart3, TrendingUp, Flame, Coins, Zap, Trophy, Activity } from 'lucide-react';
+import { BarChart3, TrendingUp, Flame, Coins, Activity } from 'lucide-react';
 import { ethers } from 'ethers';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useWallet } from '../hooks/WalletContext';
@@ -139,8 +139,6 @@ export default function AnalyticsPage() {
   const nonZeroRewards = cycleData?.filter(d => d.reward > 0) || [];
   const avgReward = nonZeroRewards.length ? (nonZeroRewards.reduce((s, d) => s + d.reward, 0) / nonZeroRewards.length) : 0;
   const totalFees = cycleData?.reduce((s, d) => s + d.fees, 0) || 0;
-  const activeCycles = cycleData?.filter(d => d.batches > 0).length || 0;
-  const peakBatches = cycleData?.reduce((m, d) => Math.max(m, d.batches), 0) || 0;
 
   const chartHeight = 300;
   const skeletonChart = (
@@ -171,7 +169,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* 6 stat boxes */}
+      {/* 4 stat boxes */}
       <div className="analytics-stat-grid">
         <div className="analytics-stat-box">
           <div className="analytics-stat-label">Total DXN Staked (TVL)</div>
@@ -196,18 +194,6 @@ export default function AnalyticsPage() {
           <div className="analytics-stat-label">Total Fees Collected</div>
           <div className="analytics-stat-val" style={{ color: 'var(--amber)' }}>
             {loading ? <Skeleton width="70px" /> : `${totalFees.toFixed(4)} ${chain.native}`}
-          </div>
-        </div>
-        <div className="analytics-stat-box">
-          <div className="analytics-stat-label">Active Cycles</div>
-          <div className="analytics-stat-val">
-            {loading ? <Skeleton width="50px" /> : <><span style={{ color: 'var(--green)' }}>{activeCycles}</span><span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}> / {cycleData?.length || 0}</span></>}
-          </div>
-        </div>
-        <div className="analytics-stat-box">
-          <div className="analytics-stat-label">Peak Batches (1 cycle)</div>
-          <div className="analytics-stat-val" style={{ color: 'var(--red)' }}>
-            {loading ? <Skeleton width="60px" /> : peakBatches.toLocaleString()}
           </div>
         </div>
       </div>

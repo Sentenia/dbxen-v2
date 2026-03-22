@@ -386,7 +386,7 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .analytics-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
 .analytics-card:hover { border-color: var(--border-glow); }
 .analytics-card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-.analytics-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.analytics-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .analytics-stat-box { background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .analytics-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 .analytics-stat-val { font-size: 18px; font-weight: 700; }
