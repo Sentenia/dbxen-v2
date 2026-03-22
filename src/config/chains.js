@@ -49,8 +49,7 @@ export const CHAINS = {
   bsc: {
     name: 'BNB Chain', chainId: '0x38', color: '#F0B90B', native: 'BNB',
     explorer: 'https://bscscan.com',
-    rpc: 'https://bsc-dataseed1.bnbchain.org',
-    rpcBackup: 'https://bsc-dataseed2.bnbchain.org',
+    rpc: 'https://bsc-dataseed.binance.org', rpcBackup: 'https://bsc-dataseed1.defibit.io',
     xenSym: 'bXEN', dxnSym: 'bDXN', minFee: 100000000000000n,
     dexUrl: 'https://pancakeswap.finance/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e&chain=bsc',
     oldDbxenV1: '0x9caf6C4e5B9E3A6f83182Befd782304c7A8EE6De',
@@ -61,7 +60,7 @@ export const CHAINS = {
       OLD_DXN: '0xCcd09b80453335aa914f5d9174984b6586c315EC',
       MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
     },
-    addChain: { chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: ['https://bsc-dataseed1.bnbchain.org'], blockExplorerUrls: ['https://bscscan.com'] },
+    addChain: { chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: ['https://bsc-dataseed.binance.org'], blockExplorerUrls: ['https://bscscan.com'] },
   },
   ethw: {
     name: 'EthereumPoW', chainId: '0x2711', color: '#3C3C3D', native: 'ETHW',
