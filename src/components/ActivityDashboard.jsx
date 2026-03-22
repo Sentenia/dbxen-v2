@@ -80,7 +80,7 @@ export default function ActivityDashboard() {
       const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
       // Chunk getLogs — BSC uses raw fetch (official BSC RPCs disable getLogs, ethers fails network detection)
-      const MAX_BLOCK_RANGE = c.chainId === '0x38' ? 999 : 4999;
+      const MAX_BLOCK_RANGE = 4999;
       let logs = [];
       for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
         const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
