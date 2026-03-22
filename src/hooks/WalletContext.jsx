@@ -672,8 +672,12 @@ export function WalletProvider({ children }) {
     try {
       await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: c.chainId }] });
     } catch (err) {
-      if (err.code === 4902 && c.addChain) {
-        try { await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] }); } catch {}
+      if (c.addChain) {
+        try { 
+          await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] }); 
+        } catch (addErr) {
+          console.error('[switchChain] addChain failed for', key, addErr);
+        }
       }
     }
   }, []);
@@ -721,7 +725,7 @@ export function WalletProvider({ children }) {
       console.log('[handleChainChanged] Fired with', newId, '→ key:', key);
       if (!key) { toast.error('Unsupported network.'); return; }
       // Wait for MetaMask to fully settle
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 500));
       // Full reconnect: new provider, new signer, new contracts
       chainKeyRef.current = key;
       fallbackProviderRef.current = null;
