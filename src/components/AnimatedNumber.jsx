@@ -1,10 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Animated counter that counts up from 0 to target value
+// Format a number at the appropriate scale (T/B/M or locale string)
+function formatNum(val, target, decimals) {
+  if (target >= 1e12) return (val / 1e12).toFixed(2) + 'T';
+  if (target >= 1e9) return (val / 1e9).toFixed(2) + 'B';
+  if (target >= 1e6) return (val / 1e6).toFixed(2) + 'M';
+  return val.toLocaleString('en-US', { maximumFractionDigits: decimals });
+}
+
+// Animated counter: counts up from 0 on first load, crossfades on subsequent updates
 export default function AnimatedNumber({ value, decimals = 2, suffix = '', prefix = '', duration = 1200 }) {
   const [display, setDisplay] = useState('—');
+  const [fading, setFading] = useState(false);
   const prevValue = useRef(null);
+  const hasAnimatedOnce = useRef(false);
   const rafRef = useRef(null);
+  const fadeTimer = useRef(null);
 
   useEffect(() => {
     if (value === null || value === undefined || value === '—') {
@@ -13,31 +24,49 @@ export default function AnimatedNumber({ value, decimals = 2, suffix = '', prefi
     }
 
     const numVal = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(numVal)) { setDisplay(value); return; }
+    if (isNaN(numVal)) { setDisplay(String(value)); return; }
 
-    const startVal = prevValue.current ?? 0;
+    // Same value — do nothing
+    if (prevValue.current !== null && prevValue.current === numVal) return;
+
+    const oldVal = prevValue.current;
     prevValue.current = numVal;
-    const startTime = performance.now();
 
-    const animate = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = startVal + (numVal - startVal) * eased;
+    if (!hasAnimatedOnce.current) {
+      // First load: count up from 0
+      hasAnimatedOnce.current = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      const startTime = performance.now();
 
-      // Always show 2 decimal places at T/B/M scale (matches fmt() behavior)
-      if (numVal >= 1e12) setDisplay((current / 1e12).toFixed(2) + 'T');
-      else if (numVal >= 1e9) setDisplay((current / 1e9).toFixed(2) + 'B');
-      else if (numVal >= 1e6) setDisplay((current / 1e6).toFixed(2) + 'M');
-      else setDisplay(current.toLocaleString('en-US', { maximumFractionDigits: decimals }));
+      const animate = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = numVal * eased;
+        setDisplay(formatNum(current, numVal, decimals));
+        if (progress < 1) rafRef.current = requestAnimationFrame(animate);
+      };
 
-      if (progress < 1) rafRef.current = requestAnimationFrame(animate);
+      rafRef.current = requestAnimationFrame(animate);
+    } else {
+      // Subsequent update (chain switch, refresh): quick crossfade
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+      setFading(true);
+      fadeTimer.current = setTimeout(() => {
+        setDisplay(formatNum(numVal, numVal, decimals));
+        setFading(false);
+      }, 150);
+    }
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
     };
-
-    rafRef.current = requestAnimationFrame(animate);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [value, decimals, duration]);
 
-  return <>{prefix}{display}{suffix}</>;
+  return (
+    <span style={{ opacity: fading ? 0 : 1, transition: 'opacity 150ms ease-in-out' }}>
+      {prefix}{display}{suffix}
+    </span>
+  );
 }

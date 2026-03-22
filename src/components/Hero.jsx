@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Timer } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
@@ -9,6 +9,7 @@ import Skeleton from './Skeleton';
 export default function Hero() {
   const { chain, protocolStats } = useWallet();
   const [timerStr, setTimerStr] = useState('—');
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
     if (!protocolStats.nextCycleTs) return;
@@ -21,7 +22,8 @@ export default function Hero() {
     return () => clearInterval(id);
   }, [protocolStats.nextCycleTs]);
 
-  const loaded = protocolStats.cycle > 0;
+  if (protocolStats.cycle > 0) hasLoadedOnce.current = true;
+  const loaded = hasLoadedOnce.current;
   const rewardFloat = protocolStats.reward ? parseFloat(ethers.formatEther(protocolStats.reward)) : 0;
   const v1Float = protocolStats.xenBurnedV1 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV1)) : 0;
   const v2Float = protocolStats.xenBurnedV2 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV2)) : 0;

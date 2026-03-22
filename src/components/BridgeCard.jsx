@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeftRight, ArrowDown, ArrowRightLeft, Vault, Timer, Flame } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
@@ -33,8 +33,10 @@ export default function BridgeCard() {
     return () => clearInterval(id);
   }, [bridgeStats.deadline]);
 
+  const hasLoadedOnce = useRef(false);
   const pct = bridgeStats.totalPool > 0n ? (Number((bridgeStats.totalMigrated * 10000n) / bridgeStats.totalPool) / 100) : 0;
-  const loaded = bridgeStats.totalPool > 0n;
+  if (bridgeStats.totalPool > 0n) hasLoadedOnce.current = true;
+  const loaded = hasLoadedOnce.current;
 
   const handleMigrate = async () => {
     if (!connected) { connectWallet(); return; }
