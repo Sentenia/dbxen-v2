@@ -49,7 +49,7 @@ export const CHAINS = {
   bsc: {
     name: 'BNB Chain', chainId: '0x38', color: '#F0B90B', native: 'BNB',
     explorer: 'https://bscscan.com',
-    rpc: 'https://bsc-dataseed.binance.org', rpcBackup: 'https://bsc-dataseed1.defibit.io',
+    rpc: 'https://bsc-rpc.publicnode.com', rpcBackup: 'https://bsc-dataseed1.bnbchain.org',
     xenSym: 'bXEN', dxnSym: 'bDXN', minFee: 100000000000000n,
     dexUrl: 'https://pancakeswap.finance/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e&chain=bsc',
     oldDbxenV1: '0x9caf6C4e5B9E3A6f83182Befd782304c7A8EE6De',
