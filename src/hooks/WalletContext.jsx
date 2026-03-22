@@ -724,9 +724,15 @@ export function WalletProvider({ children }) {
       const key = detectChainKey(newId);
       console.log('[handleChainChanged] Fired with', newId, '→ key:', key);
       if (!key) { toast.error('Unsupported network.'); return; }
-      // Wait for MetaMask to fully settle
+      
+      // Mobile: just reload — most reliable across all mobile wallets
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        location.reload();
+        return;
+      }
+
+      // Desktop: smooth reconnect without reload
       await new Promise(r => setTimeout(r, 500));
-      // Full reconnect: new provider, new signer, new contracts
       chainKeyRef.current = key;
       fallbackProviderRef.current = null;
       console.log('[handleChainChanged] Refs updated, fallback cleared for', key);
@@ -738,16 +744,13 @@ export function WalletProvider({ children }) {
           setUserAddr(accounts[0]);
           setConnected(true);
         } else {
-          // No wallet connected — clear contracts so getReadProvider uses fallback
           console.log('[handleChainChanged] No accounts, clearing contracts');
           contractsRef.current = {};
         }
       } catch (e) {
         console.error('[handleChainChanged] fullReconnect FAILED for', key, e);
-        // Even on failure, clear stale contracts so fallback provider is used
         contractsRef.current = {};
       }
-      // Setting chainKey triggers the useEffect that refreshes everything
       console.log('[handleChainChanged] Setting chainKey →', key);
       setChainKey(key);
     };
