@@ -76,7 +76,7 @@ export default function ActivityDashboard() {
       }
       if (isStale()) return;
 
-      const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime) + 500;
+      const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
       const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
       // Chunk getLogs — BSC uses raw fetch (official BSC RPCs disable getLogs, ethers fails network detection)
