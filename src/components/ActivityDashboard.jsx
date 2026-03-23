@@ -148,6 +148,7 @@ export default function ActivityDashboard() {
       for (const [, d] of sorted) totalGasCost += d.gasCost;
 
       if (isStale()) return;
+      if (totalBatches === 0 && actData?.totalBatches > 0 && actData?.cycle === Number(cycle)) return;
       setActData({
         cycle: Number(cycle), reward, totalBatches, burnerCount: sorted.length,
         totalEthFees, sorted, totalGasCost,
