@@ -1,45 +1,95 @@
 import { useState } from 'react';
-import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut } from 'lucide-react';
+import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut, Zap, Shield } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
+import { NXD_CONTRACTS } from '../config/nxd';
 import ChainSelector from './ChainSelector';
 
-export default function Nav({ activeTab, setActiveTab }) {
-  const { chain, userAddr, ethBal, connected, connectWallet } = useWallet();
+export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
+  const { chain, chainKey, userAddr, ethBal, connected, connectWallet, switchChain } = useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const isNXD = protocolMode === 'nxd';
+
+  const handleNXDToggle = () => {
+    if (isNXD) {
+      setProtocolMode('dbxen');
+      setActiveTab('protocol');
+    } else {
+      // NXD is Ethereum-only — switch chain if needed
+      if (chainKey !== 'ethereum') {
+        switchChain('ethereum');
+      }
+      setProtocolMode('nxd');
+      setActiveTab('nxd-mint');
+    }
+  };
+
+  const contractLink = isNXD
+    ? `https://etherscan.io/address/${NXD_CONTRACTS.NXDProtocol}#code`
+    : `${chain.explorer}/address/${chain.contracts.DBXEN_V2}#code`;
 
   return (
     <nav>
       <div className="nav-brand">
-        <div className="nav-logo">V2</div>
-        <div className="nav-name">DBXen <span>V2</span></div>
+        <div className={`nav-logo${isNXD ? ' nxd-logo' : ''}`}>{isNXD ? 'NX' : 'V2'}</div>
+        <div className="nav-name">
+          {isNXD ? <>NXD <span className="nxd-accent">V2</span></> : <>DBXen <span>V2</span></>}
+        </div>
       </div>
+
+      {/* Protocol Toggle */}
+      <div className="protocol-toggle">
+        <button className={`protocol-pill${!isNXD ? ' active' : ''}`} onClick={() => { setProtocolMode('dbxen'); setActiveTab('protocol'); }}>
+          <Flame size={14} /> DBXen
+        </button>
+        <button className={`protocol-pill nxd-pill${isNXD ? ' active' : ''}`} onClick={handleNXDToggle}>
+          <Zap size={14} /> NXD
+        </button>
+      </div>
+
       <div className="nav-links">
-        <button className={`nav-link${activeTab === 'protocol' ? ' active' : ''}`} onClick={() => setActiveTab('protocol')}>
-          <Flame size={16} /> Burn
-        </button>
-        <button className={`nav-link bridge-link${activeTab === 'bridge' ? ' active' : ''}`} onClick={() => setActiveTab('bridge')}>
-          <ArrowLeftRight size={16} /> Bridge
-        </button>
-        <button className={`nav-link${activeTab === 'activity' ? ' active' : ''}`} onClick={() => setActiveTab('activity')}>
-          <Activity size={16} /> Activity
-        </button>
-        <button className={`nav-link${activeTab === 'analytics' ? ' active' : ''}`} onClick={() => setActiveTab('analytics')}>
-          <BarChart3 size={16} /> Analytics
-        </button>
-        <a className="nav-link" href={`${chain.explorer}/address/${chain.contracts.DBXEN_V2}#code`} target="_blank" rel="noopener noreferrer">
+        {!isNXD ? (
+          <>
+            <button className={`nav-link${activeTab === 'protocol' ? ' active' : ''}`} onClick={() => setActiveTab('protocol')}>
+              <Flame size={16} /> Burn
+            </button>
+            <button className={`nav-link bridge-link${activeTab === 'bridge' ? ' active' : ''}`} onClick={() => setActiveTab('bridge')}>
+              <ArrowLeftRight size={16} /> Bridge
+            </button>
+            <button className={`nav-link${activeTab === 'activity' ? ' active' : ''}`} onClick={() => setActiveTab('activity')}>
+              <Activity size={16} /> Activity
+            </button>
+            <button className={`nav-link${activeTab === 'analytics' ? ' active' : ''}`} onClick={() => setActiveTab('analytics')}>
+              <BarChart3 size={16} /> Analytics
+            </button>
+          </>
+        ) : (
+          <>
+            <button className={`nav-link nxd-nav-link${activeTab === 'nxd-mint' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-mint')}>
+              <Zap size={16} /> Mint & Stake
+            </button>
+            <button className={`nav-link nxd-nav-link${activeTab === 'nxd-migrate' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-migrate')}>
+              <ArrowLeftRight size={16} /> Migrate
+            </button>
+            <button className={`nav-link nxd-nav-link${activeTab === 'nxd-analytics' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-analytics')}>
+              <BarChart3 size={16} /> Analytics
+            </button>
+          </>
+        )}
+        <a className="nav-link" href={contractLink} target="_blank" rel="noopener noreferrer">
           <FileCode size={16} /> Contract
         </a>
       </div>
       <div className="wallet-area">
-        <ChainSelector />
+        {!isNXD && <ChainSelector />}
         {!connected ? (
-          <button className="btn-connect" onClick={connectWallet}>
+          <button className={`btn-connect${isNXD ? ' nxd-btn-connect' : ''}`} onClick={connectWallet}>
             <Wallet size={16} /> Connect Wallet
           </button>
         ) : (
           <div className="wallet-connected">
-            <div className="wallet-eth">{ethBal} {chain.native}</div>
+            <div className="wallet-eth">{ethBal} {isNXD ? 'ETH' : chain.native}</div>
             <button className="wallet-addr-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
               <span className="wallet-dot" />
               <span>{shortAddr(userAddr)}</span>
@@ -53,7 +103,7 @@ export default function Nav({ activeTab, setActiveTab }) {
                   <button className="wallet-dropdown-item" onClick={() => { navigator.clipboard.writeText(userAddr); setDropdownOpen(false); }}>
                     <Copy size={14} /> Copy Address
                   </button>
-                  <a className="wallet-dropdown-item" href={`${chain.explorer}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
+                  <a className="wallet-dropdown-item" href={`${(isNXD ? 'https://etherscan.io' : chain.explorer)}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
                     <ExternalLink size={14} /> View on Explorer
                   </a>
                   <button className="wallet-dropdown-item" onClick={() => location.reload()}>
