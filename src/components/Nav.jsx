@@ -52,36 +52,36 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
         {!isNXD ? (
           <>
             <button className={`nav-link${activeTab === 'protocol' ? ' active' : ''}`} onClick={() => setActiveTab('protocol')}>
-              <Flame size={16} /> Burn
+              <Flame size={14} /> Burn
             </button>
             <button className={`nav-link bridge-link${activeTab === 'bridge' ? ' active' : ''}`} onClick={() => setActiveTab('bridge')}>
-              <ArrowLeftRight size={16} /> Bridge
+              <ArrowLeftRight size={14} /> Bridge
             </button>
             <button className={`nav-link${activeTab === 'activity' ? ' active' : ''}`} onClick={() => setActiveTab('activity')}>
-              <Activity size={16} /> Activity
+              <Activity size={14} /> Activity
             </button>
             <button className={`nav-link${activeTab === 'analytics' ? ' active' : ''}`} onClick={() => setActiveTab('analytics')}>
-              <BarChart3 size={16} /> Analytics
+              <BarChart3 size={14} /> Analytics
             </button>
           </>
         ) : (
           <>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-mint' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-mint')}>
-              <Zap size={16} /> Mint & Stake
+              <Zap size={14} /> Mint & Stake
             </button>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-migrate' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-migrate')}>
-              <ArrowLeftRight size={16} /> Migrate
+              <ArrowLeftRight size={14} /> Migrate
             </button>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-analytics' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-analytics')}>
-              <BarChart3 size={16} /> Analytics
+              <BarChart3 size={14} /> Analytics
             </button>
             <a className="nav-link nxd-nav-link" href="https://app.uniswap.org/#/swap?inputCurrency=0x1B08d317963CC65932F3f79F00987B2E23df52Ab&outputCurrency=0xCD6Db53AbD32c1B58265E5468a94eFa3B41E37E4" target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={16} /> Trade NXDv2
+              <ExternalLink size={14} /> Trade NXDv2
             </a>
           </>
         )}
         <a className="nav-link" href={contractLink} target="_blank" rel="noopener noreferrer">
-          <FileCode size={16} /> Contract
+          <FileCode size={14} /> Contract
         </a>
       </div>
       <div className="wallet-area">

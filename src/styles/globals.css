@@ -61,19 +61,19 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 .nav-name { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
 .nav-name span { color: var(--cyan); }
 .nav-links { display: flex; gap: 4px; }
-.nav-link { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; gap: 6px; border: none; background: none; font-family: var(--font); }
+.nav-link { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; gap: 5px; border: none; background: none; font-family: var(--font); white-space: nowrap; }
 .nav-link:hover { color: var(--text-primary); background: var(--bg-card); }
 .nav-link.active { color: var(--cyan); background: var(--cyan-glow); }
 .nav-link.bridge-link { color: var(--amber); border: 1px solid var(--amber-glow); }
 .nav-link.bridge-link:hover { background: var(--amber-glow); color: var(--amber-hover); }
-.btn-connect { padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; background: var(--amber); color: var(--bg-deep); border: none; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 8px; font-family: var(--font); }
+.btn-connect { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--amber); color: var(--bg-deep); border: none; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 6px; font-family: var(--font); white-space: nowrap; }
 .btn-connect:hover { background: var(--amber-hover); transform: translateY(-1px); box-shadow: 0 8px 24px var(--amber-glow); }
 
 /* ═══ WALLET ═══ */
 .wallet-area { position: relative; display: flex; align-items: center; gap: 8px; }
 .wallet-connected { display: flex; align-items: center; gap: 0; position: relative; }
-.wallet-eth { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-right: none; border-radius: 10px 0 0 10px; font-family: var(--font); }
-.wallet-addr-btn { display: flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--text-primary); background: var(--bg-deep); border: 1px solid var(--border); border-radius: 0 10px 10px 0; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+.wallet-eth { padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-right: none; border-radius: 8px 0 0 8px; font-family: var(--font); white-space: nowrap; }
+.wallet-addr-btn { display: flex; align-items: center; gap: 5px; padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-deep); border: 1px solid var(--border); border-radius: 0 8px 8px 0; cursor: pointer; font-family: var(--font); transition: all 0.2s; white-space: nowrap; }
 .wallet-addr-btn:hover { background: var(--bg-card); }
 .wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
 .wallet-dropdown { display: none; position: absolute; top: 48px; right: 0; z-index: 1002; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); min-width: 220px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
