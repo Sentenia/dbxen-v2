@@ -188,7 +188,7 @@ export function NXDProvider({ children }) {
     }
 
     const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, signer);
-    const tx = await protocol.deposit(amount, referralCode);
+    const tx = await protocol.deposit(amount, referralCode, true);
     await tx.wait();
     toast.success('NXDv2 minted!');
     await refreshAll();

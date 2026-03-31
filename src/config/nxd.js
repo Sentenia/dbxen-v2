@@ -14,7 +14,7 @@ export const NXD_CONTRACTS = {
 
 export const NXD_ABIS = {
   NXDProtocol: [
-    'function deposit(uint256 _amount, uint256 _referralCode) external',
+    'function deposit(uint256 _amount, uint256 _referralCode, bool _allowDynamicAmount) external',
     'function depositNoMint(uint256 _amount) external',
     'function createPool(uint256 nxdDesired, uint256 dxnDesired, address to, uint256 deadline) external returns (uint256)',
     'function collectFees() public',
