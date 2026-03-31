@@ -24,6 +24,7 @@ export function NXDProvider({ children }) {
   // Staking vault stats
   const [vaultStats, setVaultStats] = useState({
     totalStaked: 0n, userStake: 0n, pendingRewards: 0n,
+    withdrawRequestAmount: 0n, withdrawRequestTimestamp: 0,
   });
 
   // Migration stats
@@ -103,14 +104,20 @@ export function NXDProvider({ children }) {
       const provider = getReadProvider();
       const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, provider);
 
-      const totalStaked = await vault.totalSupply();
-      let userStake = 0n, pendingRewards = 0n;
+      const totalStaked = await vault.totalStaked();
+      let userStake = 0n, pendingRewards = 0n, withdrawRequestAmount = 0n, withdrawRequestTimestamp = 0;
       if (userAddr) {
-        [userStake, pendingRewards] = await Promise.all([
-          vault.balanceOf(userAddr), vault.earned(userAddr),
+        const [info, pending, wdReq] = await Promise.all([
+          vault.userInfo(0, userAddr),
+          vault.pendingETH(0, userAddr),
+          vault.withdrawalRequests(0, userAddr),
         ]);
+        userStake = info.amount;
+        pendingRewards = pending;
+        withdrawRequestAmount = wdReq.amount;
+        withdrawRequestTimestamp = Number(wdReq.canWithdrawAfterTimestamp);
       }
-      setVaultStats({ totalStaked, userStake, pendingRewards });
+      setVaultStats({ totalStaked, userStake, pendingRewards, withdrawRequestAmount, withdrawRequestTimestamp });
     } catch (e) {
       console.error('[NXD refreshVaultStats]', e);
     }
@@ -200,19 +207,39 @@ export function NXDProvider({ children }) {
     }
 
     const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
-    const tx = await vault.stake(amount);
+    const tx = await vault.deposit(0, amount);
     await tx.wait();
     toast.success('NXDv2 staked!');
     await refreshAll();
   }, [getSigner, userAddr, refreshAll]);
 
-  const unstakeNXD = useCallback(async (amount) => {
+  const unstakeWithPenalty = useCallback(async (amount) => {
     const signer = getSigner();
     if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
     const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
-    const tx = await vault.withdraw(amount);
+    const tx = await vault.withdraw(0, amount, true);
     await tx.wait();
-    toast.success('NXDv2 unstaked!');
+    toast.success('NXDv2 unstaked (25% penalty applied)');
+    await refreshAll();
+  }, [getSigner, refreshAll]);
+
+  const requestWithdraw = useCallback(async (amount) => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
+    const tx = await vault.withdraw(0, amount, false);
+    await tx.wait();
+    toast.success('Withdrawal requested — 24h cooldown started');
+    await refreshAll();
+  }, [getSigner, refreshAll]);
+
+  const completeWithdraw = useCallback(async () => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
+    const tx = await vault.withdrawCooldown(0);
+    await tx.wait();
+    toast.success('Withdrawal complete!');
     await refreshAll();
   }, [getSigner, refreshAll]);
 
@@ -220,7 +247,7 @@ export function NXDProvider({ children }) {
     const signer = getSigner();
     if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
     const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
-    const tx = await vault.getReward();
+    const tx = await vault.deposit(0, 0);
     await tx.wait();
     toast.success('ETH rewards claimed!');
     await refreshAll();
@@ -266,7 +293,7 @@ export function NXDProvider({ children }) {
     <NXDContext.Provider value={{
       protocolStats, vaultStats, migrationStats,
       nxdBal, oldNxdBal, dxnBal, userReferral,
-      deposit, stakeNXD, unstakeNXD, claimETHRewards,
+      deposit, stakeNXD, unstakeWithPenalty, requestWithdraw, completeWithdraw, claimETHRewards,
       migrateOldNXD, setReferralCode, refreshAll,
     }}>
       {children}

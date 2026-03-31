@@ -1,41 +1,59 @@
-import { useState } from 'react';
-import { Lock, Wallet, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Lock, Wallet, Loader2, Timer, AlertTriangle, Clock } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
 import { useWallet } from '../../hooks/WalletContext';
-import { fmt } from '../../utils/helpers';
+import { fmt, formatTimerHMS } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function NXDStakeCard() {
-  const { nxdBal, vaultStats, stakeNXD, unstakeNXD, claimETHRewards } = useNXD();
+  const { nxdBal, vaultStats, stakeNXD, unstakeWithPenalty, requestWithdraw, completeWithdraw, claimETHRewards } = useNXD();
   const { connected, connectWallet } = useWallet();
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState('');
+  const [cooldownStr, setCooldownStr] = useState('');
 
-  const handleStake = async () => {
+  const hasWithdrawRequest = vaultStats.withdrawRequestAmount > 0n;
+  const now = Math.floor(Date.now() / 1000);
+  const cooldownReady = hasWithdrawRequest && vaultStats.withdrawRequestTimestamp > 0 && now >= vaultStats.withdrawRequestTimestamp;
+
+  useEffect(() => {
+    if (!hasWithdrawRequest || !vaultStats.withdrawRequestTimestamp) { setCooldownStr(''); return; }
+    const tick = () => {
+      const s = vaultStats.withdrawRequestTimestamp - Math.floor(Date.now() / 1000);
+      if (s <= 0) setCooldownStr('Ready to withdraw');
+      else setCooldownStr(formatTimerHMS(s));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [hasWithdrawRequest, vaultStats.withdrawRequestTimestamp]);
+
+  const wrap = async (action, fn) => {
+    setBusy(true); setBusyAction(action);
+    try { await fn(); } catch (e) { toast.error((action === 'stake' ? 'Stake' : action === 'claim' ? 'Claim' : 'Withdraw') + ' failed: ' + (e.reason || e.message)); }
+    finally { setBusy(false); setBusyAction(''); }
+  };
+
+  const handleStake = () => {
     if (!connected) { connectWallet(); return; }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return; }
-    setBusy(true); setBusyAction('stake');
-    try { await stakeNXD(ethers.parseEther(amount)); setAmount(''); }
-    catch (e) { toast.error('Stake failed: ' + (e.reason || e.message)); }
-    finally { setBusy(false); setBusyAction(''); }
+    wrap('stake', async () => { await stakeNXD(ethers.parseEther(amount)); setAmount(''); });
   };
 
-  const handleUnstake = async () => {
+  const handleUnstakePenalty = () => {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return; }
-    setBusy(true); setBusyAction('unstake');
-    try { await unstakeNXD(ethers.parseEther(amount)); setAmount(''); }
-    catch (e) { toast.error('Unstake failed: ' + (e.reason || e.message)); }
-    finally { setBusy(false); setBusyAction(''); }
+    wrap('unstake-penalty', async () => { await unstakeWithPenalty(ethers.parseEther(amount)); setAmount(''); });
   };
 
-  const handleClaim = async () => {
-    setBusy(true); setBusyAction('claim');
-    try { await claimETHRewards(); }
-    catch (e) { toast.error('Claim failed: ' + (e.reason || e.message)); }
-    finally { setBusy(false); setBusyAction(''); }
+  const handleRequestWithdraw = () => {
+    if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return; }
+    wrap('request-wd', async () => { await requestWithdraw(ethers.parseEther(amount)); setAmount(''); });
   };
+
+  const handleCompleteWithdraw = () => wrap('complete-wd', completeWithdraw);
+  const handleClaim = () => wrap('claim', claimETHRewards);
 
   return (
     <div className="card card-hover fade-up fade-up-3 nxd-card">
@@ -63,15 +81,40 @@ export default function NXDStakeCard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-        <button className="btn-action nxd-btn-primary" style={{ flex: 1 }} onClick={handleStake} disabled={!connected || busy}>
-          {busy && busyAction === 'stake' ? <Loader2 size={16} className="spin" /> : null}
-          {busy && busyAction === 'stake' ? 'Staking...' : 'Stake'}
+      {/* Stake button */}
+      <button className={`btn-action nxd-btn-primary btn-shimmer${busy && busyAction === 'stake' ? ' btn-loading' : ''}`} style={{ marginBottom: 10 }} onClick={handleStake} disabled={!connected || busy}>
+        {busy && busyAction === 'stake' ? <Loader2 size={16} className="spin" /> : <Lock size={16} />}
+        {busy && busyAction === 'stake' ? 'Staking...' : connected ? 'Stake NXDv2' : 'Connect Wallet'}
+      </button>
+
+      {/* Unstake options */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button className="btn-action nxd-btn-secondary" style={{ flex: 1, fontSize: 12, padding: '10px 6px' }} onClick={handleUnstakePenalty} disabled={!connected || busy || vaultStats.userStake === 0n}>
+          {busy && busyAction === 'unstake-penalty' ? <Loader2 size={14} className="spin" /> : <AlertTriangle size={14} />}
+          {busy && busyAction === 'unstake-penalty' ? ' Unstaking...' : ' Unstake (25% penalty)'}
         </button>
-        <button className="btn-action nxd-btn-secondary" style={{ flex: 1 }} onClick={handleUnstake} disabled={!connected || busy}>
-          {busy && busyAction === 'unstake' ? 'Unstaking...' : 'Unstake'}
+        <button className="btn-action nxd-btn-secondary" style={{ flex: 1, fontSize: 12, padding: '10px 6px' }} onClick={handleRequestWithdraw} disabled={!connected || busy || vaultStats.userStake === 0n}>
+          {busy && busyAction === 'request-wd' ? <Loader2 size={14} className="spin" /> : <Clock size={14} />}
+          {busy && busyAction === 'request-wd' ? ' Requesting...' : ' Request Withdraw (24h)'}
         </button>
       </div>
+
+      {/* Pending withdrawal request */}
+      {hasWithdrawRequest && (
+        <div style={{ marginBottom: 12, padding: 14, background: 'var(--bg-deep)', border: '1px solid var(--amber-glow)', borderRadius: 'var(--radius)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Withdrawal</span>
+            <span className="pending-unlock-timer"><Timer size={12} /> {cooldownStr}</span>
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--amber)', marginBottom: 8 }}>
+            {fmt(vaultStats.withdrawRequestAmount)} NXDv2
+          </div>
+          <button className="btn-action nxd-btn-primary" style={{ padding: 10, fontSize: 13 }} onClick={handleCompleteWithdraw} disabled={!cooldownReady || busy}>
+            {busy && busyAction === 'complete-wd' ? <Loader2 size={14} className="spin" /> : null}
+            {busy && busyAction === 'complete-wd' ? ' Completing...' : cooldownReady ? 'Complete Withdrawal' : 'Waiting for cooldown...'}
+          </button>
+        </div>
+      )}
 
       {/* Pending ETH Rewards */}
       <div style={{ marginBottom: 12, padding: 14, background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
@@ -96,7 +139,7 @@ export default function NXDStakeCard() {
       </div>
 
       <div style={{ marginTop: 12, padding: 12, background: 'var(--bg-deep)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Note: 24h cooldown on withdrawals. Early withdrawal incurs a 25% penalty.
+        <strong style={{ color: 'var(--text-secondary)' }}>Withdrawal options:</strong> Instant unstake burns 25% of your withdrawal as a penalty. Alternatively, request a withdrawal to start a 24h cooldown — after which you can withdraw the full amount with no penalty.
       </div>
     </div>
   );
