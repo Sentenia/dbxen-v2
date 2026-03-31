@@ -34,7 +34,8 @@ export default function NXDHero() {
 
   const supplyFloat = protocolStats.nxdSupply > 0n ? parseFloat(ethers.formatEther(protocolStats.nxdSupply)) : (hasData ? 0 : null);
   const burnedFloat = protocolStats.nxdBurned > 0n ? parseFloat(ethers.formatEther(protocolStats.nxdBurned)) : (hasData ? 0 : null);
-  const dxnStakedFloat = protocolStats.dxnStaked > 0n ? parseFloat(ethers.formatEther(protocolStats.dxnStaked)) : (hasData ? 0 : null);
+  const dxnLockedTotal = (protocolStats.dxnStaked || 0n) + (protocolStats.totalDXNDeposited || 0n);
+  const dxnStakedFloat = dxnLockedTotal > 0n ? parseFloat(ethers.formatEther(dxnLockedTotal)) : (hasData ? 0 : null);
   const ethDistFloat = protocolStats.ethToVault > 0n ? parseFloat(ethers.formatEther(protocolStats.ethToVault)) : (hasData ? 0 : null);
 
   return (

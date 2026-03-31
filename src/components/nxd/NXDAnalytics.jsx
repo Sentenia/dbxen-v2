@@ -14,7 +14,8 @@ export default function NXDAnalytics() {
   const stakedFloat = parseFloat(ethers.formatEther(vaultStats.totalStaked || 0n));
   const pooledFloat = parseFloat(ethers.formatEther(protocolStats.nxdInLP || 0n));
   const circulatingFloat = Math.max(supplyFloat - stakedFloat - pooledFloat, 0);
-  const dxnStakedFloat = parseFloat(ethers.formatEther(protocolStats.dxnStaked || 0n));
+  const dxnLockedTotal = (protocolStats.dxnStaked || 0n) + (protocolStats.totalDXNDeposited || 0n);
+  const dxnStakedFloat = parseFloat(ethers.formatEther(dxnLockedTotal));
   const dxnBurnedFloat = parseFloat(ethers.formatEther(protocolStats.dxnBurned || 0n));
   const ethVaultFloat = parseFloat(ethers.formatEther(protocolStats.ethToVault || 0n));
   const maxSupFloat = parseFloat(ethers.formatEther(protocolStats.maxSupply || 0n));
