@@ -39,7 +39,7 @@ export default function Hero() {
 
   return (
     <section className="hero fade-up">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 24 }}>
+      <div className="hero-badges-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 24 }}>
         <div className="hero-badge"><span className="pulse-dot" /> Live on {chain.name}</div>
         <div className="hero-badge" style={{ color: 'var(--amber)', borderColor: 'var(--amber-glow)', background: 'var(--amber-glow)' }}>
           <Timer size={14} /> Next cycle: {timerStr}

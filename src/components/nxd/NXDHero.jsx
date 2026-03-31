@@ -39,7 +39,7 @@ export default function NXDHero() {
 
   return (
     <section className="hero fade-up nxd-hero">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 24 }}>
+      <div className="hero-badges-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 24 }}>
         <div className="hero-badge nxd-badge"><span className="pulse-dot nxd-pulse" /> Live on Ethereum</div>
         <div className="hero-badge nxd-badge-timer">
           <Timer size={14} /> CSP: {timerStr}
