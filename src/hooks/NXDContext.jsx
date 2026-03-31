@@ -18,7 +18,7 @@ export function NXDProvider({ children }) {
     nxdSupply: 0n, nxdBurned: 0n, dxnStaked: 0n, dxnBurned: 0n,
     ethToVault: 0n, ethDevFee: 0n, currentRate: 0n,
     startTime: 0, endTime: 0, totalDXNDeposited: 0n,
-    maxSupply: 0n, pendingDXNToStake: 0n,
+    maxSupply: 0n, pendingDXNToStake: 0n, nxdInLP: 0n,
   });
 
   // Staking vault stats
@@ -79,19 +79,24 @@ export function NXDProvider({ children }) {
       const [
         supply, burned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee, rate,
-        start, end, totalDeposited, maxSup, pendingDxn,
+        start, end, totalDeposited, maxSup, pendingDxn, pairAddr,
       ] = await Promise.all([
         token.totalSupply(), token.totalNXDBurned(), protocol.totalDXNStaked(), protocol.totalDXNBurned(),
         protocol.totalETHToStakingVault(), protocol.totalETHDevFee(), protocol.currentRate(),
         protocol.startTime(), protocol.endTime(), protocol.totalDXNDepositedLMP(),
-        token.maxSupply(), protocol.pendingDXNToStake(),
+        token.maxSupply(), protocol.pendingDXNToStake(), token.uniswapV2Pair(),
       ]);
+
+      let nxdInLP = 0n;
+      if (pairAddr && pairAddr !== ethers.ZeroAddress) {
+        try { nxdInLP = await token.balanceOf(pairAddr); } catch {}
+      }
 
       setProtocolStats({
         nxdSupply: supply, nxdBurned: burned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee, currentRate: rate,
         startTime: Number(start), endTime: Number(end),
-        totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn,
+        totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn, nxdInLP,
       });
     } catch (e) {
       console.error('[NXD refreshProtocolStats]', e);
