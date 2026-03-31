@@ -153,7 +153,7 @@ export default function App() {
           {!isNXD && <StatsTicker />}
           {isNXD ? <NXDHero /> : <Hero />}
           <TabContent activeTab={activeTab} />
-          <Footer />
+          <Footer protocolMode={protocolMode} />
         </div>
         <BottomTabBar activeTab={activeTab} setActiveTab={setActiveTab} protocolMode={protocolMode} />
       </NXDWrapper>

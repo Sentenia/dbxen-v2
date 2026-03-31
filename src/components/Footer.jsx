@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BookOpen, Github, ExternalLink, Copy, Check } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
+import { NXD_CONTRACTS } from '../config/nxd';
 
 function FooterAddr({ label, addr, explorer }) {
   const [copied, setCopied] = useState(false);
@@ -16,21 +17,32 @@ function FooterAddr({ label, addr, explorer }) {
   );
 }
 
-export default function Footer() {
+export default function Footer({ protocolMode }) {
   const { chain } = useWallet();
+  const isNXD = protocolMode === 'nxd';
   const ct = chain.contracts;
-  const ex = chain.explorer;
+  const ex = isNXD ? 'https://etherscan.io' : chain.explorer;
 
-  const rows = [
-    { label: chain.xenSym + ':', addr: ct.XEN },
-    { label: 'DBXenV2:', addr: ct.DBXEN_V2 },
-    { label: chain.dxnSym + 'v2:', addr: ct.DXN_V2 },
-    { label: 'Migration:', addr: ct.MIGRATION },
-  ];
-  if (chain.legacy) {
-    rows.push({ label: 'Old DBXenV2:', addr: chain.legacy.DBXEN_V2 });
-    rows.push({ label: 'Old ' + chain.dxnSym + 'v2:', addr: chain.legacy.DXN_V2 });
-    rows.push({ label: 'Old Migration:', addr: chain.legacy.MIGRATION });
+  let rows;
+  if (isNXD) {
+    rows = [
+      { label: 'NXDProtocol:', addr: NXD_CONTRACTS.NXDProtocol },
+      { label: 'NXDv2 Token:', addr: NXD_CONTRACTS.NXDv2Token },
+      { label: 'StakingVault:', addr: NXD_CONTRACTS.NXDStakingVault },
+      { label: 'Migration:', addr: NXD_CONTRACTS.NXDMigrationV2 },
+    ];
+  } else {
+    rows = [
+      { label: chain.xenSym + ':', addr: ct.XEN },
+      { label: 'DBXenV2:', addr: ct.DBXEN_V2 },
+      { label: chain.dxnSym + 'v2:', addr: ct.DXN_V2 },
+      { label: 'Migration:', addr: ct.MIGRATION },
+    ];
+    if (chain.legacy) {
+      rows.push({ label: 'Old DBXenV2:', addr: chain.legacy.DBXEN_V2 });
+      rows.push({ label: 'Old ' + chain.dxnSym + 'v2:', addr: chain.legacy.DXN_V2 });
+      rows.push({ label: 'Old Migration:', addr: chain.legacy.MIGRATION });
+    }
   }
 
   return (
