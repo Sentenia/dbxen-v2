@@ -1,10 +1,19 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BarChart3, PieChart } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
-import { fmt } from '../../utils/helpers';
 
 const INITIAL_SUPPLY = 5000;
+
+const SEGMENTS = [
+  { key: 'circulating', label: 'Circulating', color: '#627EEA' },
+  { key: 'staked', label: 'Staked', color: '#34d399' },
+  { key: 'pooled', label: 'Pooled (LP)', color: '#22d3ee' },
+  { key: 'burned', label: 'Burned', color: '#f87171' },
+];
+
+function fmtNum(v) {
+  return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
 
 export default function NXDAnalytics() {
   const { protocolStats, vaultStats, migrationStats } = useNXD();
@@ -29,14 +38,13 @@ export default function NXDAnalytics() {
     ? ((ethVaultFloat / stakedFloat) * 365 * 100).toFixed(1)
     : '—';
 
-  const distributionData = [
-    { name: 'Circulating', value: circulatingFloat },
-    { name: 'Staked', value: stakedFloat },
-    { name: 'Pooled (LP)', value: pooledFloat },
-    { name: 'Burned', value: burnedFloat },
-  ].filter(d => d.value > 0);
+  // Total includes burned (for percentage calculations)
+  const total = circulatingFloat + stakedFloat + pooledFloat + burnedFloat;
+  const values = { circulating: circulatingFloat, staked: stakedFloat, pooled: pooledFloat, burned: burnedFloat };
+  const pcts = {};
+  for (const s of SEGMENTS) pcts[s.key] = total > 0 ? (values[s.key] / total) * 100 : 0;
 
-  const COLORS = ['#f59e0b', '#34d399', '#60a5fa', '#f87171'];
+  const hasData = total > 0;
 
   return (
     <div className="analytics-page fade-up">
@@ -44,23 +52,46 @@ export default function NXDAnalytics() {
         {/* Distribution Chart */}
         <div className="analytics-card nxd-card">
           <div className="analytics-card-title"><BarChart3 size={16} className="nxd-accent" /> NXDv2 Distribution</div>
-          {distributionData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={distributionData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                <XAxis type="number" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v.toFixed(0)} />
-                <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} width={80} />
-                <Tooltip
-                  contentStyle={{ background: '#111827', border: '1px solid #1e2a3a', borderRadius: 8, color: '#f0f4f8', fontSize: 13 }}
-                  formatter={v => [v.toLocaleString('en-US', { maximumFractionDigits: 2 }), 'NXDv2']}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={28}>
-                  {distributionData.map((entry, i) => {
-                    const colorMap = { 'Circulating': COLORS[0], 'Staked': COLORS[1], 'Pooled (LP)': COLORS[2], 'Burned': COLORS[3] };
-                    return <Cell key={i} fill={colorMap[entry.name] || COLORS[i % COLORS.length]} />;
+          {hasData ? (
+            <>
+              {/* Stacked vertical bar */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                <div style={{ width: 90, height: 300, borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {SEGMENTS.map(s => {
+                    const pct = pcts[s.key];
+                    if (pct <= 0) return null;
+                    return (
+                      <div
+                        key={s.key}
+                        style={{
+                          flex: `${pct} 0 0%`,
+                          background: s.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          minHeight: pct > 3 ? 0 : 0,
+                          position: 'relative',
+                        }}
+                      >
+                        {pct >= 5 && (
+                          <span style={{ color: '#fff', fontSize: 12, fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                            {pct.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    );
                   })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px', justifyContent: 'center', marginTop: 8 }}>
+                {SEGMENTS.map(s => (
+                  <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                    <span>{s.label}: <strong style={{ color: 'var(--text-primary)' }}>{fmtNum(values[s.key])}</strong> <span style={{ color: 'var(--text-muted)' }}>({pcts[s.key].toFixed(2)}%)</span></span>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading data...</div>
           )}
@@ -71,7 +102,7 @@ export default function NXDAnalytics() {
           <div className="analytics-card-title"><PieChart size={16} className="nxd-accent" /> Protocol Analytics</div>
           <div className="stat-row">
             <span className="stat-label">Effective Supply</span>
-            <span className="stat-value">{effectiveSupply.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value">{fmtNum(effectiveSupply)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">Max Supply</span>
@@ -79,15 +110,15 @@ export default function NXDAnalytics() {
           </div>
           <div className="stat-row">
             <span className="stat-label">NXDv2 Minted (CSP)</span>
-            <span className="stat-value" style={{ color: 'var(--amber)' }}>{cspMinted.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmtNum(cspMinted)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">CSP DXN Deposited</span>
-            <span className="stat-value">{cspDepositsFloat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value">{fmtNum(cspDepositsFloat)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">Total Migrated (Bridge)</span>
-            <span className="stat-value">{totalMigratedFloat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value">{fmtNum(totalMigratedFloat)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">NXD Burned %</span>
@@ -95,11 +126,11 @@ export default function NXDAnalytics() {
           </div>
           <div className="stat-row">
             <span className="stat-label">DXN Locked</span>
-            <span className="stat-value">{dxnStakedFloat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value">{fmtNum(dxnStakedFloat)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">DXN Burned</span>
-            <span className="stat-value" style={{ color: 'var(--red)' }}>{dxnBurnedFloat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+            <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(dxnBurnedFloat)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">Total ETH Distributed</span>
