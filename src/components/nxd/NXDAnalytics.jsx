@@ -34,6 +34,10 @@ export default function NXDAnalytics() {
   const cspDepositsFloat = parseFloat(ethers.formatEther(protocolStats.totalDXNDeposited || 0n));
   const totalMigratedFloat = parseFloat(ethers.formatEther(migrationStats.totalSwapped || 0n));
 
+  const nxdPenaltyBurnedFloat = parseFloat(ethers.formatEther(vaultStats.nxdPenaltyBurned || 0n));
+  const dxnV2SupplyFloat = parseFloat(ethers.formatEther(protocolStats.dxnV2TotalSupply || 0n));
+  const dxnLockedPct = dxnV2SupplyFloat > 0 ? ((dxnStakedFloat / dxnV2SupplyFloat) * 100).toFixed(2) : '0.00';
+
   const aprEstimate = stakedFloat > 0 && ethVaultFloat > 0
     ? ((ethVaultFloat / stakedFloat) * 365 * 100).toFixed(1)
     : '—';
@@ -131,6 +135,14 @@ export default function NXDAnalytics() {
           <div className="stat-row">
             <span className="stat-label">DXN Burned</span>
             <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(dxnBurnedFloat)}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">DXN Locked % of Supply</span>
+            <span className="stat-value" style={{ color: 'var(--amber)' }}>{dxnLockedPct}%</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">NXD Burned (Unstake Penalty)</span>
+            <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(nxdPenaltyBurnedFloat)}</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">Total ETH Distributed</span>

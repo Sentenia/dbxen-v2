@@ -31,6 +31,8 @@ export default function NXDVaultStats() {
 
   const isRenounced = governance && governance === ethers.ZeroAddress;
 
+  const totalDxnLocked = (protocolStats.totalDXNDeposited || 0n) + (protocolStats.dxnStaked || 0n);
+
   const maxSupFloat = protocolStats.maxSupply > 0n ? parseFloat(ethers.formatEther(protocolStats.maxSupply)) : 0;
   const burnPct = protocolStats.nxdSupply > 0n && protocolStats.nxdBurned > 0n
     ? ((parseFloat(ethers.formatEther(protocolStats.nxdBurned)) / (parseFloat(ethers.formatEther(protocolStats.nxdSupply)) + parseFloat(ethers.formatEther(protocolStats.nxdBurned)))) * 100).toFixed(2)
@@ -38,34 +40,61 @@ export default function NXDVaultStats() {
 
   return (
     <div className="nxd-vault-stats fade-up fade-up-3">
-      {/* DXN Staking Vault */}
+      {/* DXN Holdings TVL Overview */}
       <div className="card nxd-card">
         <div className="card-header">
           <div className="card-icon nxd-icon-stake"><Lock size={20} color="white" /></div>
           <div>
-            <div className="card-title">DXN Staking Vault</div>
+            <div className="card-title">DXN Holdings TVL Overview</div>
             <div className="card-desc">Protocol DXN lock metrics</div>
           </div>
         </div>
         <div className="stat-row">
-          <span className="stat-label">Total DXN Staked</span>
+          <span className="stat-label">DXN Staked (LMP)</span>
+          <span className="stat-value">{fmt(protocolStats.totalDXNDeposited)} DXN</span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">DXN Compounded</span>
           <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXN</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">Total DXN Burned</span>
-          <span className="stat-value" style={{ color: 'var(--red)' }}>{fmt(protocolStats.dxnBurned)} DXN</span>
+          <span className="stat-label">Total DXN Locked</span>
+          <span className="stat-value" style={{ color: 'var(--amber)', fontWeight: 700 }}>{fmt(totalDxnLocked)} DXN</span>
+        </div>
+      </div>
+
+      {/* ETH Distribution Strategy */}
+      <div className="card nxd-card">
+        <div className="card-header">
+          <div className="card-icon nxd-icon-stake"><Lock size={20} color="white" /></div>
+          <div>
+            <div className="card-title">ETH Distribution Strategy</div>
+            <div className="card-desc">Protocol fee allocation</div>
+          </div>
         </div>
         <div className="stat-row">
-          <span className="stat-label">ETH to Staking Vault</span>
+          <span className="stat-label">Total ETH Distributed</span>
           <span className="stat-value" style={{ color: 'var(--green)' }}>{fmt(protocolStats.ethToVault, 4)} ETH</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">ETH Dev Fee</span>
-          <span className="stat-value">{fmt(protocolStats.ethDevFee, 4)} ETH</span>
+          <span className="stat-label">DXN Compounded</span>
+          <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXN</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">Pending DXN to Stake</span>
-          <span className="stat-value">{fmt(protocolStats.pendingDXNToStake)} DXN</span>
+          <span className="stat-label">DXN Burned</span>
+          <span className="stat-value" style={{ color: 'var(--red)' }}>{fmt(protocolStats.dxnBurned)} DXN</span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">NXD Burned</span>
+          <span className="stat-value" style={{ color: 'var(--red)' }}>{fmt(protocolStats.nxdBurned)} NXD</span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">To Staking Vault</span>
+          <span className="stat-value" style={{ color: 'var(--green)' }}>{fmt(protocolStats.ethToVault, 4)} ETH</span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">Dev Fee</span>
+          <span className="stat-value">{fmt(protocolStats.ethDevFee, 4)} ETH</span>
         </div>
       </div>
 

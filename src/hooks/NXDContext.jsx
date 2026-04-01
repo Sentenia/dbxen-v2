@@ -18,13 +18,14 @@ export function NXDProvider({ children }) {
     nxdSupply: 0n, nxdBurned: 0n, dxnStaked: 0n, dxnBurned: 0n,
     ethToVault: 0n, ethDevFee: 0n, currentRate: 0n,
     startTime: 0, endTime: 0, totalDXNDeposited: 0n,
-    maxSupply: 0n, pendingDXNToStake: 0n, nxdInLP: 0n,
+    maxSupply: 0n, pendingDXNToStake: 0n, nxdInLP: 0n, dxnV2TotalSupply: 0n,
   });
 
   // Staking vault stats
   const [vaultStats, setVaultStats] = useState({
     totalStaked: 0n, userStake: 0n, pendingRewards: 0n,
     withdrawRequestAmount: 0n, withdrawRequestTimestamp: 0,
+    nxdPenaltyBurned: 0n,
   });
 
   // Migration stats
@@ -92,11 +93,19 @@ export function NXDProvider({ children }) {
         try { nxdInLP = await token.balanceOf(pairAddr); } catch {}
       }
 
+      let dxnV2TotalSupply = 0n;
+      try {
+        const dxnToken = new ethers.Contract(NXD_CONTRACTS.DXNv2, [
+          'function totalSupply() view returns (uint256)',
+        ], provider);
+        dxnV2TotalSupply = await dxnToken.totalSupply();
+      } catch {}
+
       setProtocolStats({
         nxdSupply: supply, nxdBurned: burned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee, currentRate: rate,
         startTime: Number(start), endTime: Number(end),
-        totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn, nxdInLP,
+        totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn, nxdInLP, dxnV2TotalSupply,
       });
     } catch (e) {
       console.error('[NXD refreshProtocolStats]', e);
@@ -109,7 +118,9 @@ export function NXDProvider({ children }) {
       const provider = getReadProvider();
       const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, provider);
 
-      const totalStaked = await vault.totalStaked();
+      const [totalStaked, nxdPenaltyBurned] = await Promise.all([
+        vault.totalStaked(), vault.nxdPenaltyBurned(),
+      ]);
       let userStake = 0n, pendingRewards = 0n, withdrawRequestAmount = 0n, withdrawRequestTimestamp = 0;
       if (userAddr) {
         const [info, pending, wdReq] = await Promise.all([
@@ -122,7 +133,7 @@ export function NXDProvider({ children }) {
         withdrawRequestAmount = wdReq.amount;
         withdrawRequestTimestamp = Number(wdReq.canWithdrawAfterTimestamp);
       }
-      setVaultStats({ totalStaked, userStake, pendingRewards, withdrawRequestAmount, withdrawRequestTimestamp });
+      setVaultStats({ totalStaked, userStake, pendingRewards, withdrawRequestAmount, withdrawRequestTimestamp, nxdPenaltyBurned });
     } catch (e) {
       console.error('[NXD refreshVaultStats]', e);
     }
