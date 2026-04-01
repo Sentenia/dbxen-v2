@@ -144,7 +144,7 @@ export default function NXDAnalytics() {
             <span className="stat-label">NXD Burned (Unstake Penalty)</span>
             <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(nxdPenaltyBurnedFloat)}</span>
           </div>
-          <div className="stat-row">
+          <div className="stat-row stat-total">
             <span className="stat-label">Total ETH Distributed</span>
             <span className="stat-value" style={{ color: 'var(--green)' }}>{ethVaultFloat.toFixed(4)} ETH</span>
           </div>

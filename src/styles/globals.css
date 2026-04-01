@@ -556,7 +556,22 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .nxd-hero .hero-badge.nxd-badge { color: var(--amber); background: var(--amber-glow); border-color: var(--amber); }
 .nxd-hero .hero-badge.nxd-badge-timer { color: var(--amber); border-color: var(--amber-glow); background: var(--amber-glow); }
 .nxd-hero .nxd-pulse { background: var(--amber); }
-.nxd-hero h1 { }
+
+/* Hero stats frosted glass */
+.nxd-hero .hero-stats { background: rgba(17,24,39,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; }
+
+/* Stat total emphasis row */
+.stat-row.stat-total { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 2px; }
+.stat-row.stat-total .stat-value { font-size: 16px; font-weight: 700; }
+
+/* Withdrawal info box */
+.nxd-info-box { margin-top: 12px; padding: 12px 12px 12px 15px; background: var(--amber-glow); border-radius: var(--radius); border: 1px solid rgba(245,158,11,0.15); border-left: 3px solid var(--amber); font-size: 12px; color: 'var(--text-muted)'; line-height: 1.5; display: flex; gap: 8px; align-items: flex-start; }
+.nxd-info-box .nxd-info-icon { flex-shrink: 0; color: var(--amber); margin-top: 1px; }
+
+/* CSP progress bar shimmer */
+.csp-bar-fill { position: relative; overflow: hidden; }
+.csp-bar-fill::after { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent); animation: csp-shimmer 3s ease-in-out infinite; }
+@keyframes csp-shimmer { 0%, 100% { left: -100%; } 50% { left: 100%; } }
 
 .nxd-card:hover { border-color: var(--amber-glow) !important; }
 .nxd-icon-mint { background: linear-gradient(135deg, var(--amber), #d97706) !important; }

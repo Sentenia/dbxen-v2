@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lock, Wallet, Loader2, Timer, AlertTriangle, Clock } from 'lucide-react';
+import { Lock, Wallet, Loader2, Timer, AlertTriangle, Clock, Info } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
 import { useWallet } from '../../hooks/WalletContext';
@@ -138,8 +138,11 @@ export default function NXDStakeCard() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, padding: 12, background: 'var(--bg-deep)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        <strong style={{ color: 'var(--text-secondary)' }}>Withdrawal options:</strong> Instant unstake burns 25% of your withdrawal as a penalty. Alternatively, request a withdrawal to start a 24h cooldown — after which you can withdraw the full amount with no penalty.
+      <div className="nxd-info-box">
+        <Info size={14} className="nxd-info-icon" />
+        <div style={{ color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-secondary)' }}>Withdrawal options:</strong> Instant unstake burns 25% of your withdrawal as a penalty. Alternatively, request a withdrawal to start a 24h cooldown — after which you can withdraw the full amount with no penalty.
+        </div>
       </div>
     </div>
   );

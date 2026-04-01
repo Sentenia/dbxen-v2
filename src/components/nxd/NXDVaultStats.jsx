@@ -57,9 +57,9 @@ export default function NXDVaultStats() {
           <span className="stat-label">DXN Compounded</span>
           <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXN</span>
         </div>
-        <div className="stat-row">
+        <div className="stat-row stat-total">
           <span className="stat-label">Total DXN Locked</span>
-          <span className="stat-value" style={{ color: 'var(--amber)', fontWeight: 700 }}>{fmt(totalDxnLocked)} DXN</span>
+          <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmt(totalDxnLocked)} DXN</span>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default function NXDVaultStats() {
             <div className="card-desc">Protocol fee allocation</div>
           </div>
         </div>
-        <div className="stat-row">
+        <div className="stat-row stat-total">
           <span className="stat-label">Total ETH Distributed</span>
           <span className="stat-value" style={{ color: 'var(--green)' }}>{fmt(protocolStats.ethToVault, 4)} ETH</span>
         </div>

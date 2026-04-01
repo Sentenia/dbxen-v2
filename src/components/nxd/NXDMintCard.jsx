@@ -77,7 +77,7 @@ export default function NXDMintCard() {
           <span style={{ color: 'var(--amber)', fontWeight: 600 }}>{timerStr}</span>
         </div>
         <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--amber), #d97706)', borderRadius: 3, transition: 'width 1s', width: `${progressPct}%` }} />
+          <div className="csp-bar-fill" style={{ height: '100%', background: 'linear-gradient(90deg, var(--amber), #d97706)', borderRadius: 3, transition: 'width 1s', width: `${progressPct}%` }} />
         </div>
         <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
           Current Rate: <span style={{ color: 'var(--amber)', fontWeight: 600 }}>{rateFloat.toFixed(4)} NXD/DXN</span>
