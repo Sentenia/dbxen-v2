@@ -23,6 +23,7 @@ import NXDStakeCard from './components/nxd/NXDStakeCard';
 import NXDVaultStats from './components/nxd/NXDVaultStats';
 import NXDMigrateCard from './components/nxd/NXDMigrateCard';
 import NXDAnalytics from './components/nxd/NXDAnalytics';
+import NXDReferralCard from './components/nxd/NXDReferralCard';
 
 function TabContent({ activeTab }) {
   const [rendered, setRendered] = useState(activeTab);
@@ -73,6 +74,7 @@ function TabContent({ activeTab }) {
       )}
       {rendered === 'nxd-mint' && (
         <section className="content">
+          <NXDReferralCard />
           <div className="card-grid">
             <NXDMintCard />
             <NXDStakeCard />

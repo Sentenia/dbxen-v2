@@ -15,6 +15,12 @@ export default function NXDMintCard() {
   const [timerStr, setTimerStr] = useState('—');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) setReferralCode(ref);
+  }, []);
+
+  useEffect(() => {
     if (!protocolStats.endTime) return;
     const tick = () => {
       const s = protocolStats.endTime - Math.floor(Date.now() / 1000);

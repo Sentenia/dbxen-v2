@@ -298,6 +298,16 @@ export function NXDProvider({ children }) {
     await refreshAll();
   }, [getSigner, refreshAll]);
 
+  const withdrawReferralRewards = useCallback(async () => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, signer);
+    const tx = await protocol.withdrawReferralRewards();
+    await tx.wait();
+    toast.success('Referral rewards claimed!');
+    await refreshAll();
+  }, [getSigner, refreshAll]);
+
   // ═══ AUTO REFRESH ═══
   useEffect(() => {
     refreshAll();
@@ -310,7 +320,7 @@ export function NXDProvider({ children }) {
       protocolStats, vaultStats, migrationStats,
       nxdBal, oldNxdBal, dxnBal, userReferral,
       deposit, stakeNXD, unstakeWithPenalty, requestWithdraw, completeWithdraw, claimETHRewards,
-      migrateOldNXD, setReferralCode, refreshAll,
+      migrateOldNXD, setReferralCode, withdrawReferralRewards, refreshAll,
     }}>
       {children}
     </NXDContext.Provider>
