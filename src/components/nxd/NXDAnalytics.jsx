@@ -1,6 +1,7 @@
 import { BarChart3, PieChart } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
+import { fmtFixed } from '../../utils/helpers';
 
 const INITIAL_SUPPLY = 5000;
 
@@ -146,7 +147,7 @@ export default function NXDAnalytics() {
           </div>
           <div className="stat-row stat-total">
             <span className="stat-label">Total ETH Distributed</span>
-            <span className="stat-value" style={{ color: 'var(--green)' }}>{ethVaultFloat.toFixed(4)} ETH</span>
+            <span className="stat-value" style={{ color: 'var(--green)' }}>{fmtFixed(protocolStats.ethToVault || 0n, 6)} ETH</span>
           </div>
           <div className="stat-row">
             <span className="stat-label">Est. APR</span>
