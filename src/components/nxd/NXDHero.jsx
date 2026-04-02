@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Timer } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
-import { fmt, formatTimer } from '../../utils/helpers';
+import { fmt, fmtFixed, formatTimer } from '../../utils/helpers';
 import AnimatedNumber from '../AnimatedNumber';
 import Skeleton from '../Skeleton';
 
@@ -69,7 +69,7 @@ export default function NXDHero() {
         </div>
         <div className="hero-stat">
           <div className="hero-stat-value nxd-accent">
-            {loaded ? <AnimatedNumber value={ethDistFloat} decimals={4} /> : <Skeleton width="60px" />}
+            {loaded ? (hasData && protocolStats.ethToVault > 0n ? fmtFixed(protocolStats.ethToVault, 6) : '0.000000') : <Skeleton width="60px" />}
           </div>
           <div className="hero-stat-label">ETH Distributed</div>
         </div>
