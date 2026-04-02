@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Lock, Info } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
-import { fmt, shortAddr } from '../../utils/helpers';
+import { fmt, fmtFixed, shortAddr } from '../../utils/helpers';
 import { NXD_CONTRACTS, NXD_ABIS } from '../../config/nxd';
 import { useWallet } from '../../hooks/WalletContext';
 
@@ -74,7 +74,7 @@ export default function NXDVaultStats() {
         </div>
         <div className="stat-row stat-total">
           <span className="stat-label">Total ETH Distributed</span>
-          <span className="stat-value" style={{ color: 'var(--green)' }}>{fmt(protocolStats.ethToVault, 4)} ETH</span>
+          <span className="stat-value" style={{ color: 'var(--green)' }}>{fmtFixed(protocolStats.ethToVault, 6)} ETH</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">DXN Compounded</span>
@@ -90,11 +90,11 @@ export default function NXDVaultStats() {
         </div>
         <div className="stat-row">
           <span className="stat-label">To Staking Vault</span>
-          <span className="stat-value" style={{ color: 'var(--green)' }}>{fmt(protocolStats.ethToVault, 4)} ETH</span>
+          <span className="stat-value" style={{ color: 'var(--green)' }}>{fmtFixed(protocolStats.ethToVault, 6)} ETH</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Dev Fee</span>
-          <span className="stat-value">{fmt(protocolStats.ethDevFee, 4)} ETH</span>
+          <span className="stat-value">{fmtFixed(protocolStats.ethDevFee, 6)} ETH</span>
         </div>
       </div>
 

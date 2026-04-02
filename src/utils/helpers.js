@@ -10,6 +10,12 @@ export function fmt(wei, decimals = 2) {
   return num.toLocaleString('en-US', { maximumFractionDigits: decimals });
 }
 
+export function fmtFixed(wei, decimals = 6) {
+  const str = ethers.formatEther(wei);
+  const num = parseFloat(str);
+  return num.toFixed(decimals);
+}
+
 export function shortAddr(addr) {
   if (!addr) return '';
   return addr.slice(0, 6) + '...' + addr.slice(-4);
