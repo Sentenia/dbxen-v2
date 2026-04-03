@@ -78,9 +78,7 @@ export default function ActivityDashboard() {
       if (isStale()) return;
 
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
-      const bufferBlocks = Math.ceil(300 / blockTime); // ~5 min buffer for boundary precision
-      const startBlock = Math.max(currentBlock - blocksIntoCycle - bufferBlocks, 0);
-      const originalStartBlock = Math.max(currentBlock - blocksIntoCycle, 0);
+      const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
       // Chunk getLogs — BSC uses raw fetch (official BSC RPCs disable getLogs, ethers fails network detection)
       const MAX_BLOCK_RANGE = 4999;
@@ -116,37 +114,6 @@ export default function ActivityDashboard() {
         if (isStale()) return;
       }
 
-      // Filter out burns from previous cycle that slipped into the buffer zone
-      const cycleStartTsNum = Number(cycleStartTs);
-      if (logs.length > 0) {
-        const earlyBlockNums = new Set();
-        for (const log of logs) {
-          const bn = typeof log.blockNumber === 'number' ? log.blockNumber : parseInt(log.blockNumber, 16);
-          if (bn < originalStartBlock) earlyBlockNums.add(bn);
-        }
-        if (earlyBlockNums.size > 0) {
-          const blockTs = {};
-          for (const bn of earlyBlockNums) {
-            if (c.chainId === '0x38') {
-              const resp = await fetch(c.rpc, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBlockByNumber', params: ['0x' + bn.toString(16), false] }),
-              });
-              const json = await resp.json();
-              if (json.result) blockTs[bn] = parseInt(json.result.timestamp, 16);
-            } else {
-              const block = await provider.getBlock(bn);
-              if (block) blockTs[bn] = Number(block.timestamp);
-            }
-            if (isStale()) return;
-          }
-          logs = logs.filter(log => {
-            const bn = typeof log.blockNumber === 'number' ? log.blockNumber : parseInt(log.blockNumber, 16);
-            return blockTs[bn] === undefined || blockTs[bn] >= cycleStartTsNum;
-          });
-        }
-      }
-
       // Get gas price once for estimating gas costs
       const feeData = await provider.getFeeData();
       if (isStale()) return;
@@ -165,6 +132,28 @@ export default function ActivityDashboard() {
         burners[addr].batches += batches;
         burners[addr].txCount += 1;
         totalBatches += batches;
+      }
+
+      // Filter out burners from previous cycles using on-chain lastActiveCycle
+      const burnerAddrs = Object.keys(burners);
+      if (burnerAddrs.length > 0) {
+        let activeCycles;
+        if (isFallback) {
+          activeCycles = [];
+          for (const addr of burnerAddrs) {
+            activeCycles.push(await dbxRead.lastActiveCycle(addr));
+            if (isStale()) return;
+          }
+        } else {
+          activeCycles = await Promise.all(burnerAddrs.map(addr => dbxRead.lastActiveCycle(addr)));
+          if (isStale()) return;
+        }
+        for (let i = 0; i < burnerAddrs.length; i++) {
+          if (activeCycles[i] !== cycle) {
+            totalBatches -= burners[burnerAddrs[i]].batches;
+            delete burners[burnerAddrs[i]];
+          }
+        }
       }
 
       for (const [, data] of Object.entries(burners)) {
