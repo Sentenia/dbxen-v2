@@ -4,6 +4,7 @@ import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
 import { NXD_CONTRACTS } from '../config/nxd';
 import ChainSelector from './ChainSelector';
+import MobileChainDot from './MobileChainDot';
 
 export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
   const { chain, chainKey, userAddr, ethBal, connected, connectWallet, switchChain } = useWallet();
@@ -47,6 +48,8 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
           <Zap size={14} /> <span className="pill-label">NXD</span>
         </button>
       </div>
+
+      {!isNXD && <MobileChainDot />}
 
       <div className="nav-links">
         {!isNXD ? (

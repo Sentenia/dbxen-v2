@@ -236,6 +236,26 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .chain-opt:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
 .chain-opt.active { background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; }
 
+/* ═══ MOBILE CHAIN DOT ═══ */
+.mobile-chain-dot-btn { display: none; }
+.mobile-chain-overlay { position: fixed; inset: 0; z-index: 9998; }
+.mobile-chain-dropdown {
+  position: fixed; z-index: 9999;
+  min-width: 180px; max-height: 70vh; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #111827; border: 1px solid #1e2a3a; border-radius: 12;
+  padding: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-radius: 12px;
+}
+.mobile-chain-opt {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+  background: none; border: none; border-radius: 8px; color: #ccc; font-size: 15px;
+  cursor: pointer; transition: background 0.15s; font-family: var(--font); text-align: left;
+  min-height: 48px;
+}
+.mobile-chain-opt:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+.mobile-chain-opt.active { background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; }
+.mobile-chain-dot-item { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
 /* ═══ ANIMATIONS ═══ */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .fade-up { animation: fadeUp 0.6s ease-out both; }
@@ -426,6 +446,14 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
   .wallet-addr-btn { border-radius: 10px; }
   .btn-connect { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
   .chain-selector { display: none; }
+  .mobile-chain-dot-btn {
+    display: flex; align-items: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    padding: 6px; margin: 0 2px; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-chain-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px rgba(255,255,255,0.15); }
+  .mobile-chain-chevron { color: var(--text-muted); flex-shrink: 0; }
   .chain-dd { right: auto; left: 0; min-width: 180px; max-height: 70vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .chain-opt { min-height: 48px; padding: 12px 14px; font-size: 15px; }
   .wallet-dropdown { right: 0; }
