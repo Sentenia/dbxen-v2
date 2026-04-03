@@ -9,6 +9,7 @@ export default function MobileChainDot() {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const wrapRef = useRef(null);
+  const ddRef = useRef(null);
   const chain = CHAINS[chainKey];
 
   const handleToggle = () => {
@@ -26,7 +27,7 @@ export default function MobileChainDot() {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target) && !ddRef.current?.contains(e.target)) setOpen(false);
     };
     document.addEventListener('touchstart', handler);
     document.addEventListener('mousedown', handler);
@@ -37,7 +38,7 @@ export default function MobileChainDot() {
   }, [open]);
 
   const dropdown = open ? createPortal(
-    <div className="mobile-chain-dropdown" style={{ top: pos.top, left: pos.left }}>
+    <div ref={ddRef} className="mobile-chain-dropdown" style={{ top: pos.top, left: pos.left }}>
       {Object.entries(CHAINS).map(([k, c]) => (
         <button
           key={k}
