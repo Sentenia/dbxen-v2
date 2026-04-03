@@ -13,6 +13,7 @@ export default function ActivityDashboard() {
   const { chain, chainKey, connected, userAddr, protocolStats, getReadProvider } = useWallet();
   const [timerStr, setTimerStr] = useState('—');
   const [actData, setActData] = useState(null);
+  const actDataRef = useRef(null);
   const [page, setPage] = useState(1);
   const epochRef = useRef(0);
 
@@ -77,7 +78,9 @@ export default function ActivityDashboard() {
       if (isStale()) return;
 
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
-      const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
+      const bufferBlocks = Math.ceil(300 / blockTime); // ~5 min buffer for boundary precision
+      const startBlock = Math.max(currentBlock - blocksIntoCycle - bufferBlocks, 0);
+      const originalStartBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
       // Chunk getLogs — BSC uses raw fetch (official BSC RPCs disable getLogs, ethers fails network detection)
       const MAX_BLOCK_RANGE = 4999;
@@ -111,6 +114,37 @@ export default function ActivityDashboard() {
           logs = logs.concat(chunk);
         }
         if (isStale()) return;
+      }
+
+      // Filter out burns from previous cycle that slipped into the buffer zone
+      const cycleStartTsNum = Number(cycleStartTs);
+      if (logs.length > 0) {
+        const earlyBlockNums = new Set();
+        for (const log of logs) {
+          const bn = typeof log.blockNumber === 'number' ? log.blockNumber : parseInt(log.blockNumber, 16);
+          if (bn < originalStartBlock) earlyBlockNums.add(bn);
+        }
+        if (earlyBlockNums.size > 0) {
+          const blockTs = {};
+          for (const bn of earlyBlockNums) {
+            if (c.chainId === '0x38') {
+              const resp = await fetch(c.rpc, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBlockByNumber', params: ['0x' + bn.toString(16), false] }),
+              });
+              const json = await resp.json();
+              if (json.result) blockTs[bn] = parseInt(json.result.timestamp, 16);
+            } else {
+              const block = await provider.getBlock(bn);
+              if (block) blockTs[bn] = Number(block.timestamp);
+            }
+            if (isStale()) return;
+          }
+          logs = logs.filter(log => {
+            const bn = typeof log.blockNumber === 'number' ? log.blockNumber : parseInt(log.blockNumber, 16);
+            return blockTs[bn] === undefined || blockTs[bn] >= cycleStartTsNum;
+          });
+        }
       }
 
       // Get gas price once for estimating gas costs
@@ -148,12 +182,15 @@ export default function ActivityDashboard() {
       for (const [, d] of sorted) totalGasCost += d.gasCost;
 
       if (isStale()) return;
-      if (totalBatches === 0 && actData?.totalBatches > 0 && actData?.cycle === Number(cycle)) return;
-      setActData({
+      const prev = actDataRef.current;
+      if (totalBatches === 0 && prev?.totalBatches > 0 && prev?.cycle === Number(cycle)) return;
+      const newData = {
         cycle: Number(cycle), reward, totalBatches, burnerCount: sorted.length,
         totalEthFees, sorted, totalGasCost,
-      });
-      setPage(1);
+      };
+      actDataRef.current = newData;
+      setActData(newData);
+      if (!prev || prev.cycle !== Number(cycle)) setPage(1);
     } catch (e) {
       console.error('Activity refresh failed:', e);
     }
