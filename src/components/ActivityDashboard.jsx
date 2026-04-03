@@ -40,9 +40,11 @@ export default function ActivityDashboard() {
     try {
       const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
 
-      let cycle, reward, initTs, period;
+      let timeCycle, activeCycle, reward, initTs, period;
       if (isFallback) {
-        cycle = await dbxRead.getCurrentCycle();
+        timeCycle = await dbxRead.getCurrentCycle();
+        if (isStale()) return;
+        activeCycle = await dbxRead.lastStartedCycle();
         if (isStale()) return;
         reward = await dbxRead.currentCycleReward();
         if (isStale()) return;
@@ -51,14 +53,14 @@ export default function ActivityDashboard() {
         period = await dbxRead.i_periodDuration();
         if (isStale()) return;
       } else {
-        [cycle, reward, initTs, period] = await Promise.all([
-          dbxRead.getCurrentCycle(), dbxRead.currentCycleReward(), dbxRead.i_initialTimestamp(), dbxRead.i_periodDuration(),
+        [timeCycle, activeCycle, reward, initTs, period] = await Promise.all([
+          dbxRead.getCurrentCycle(), dbxRead.lastStartedCycle(), dbxRead.currentCycleReward(), dbxRead.i_initialTimestamp(), dbxRead.i_periodDuration(),
         ]);
         if (isStale()) return;
       }
 
       const now = BigInt(Math.floor(Date.now() / 1000));
-      const cycleStartTs = initTs + (cycle * period);
+      const cycleStartTs = initTs + (activeCycle * period);
       const secsIntoCycle = Number(now - cycleStartTs);
       const blockTimes = { '0x1': 12, '0x38': 1, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
       const blockTime = blockTimes[c.chainId] || 2;
@@ -173,7 +175,7 @@ export default function ActivityDashboard() {
 
       let totalEthFees = 0n;
       try {
-        totalEthFees = await dbxRead.cycleAccruedFees(cycle);
+        totalEthFees = await dbxRead.cycleAccruedFees(activeCycle);
         if (isStale()) return;
       } catch {}
 
@@ -183,14 +185,14 @@ export default function ActivityDashboard() {
 
       if (isStale()) return;
       const prev = actDataRef.current;
-      if (totalBatches === 0 && prev?.totalBatches > 0 && prev?.cycle === Number(cycle)) return;
+      if (totalBatches === 0 && prev?.totalBatches > 0 && prev?.cycle === Number(activeCycle)) return;
       const newData = {
-        cycle: Number(cycle), reward, totalBatches, burnerCount: sorted.length,
+        cycle: Number(activeCycle), reward, totalBatches, burnerCount: sorted.length,
         totalEthFees, sorted, totalGasCost,
       };
       actDataRef.current = newData;
       setActData(newData);
-      if (!prev || prev.cycle !== Number(cycle)) setPage(1);
+      if (!prev || prev.cycle !== Number(activeCycle)) setPage(1);
     } catch (e) {
       console.error('Activity refresh failed:', e);
     }
