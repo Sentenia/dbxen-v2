@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut, Zap, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
 import { NXD_CONTRACTS } from '../config/nxd';
@@ -9,6 +10,21 @@ import MobileChainDot from './MobileChainDot';
 export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
   const { chain, chainKey, userAddr, ethBal, connected, connectWallet, switchChain } = useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const walletRef = useRef(null);
+
+  // Close wallet dropdown on tap/click outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e) => {
+      if (!walletRef.current?.contains(e.target)) setDropdownOpen(false);
+    };
+    document.addEventListener('touchstart', handler);
+    document.addEventListener('mousedown', handler);
+    return () => {
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('mousedown', handler);
+    };
+  }, [dropdownOpen]);
 
   const isNXD = protocolMode === 'nxd';
 
@@ -94,30 +110,36 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
             <Wallet size={16} /> Connect Wallet
           </button>
         ) : (
-          <div className="wallet-connected">
+          <div className="wallet-connected" ref={walletRef}>
             <div className="wallet-eth">{ethBal} {isNXD ? 'ETH' : chain.native}</div>
             <button className="wallet-addr-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
               <span className="wallet-dot" />
               <span className="addr-desktop">{shortAddr(userAddr)}</span>
-              <span className="addr-mobile">{userAddr.slice(0, 4) + '...' + userAddr.slice(-4)}</span>
+              <span className="addr-mobile">{'0x...' + userAddr.slice(-4)}</span>
               <ChevronDown size={14} />
             </button>
             {dropdownOpen && (
-              <>
-                <div className="chain-overlay" onClick={() => setDropdownOpen(false)} />
-                <div className="wallet-dropdown show">
-                  <div className="wallet-dropdown-addr">{userAddr}</div>
-                  <button className="wallet-dropdown-item" onClick={() => { navigator.clipboard.writeText(userAddr); setDropdownOpen(false); }}>
-                    <Copy size={14} /> Copy Address
+              <div className="wallet-dropdown show">
+                {/* Mobile: address + balance */}
+                <div className="wallet-dd-mobile-info">
+                  <button className="wallet-dd-addr-copy" onClick={() => { navigator.clipboard.writeText(userAddr); toast.success('Address copied!'); setDropdownOpen(false); }}>
+                    <span className="wallet-dd-addr-text">{userAddr}</span>
+                    <Copy size={14} />
                   </button>
-                  <a className="wallet-dropdown-item" href={`${(isNXD ? 'https://etherscan.io' : chain.explorer)}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
-                    <ExternalLink size={14} /> View on Explorer
-                  </a>
-                  <button className="wallet-dropdown-item" onClick={() => location.reload()}>
-                    <LogOut size={14} /> Disconnect
-                  </button>
+                  <div className="wallet-dd-balance">{ethBal} {isNXD ? 'ETH' : chain.native}</div>
                 </div>
-              </>
+                {/* Desktop: address display */}
+                <div className="wallet-dropdown-addr">{userAddr}</div>
+                <button className="wallet-dropdown-item" onClick={() => { navigator.clipboard.writeText(userAddr); toast.success('Address copied!'); setDropdownOpen(false); }}>
+                  <Copy size={14} /> Copy Address
+                </button>
+                <a className="wallet-dropdown-item" href={`${(isNXD ? 'https://etherscan.io' : chain.explorer)}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
+                  <ExternalLink size={14} /> View on Explorer
+                </a>
+                <button className="wallet-dropdown-item" onClick={() => location.reload()}>
+                  <LogOut size={14} /> Disconnect
+                </button>
+              </div>
             )}
           </div>
         )}
