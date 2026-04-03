@@ -98,7 +98,8 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
             <div className="wallet-eth">{ethBal} {isNXD ? 'ETH' : chain.native}</div>
             <button className="wallet-addr-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
               <span className="wallet-dot" />
-              <span>{shortAddr(userAddr)}</span>
+              <span className="addr-desktop">{shortAddr(userAddr)}</span>
+              <span className="addr-mobile">{userAddr.slice(0, 4) + '...' + userAddr.slice(-4)}</span>
               <ChevronDown size={14} />
             </button>
             {dropdownOpen && (
