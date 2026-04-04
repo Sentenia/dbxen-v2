@@ -88,9 +88,6 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-mint' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-mint')}>
               <Zap size={14} /> Mint & Stake
             </button>
-            <button className={`nav-link nxd-nav-link${activeTab === 'nxd-migrate' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-migrate')}>
-              <ArrowLeftRight size={14} /> Migrate
-            </button>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-analytics' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-analytics')}>
               <BarChart3 size={14} /> Analytics
             </button>

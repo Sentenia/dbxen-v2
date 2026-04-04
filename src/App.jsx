@@ -21,7 +21,6 @@ import NXDHero from './components/nxd/NXDHero';
 import NXDMintCard from './components/nxd/NXDMintCard';
 import NXDStakeCard from './components/nxd/NXDStakeCard';
 import NXDVaultStats from './components/nxd/NXDVaultStats';
-import NXDMigrateCard from './components/nxd/NXDMigrateCard';
 import NXDAnalytics from './components/nxd/NXDAnalytics';
 import NXDReferralCard from './components/nxd/NXDReferralCard';
 
@@ -82,12 +81,7 @@ function TabContent({ activeTab }) {
           <NXDVaultStats />
         </section>
       )}
-      {rendered === 'nxd-migrate' && (
-        <section className="content">
-          <NXDMigrateCard />
-        </section>
-      )}
-      {rendered === 'nxd-analytics' && (
+{rendered === 'nxd-analytics' && (
         <section className="content">
           <NXDAnalytics />
         </section>
@@ -105,7 +99,6 @@ const dbxenTabs = [
 
 const nxdTabs = [
   { key: 'nxd-mint', icon: Zap },
-  { key: 'nxd-migrate', icon: ArrowLeftRight },
   { key: 'nxd-analytics', icon: BarChart3 },
 ];
 
