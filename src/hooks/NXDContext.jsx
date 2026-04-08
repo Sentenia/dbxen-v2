@@ -15,7 +15,7 @@ export function NXDProvider({ children }) {
 
   // Protocol stats
   const [protocolStats, setProtocolStats] = useState({
-    nxdSupply: 0n, nxdBurned: 0n, dxnStaked: 0n, dxnBurned: 0n,
+    nxdSupply: 0n, nxdBurned: 0n, tokenNXDBurned: 0n, protocolNXDBurned: 0n, dxnStaked: 0n, dxnBurned: 0n,
     ethToVault: 0n, ethDevFee: 0n, currentRate: 0n,
     startTime: 0, endTime: 0, totalDXNDeposited: 0n,
     maxSupply: 0n, pendingDXNToStake: 0n, nxdInLP: 0n, dxnV2TotalSupply: 0n,
@@ -78,11 +78,11 @@ export function NXDProvider({ children }) {
       const token = new ethers.Contract(NXD_CONTRACTS.NXDv2Token, NXD_ABIS.NXDv2Token, provider);
 
       const [
-        supply, burned, dxnStaked, dxnBurned,
+        supply, tokenBurned, protocolBurned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee, rate,
         start, end, totalDeposited, maxSup, pendingDxn, pairAddr,
       ] = await Promise.all([
-        token.totalSupply(), token.totalNXDBurned(), protocol.totalDXNStaked(), protocol.totalDXNBurned(),
+        token.totalSupply(), token.totalNXDBurned(), protocol.totalNXDBurned(), protocol.totalDXNStaked(), protocol.totalDXNBurned(),
         protocol.totalETHToStakingVault(), protocol.totalETHDevFee(), protocol.currentRate(),
         protocol.startTime(), protocol.endTime(), protocol.totalDXNDepositedLMP(),
         token.maxSupply(), protocol.pendingDXNToStake(), token.uniswapV2Pair(),
@@ -102,7 +102,7 @@ export function NXDProvider({ children }) {
       } catch {}
 
       setProtocolStats({
-        nxdSupply: supply, nxdBurned: burned, dxnStaked, dxnBurned,
+        nxdSupply: supply, nxdBurned: tokenBurned + protocolBurned, tokenNXDBurned: tokenBurned, protocolNXDBurned: protocolBurned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee, currentRate: rate,
         startTime: Number(start), endTime: Number(end),
         totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn, nxdInLP, dxnV2TotalSupply,
