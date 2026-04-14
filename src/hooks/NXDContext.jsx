@@ -38,6 +38,11 @@ export function NXDProvider({ children }) {
   const [oldNxdBal, setOldNxdBal] = useState(0n);
   const [dxnBal, setDxnBal] = useState(0n);
 
+  // Maintenance stats
+  const [maintenanceStats, setMaintenanceStats] = useState({
+    canUpdateOracle: false, v2OracleAddr: null,
+  });
+
   // User referral
   const [userReferral, setUserReferral] = useState({
     code: 0n, referredRewards: 0n, referrerRewards: 0n,
@@ -181,10 +186,29 @@ export function NXDProvider({ children }) {
     }
   }, [getReadProvider, userAddr]);
 
+  // ═══ REFRESH MAINTENANCE STATS ═══
+  const refreshMaintenanceStats = useCallback(async () => {
+    try {
+      const provider = getReadProvider();
+      const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, provider);
+      const oracleAddr = await protocol.v2Oracle();
+      let canUpdate = false;
+      if (oracleAddr && oracleAddr !== ethers.ZeroAddress) {
+        try {
+          const oracle = new ethers.Contract(oracleAddr, NXD_ABIS.V2Oracle, provider);
+          canUpdate = await oracle.canUpdate();
+        } catch {}
+      }
+      setMaintenanceStats({ canUpdateOracle: canUpdate, v2OracleAddr: oracleAddr });
+    } catch (e) {
+      console.error('[NXD refreshMaintenanceStats]', e);
+    }
+  }, [getReadProvider]);
+
   // ═══ REFRESH ALL ═══
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshProtocolStats(), refreshVaultStats(), refreshMigrationStats(), refreshBalances()]);
-  }, [refreshProtocolStats, refreshVaultStats, refreshMigrationStats, refreshBalances]);
+    await Promise.all([refreshProtocolStats(), refreshVaultStats(), refreshMigrationStats(), refreshBalances(), refreshMaintenanceStats()]);
+  }, [refreshProtocolStats, refreshVaultStats, refreshMigrationStats, refreshBalances, refreshMaintenanceStats]);
 
   // ═══ WRITE FUNCTIONS ═══
 
@@ -308,6 +332,39 @@ export function NXDProvider({ children }) {
     await refreshAll();
   }, [getSigner, refreshAll]);
 
+  // ═══ MAINTENANCE FUNCTIONS ═══
+
+  const updateOracle = useCallback(async () => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    if (!maintenanceStats.v2OracleAddr) { toast.error('Oracle address not loaded'); return; }
+    const oracle = new ethers.Contract(maintenanceStats.v2OracleAddr, NXD_ABIS.V2Oracle, signer);
+    const tx = await oracle.update();
+    await tx.wait();
+    toast.success('Oracle price feed updated!');
+    await refreshAll();
+  }, [getSigner, maintenanceStats.v2OracleAddr, refreshAll]);
+
+  const collectFees = useCallback(async () => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, signer);
+    const tx = await protocol.collectFees();
+    await tx.wait();
+    toast.success('Fees collected and distributed!');
+    await refreshAll();
+  }, [getSigner, refreshAll]);
+
+  const stakeProtocolDXN = useCallback(async () => {
+    const signer = getSigner();
+    if (!signer) { toast.error('Connect wallet on Ethereum'); return; }
+    const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, signer);
+    const tx = await protocol.stakeOurDXN();
+    await tx.wait();
+    toast.success('Protocol DXN staked!');
+    await refreshAll();
+  }, [getSigner, refreshAll]);
+
   // ═══ AUTO REFRESH ═══
   useEffect(() => {
     refreshAll();
@@ -317,10 +374,11 @@ export function NXDProvider({ children }) {
 
   return (
     <NXDContext.Provider value={{
-      protocolStats, vaultStats, migrationStats,
+      protocolStats, vaultStats, migrationStats, maintenanceStats,
       nxdBal, oldNxdBal, dxnBal, userReferral,
       deposit, stakeNXD, unstakeWithPenalty, requestWithdraw, completeWithdraw, claimETHRewards,
-      migrateOldNXD, setReferralCode, withdrawReferralRewards, refreshAll,
+      migrateOldNXD, setReferralCode, withdrawReferralRewards,
+      updateOracle, collectFees, stakeProtocolDXN, refreshAll,
     }}>
       {children}
     </NXDContext.Provider>

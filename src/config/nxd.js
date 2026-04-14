@@ -77,6 +77,10 @@ export const NXD_ABIS = {
     'function deadline() view returns (uint256)',
     'function active() view returns (bool)',
   ],
+  V2Oracle: [
+    'function canUpdate() view returns (bool)',
+    'function update() external',
+  ],
   OldNXD: [
     'function balanceOf(address) view returns (uint256)',
     'function totalSupply() view returns (uint256)',
