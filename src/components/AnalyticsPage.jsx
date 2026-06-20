@@ -153,8 +153,8 @@ export default function AnalyticsPage() {
             <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}> DXN</span>
           </div>
         </div>
-        <div className="analytics-stat-box">
-          <div className="analytics-stat-label">Est. APY (24h)</div>
+        <div className="analytics-stat-box" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate — fee revenue varies per cycle and DXN DEX liquidity is thin.">
+          <div className="analytics-stat-label">Est. APR (24h) ⓘ</div>
           <div className="analytics-stat-val" style={{ color: 'var(--green)' }}>
             {protocolStats.apy ? `${protocolStats.apy}%` : <Skeleton width="60px" />}
           </div>

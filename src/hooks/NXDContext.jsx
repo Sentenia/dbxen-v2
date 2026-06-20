@@ -7,8 +7,14 @@ import toast from 'react-hot-toast';
 const NXDContext = createContext(null);
 export const useNXD = () => useContext(NXDContext);
 
-const ETH_RPC = 'https://rpc.ankr.com/eth';
-const ETH_RPC_BACKUP = 'https://cloudflare-eth.com';
+const ETH_RPCS = [
+  import.meta.env.VITE_ETH_RPC,
+  import.meta.env.VITE_ETH_RPC_BACKUP,
+  import.meta.env.VITE_ETH_RPC_BACKUP2,
+].filter(Boolean);
+if (ETH_RPCS.length === 0) {
+  ETH_RPCS.push('https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://eth.llamarpc.com');
+}
 
 export function NXDProvider({ children }) {
   const { userAddr, connected, chainKey, contractsRef } = useWallet();
@@ -50,6 +56,7 @@ export function NXDProvider({ children }) {
   });
 
   const fallbackRef = useRef(null);
+  const fallbackIdxRef = useRef(0);
 
   const getReadProvider = useCallback(() => {
     // Use wallet provider if connected and on Ethereum
@@ -57,18 +64,35 @@ export function NXDProvider({ children }) {
       const wp = contractsRef.current.provider;
       if (wp) return wp;
     }
-    // Fallback to public RPC
     if (fallbackRef.current) return fallbackRef.current;
-    try {
-      const p = new ethers.JsonRpcProvider(ETH_RPC);
-      fallbackRef.current = p;
-      return p;
-    } catch {
-      const p = new ethers.JsonRpcProvider(ETH_RPC_BACKUP);
-      fallbackRef.current = p;
-      return p;
-    }
+    const url = ETH_RPCS[fallbackIdxRef.current] || ETH_RPCS[0];
+    const p = new ethers.JsonRpcProvider(url);
+    fallbackRef.current = p;
+    return p;
   }, [connected, chainKey, contractsRef]);
+
+  // Rotate to next RPC on failure (call from refresh catch blocks)
+  const rotateFallbackRpc = useCallback(() => {
+    if (ETH_RPCS.length <= 1) return false;
+    fallbackIdxRef.current = (fallbackIdxRef.current + 1) % ETH_RPCS.length;
+    fallbackRef.current = null;
+    console.warn('[NXD] Rotating to next RPC:', ETH_RPCS[fallbackIdxRef.current]);
+    return true;
+  }, []);
+
+  const isRpcNetworkError = (e) => {
+    const code = e?.code || '';
+    const msg = (e?.message || '').toLowerCase();
+    return code === 'NETWORK_ERROR' || code === 'SERVER_ERROR' || code === 'TIMEOUT' ||
+           msg.includes('failed to detect network') || msg.includes('could not coalesce');
+  };
+
+  const handleRefreshError = useCallback((label, e) => {
+    console.error(`[NXD ${label}]`, e);
+    // Only rotate if we're on a fallback RPC (not the wallet provider) and it's a network failure
+    const usingFallback = !(connected && chainKey === 'ethereum' && contractsRef.current.provider);
+    if (usingFallback && isRpcNetworkError(e)) rotateFallbackRpc();
+  }, [connected, chainKey, contractsRef, rotateFallbackRpc]);
 
   const getSigner = useCallback(() => {
     if (!connected || chainKey !== 'ethereum') return null;
@@ -84,14 +108,19 @@ export function NXDProvider({ children }) {
 
       const [
         supply, tokenBurned, protocolBurned, dxnStaked, dxnBurned,
-        ethToVault, ethDevFee, rate,
+        ethToVault, ethDevFee,
         start, end, totalDeposited, maxSup, pendingDxn, pairAddr,
       ] = await Promise.all([
         token.totalSupply(), token.totalNXDBurned(), protocol.totalNXDBurned(), protocol.totalDXNStaked(), protocol.totalDXNBurned(),
-        protocol.totalETHToStakingVault(), protocol.totalETHDevFee(), protocol.currentRate(),
+        protocol.totalETHToStakingVault(), protocol.totalETHDevFee(),
         protocol.startTime(), protocol.endTime(), protocol.totalDXNDepositedLMP(),
         token.maxSupply(), protocol.pendingDXNToStake(), token.uniswapV2Pair(),
       ]);
+
+      // currentRate() reverts with Panic 0x11 once LMP has ended (~28 days post-deploy)
+      // because of an underflow in the original contract math. Treat revert as "LMP over → 0".
+      let rate = 0n;
+      try { rate = await protocol.currentRate(); } catch {}
 
       let nxdInLP = 0n;
       if (pairAddr && pairAddr !== ethers.ZeroAddress) {
@@ -113,9 +142,9 @@ export function NXDProvider({ children }) {
         totalDXNDeposited: totalDeposited, maxSupply: maxSup, pendingDXNToStake: pendingDxn, nxdInLP, dxnV2TotalSupply,
       });
     } catch (e) {
-      console.error('[NXD refreshProtocolStats]', e);
+      handleRefreshError('refreshProtocolStats', e);
     }
-  }, [getReadProvider]);
+  }, [getReadProvider, handleRefreshError]);
 
   // ═══ REFRESH VAULT STATS ═══
   const refreshVaultStats = useCallback(async () => {
@@ -140,9 +169,9 @@ export function NXDProvider({ children }) {
       }
       setVaultStats({ totalStaked, userStake, pendingRewards, withdrawRequestAmount, withdrawRequestTimestamp, nxdPenaltyBurned });
     } catch (e) {
-      console.error('[NXD refreshVaultStats]', e);
+      handleRefreshError('refreshVaultStats', e);
     }
-  }, [getReadProvider, userAddr]);
+  }, [getReadProvider, userAddr, handleRefreshError]);
 
   // ═══ REFRESH MIGRATION STATS ═══
   const refreshMigrationStats = useCallback(async () => {
@@ -155,9 +184,9 @@ export function NXDProvider({ children }) {
       ]);
       setMigrationStats({ totalSwapped, deadline: Number(deadline), active });
     } catch (e) {
-      console.error('[NXD refreshMigrationStats]', e);
+      handleRefreshError('refreshMigrationStats', e);
     }
-  }, [getReadProvider]);
+  }, [getReadProvider, handleRefreshError]);
 
   // ═══ REFRESH USER BALANCES ═══
   const refreshBalances = useCallback(async () => {
@@ -182,9 +211,9 @@ export function NXDProvider({ children }) {
       setDxnBal(dBal);
       setUserReferral({ code, referredRewards: refRewards, referrerRewards: rerRewards, totalMinted: minted, totalBonus: bonus });
     } catch (e) {
-      console.error('[NXD refreshBalances]', e);
+      handleRefreshError('refreshBalances', e);
     }
-  }, [getReadProvider, userAddr]);
+  }, [getReadProvider, userAddr, handleRefreshError]);
 
   // ═══ REFRESH MAINTENANCE STATS ═══
   const refreshMaintenanceStats = useCallback(async () => {
@@ -201,9 +230,9 @@ export function NXDProvider({ children }) {
       }
       setMaintenanceStats({ canUpdateOracle: canUpdate, v2OracleAddr: oracleAddr });
     } catch (e) {
-      console.error('[NXD refreshMaintenanceStats]', e);
+      handleRefreshError('refreshMaintenanceStats', e);
     }
-  }, [getReadProvider]);
+  }, [getReadProvider, handleRefreshError]);
 
   // ═══ REFRESH ALL ═══
   const refreshAll = useCallback(async () => {

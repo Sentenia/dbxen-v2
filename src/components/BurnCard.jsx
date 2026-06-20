@@ -122,6 +122,10 @@ export default function BurnCard() {
         {burning ? <Loader2 size={16} className="spin" /> : <Flame size={16} />}
         {burning ? 'Burning...' : connected ? `Burn ${chain.xenSym}` : 'Connect Wallet to Burn'}
       </button>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+        title="Burns auto-attach an EIP-2930 access list (when it lowers gas) to pay warm instead of cold storage-access costs.">
+        <Fuel size={11} style={{ color: 'var(--green)' }} /> Gas auto-optimized (access list)
+      </div>
 
       <div style={{ marginTop: 16 }}>
         <div className="stat-row">

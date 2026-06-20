@@ -8,7 +8,7 @@ import ChainSelector from './ChainSelector';
 import MobileChainDot from './MobileChainDot';
 
 export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
-  const { chain, chainKey, userAddr, ethBal, connected, connectWallet, switchChain } = useWallet();
+  const { chain, chainKey, userAddr, ethBal, connected, connectWallet, disconnectWallet, switchChain } = useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const walletRef = useRef(null);
 
@@ -74,7 +74,7 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
               <Flame size={14} /> Burn
             </button>
             <button className={`nav-link bridge-link${activeTab === 'bridge' ? ' active' : ''}`} onClick={() => setActiveTab('bridge')}>
-              <ArrowLeftRight size={14} /> Bridge
+              <ArrowLeftRight size={14} /> Migration
             </button>
             <button className={`nav-link${activeTab === 'activity' ? ' active' : ''}`} onClick={() => setActiveTab('activity')}>
               <Activity size={14} /> Activity
@@ -86,7 +86,7 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
         ) : (
           <>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-mint' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-mint')}>
-              <Zap size={14} /> Mint & Stake
+              <Zap size={14} /> Stake
             </button>
             <button className={`nav-link nxd-nav-link${activeTab === 'nxd-analytics' ? ' active nxd-active' : ''}`} onClick={() => setActiveTab('nxd-analytics')}>
               <BarChart3 size={14} /> Analytics
@@ -133,7 +133,7 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
                 <a className="wallet-dropdown-item" href={`${(isNXD ? 'https://etherscan.io' : chain.explorer)}/address/${userAddr}`} target="_blank" rel="noopener noreferrer" onClick={() => setDropdownOpen(false)}>
                   <ExternalLink size={14} /> View on Explorer
                 </a>
-                <button className="wallet-dropdown-item" onClick={() => location.reload()}>
+                <button className="wallet-dropdown-item" onClick={() => { disconnectWallet(); setDropdownOpen(false); }}>
                   <LogOut size={14} /> Disconnect
                 </button>
               </div>

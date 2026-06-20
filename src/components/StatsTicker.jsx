@@ -20,7 +20,7 @@ export default function StatsTicker() {
   const items = [
     `Cycle ${protocolStats.cycle || '—'}`,
     `Reward: ${protocolStats.reward ? fmt(protocolStats.reward) : '—'} DXN`,
-    protocolStats.apy ? `APY: ${protocolStats.apy}%` : null,
+    protocolStats.apy ? `APR: ${protocolStats.apy}%` : null,
     `Next cycle: ${timerStr}`,
     `Staked: ${protocolStats.totalStaked > 0n ? fmt(protocolStats.totalStaked) : '—'} DXN`,
     `Chain: ${chain.name}`,

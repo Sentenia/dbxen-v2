@@ -16,6 +16,17 @@ export function fmtFixed(wei, decimals = 6) {
   return num.toFixed(decimals);
 }
 
+// Read legacy gas price directly via eth_gasPrice. Avoids ethers' getFeeData(),
+// which also calls eth_maxPriorityFeePerGas — some wallet RPCs reject that with
+// -32601 (noisy MetaMask console errors) even though we only need gasPrice.
+export async function getGasPrice(provider) {
+  try {
+    return BigInt(await provider.send('eth_gasPrice', []));
+  } catch {
+    return 0n;
+  }
+}
+
 export function shortAddr(addr) {
   if (!addr) return '';
   return addr.slice(0, 6) + '...' + addr.slice(-4);

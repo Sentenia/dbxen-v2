@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { ethers } from 'ethers';
 import { CHAINS, detectChainKey, getBatchSize, getBatchDisplay } from '../config/chains';
 import { ERC20_ABI, DBXEN_ABI, MIGRATION_ABI, DUAL_MIGRATION_ABI, OLD_DBXEN_ABI } from '../config/abis';
-import { fmt } from '../utils/helpers';
+import { fmt, getGasPrice } from '../utils/helpers';
+import { getDxnPriceInNative } from '../utils/price';
 import toast from 'react-hot-toast';
 
 const WalletContext = createContext(null);
@@ -172,6 +173,8 @@ export function WalletProvider({ children }) {
       const hexId = await window.ethereum.request({ method: 'eth_chainId' });
       const key = detectChainKey(hexId);
       if (!key) { toast.error('Unsupported network.'); return; }
+      // User explicitly connected — clear the disconnect flag
+      try { localStorage.removeItem('wallet-disconnected'); } catch {}
 
       console.log('[connectWallet] Detected chain:', key, 'address:', accounts[0]);
       chainKeyRef.current = key;
@@ -336,26 +339,45 @@ export function WalletProvider({ children }) {
       const xenBurnedV2 = totalBatches * getBatchSize(c);
       const nextCycleTs = Number(initTs + ((cycle + 1n) * period));
 
-      let totalStaked = 0n, apy = null;
+      let totalStaked = 0n, lastFees = 0n;
       try {
         const summedStakes = await dbxRead.summedCycleStakes(storedCycle);
         if (isStale(epoch)) return;
         totalStaked = summedStakes - reward + pendingStakeAmt;
-        const lastFees = await dbxRead.cycleAccruedFees(storedCycle > 0n ? storedCycle : cycle);
+        // Use the LAST COMPLETED cycle's fees for a stable 24h estimate — not the
+        // in-progress cycle (which starts at ~0 and ramps up over the day).
+        const feeCycle = cycle > 0n ? cycle - 1n : 0n;
+        lastFees = await dbxRead.cycleAccruedFees(feeCycle);
         if (isStale(epoch)) return;
-        if (totalStaked > 0n && lastFees > 0n) {
-          const dailyRate = parseFloat(ethers.formatEther(lastFees)) / parseFloat(ethers.formatEther(totalStaked));
-          apy = (dailyRate * 365 * 100).toFixed(1);
+        if (lastFees === 0n && feeCycle !== cycle) {
+          lastFees = await dbxRead.cycleAccruedFees(cycle); // fallback if last cycle not finalized
+          if (isStale(epoch)) return;
         }
       } catch {
         totalStaked = pendingStakeAmt;
       }
 
-      if (isStale(epoch)) { console.log('[refreshProtocolStats] Stale after APY calc, aborting'); return; }
+      if (isStale(epoch)) { console.log('[refreshProtocolStats] Stale, aborting'); return; }
       console.log('[refreshProtocolStats] Success for', key, '— cycle:', Number(cycle));
       setProtocolStats({
-        cycle: Number(cycle), reward, xenBurnedV1, xenBurnedV2, totalStaked, apy, nextCycleTs,
+        cycle: Number(cycle), reward, xenBurnedV1, xenBurnedV2, totalStaked, apy: null, nextCycleTs,
       });
+
+      // Real APR (async, non-blocking so it never delays the core stats):
+      // annual native protocol fees ÷ the native-token value of all staked DXN.
+      // DXN priced via DexScreener; null on chains with no DXN pool (ETHW, etc).
+      if (totalStaked > 0n && lastFees > 0n) {
+        getDxnPriceInNative(key, c.contracts.DXN_V2, Date.now()).then((dxnInNative) => {
+          if (!dxnInNative || chainEpochRef.current !== epoch) return;
+          const feesNative = parseFloat(ethers.formatEther(lastFees));
+          const stakedDxn = parseFloat(ethers.formatEther(totalStaked));
+          const stakeValueNative = stakedDxn * dxnInNative;
+          if (stakeValueNative > 0) {
+            const apy = ((feesNative * 365) / stakeValueNative * 100).toFixed(1);
+            setProtocolStats((prev) => ({ ...prev, apy }));
+          }
+        }).catch(() => {});
+      }
     };
 
     try {
@@ -553,8 +575,7 @@ export function WalletProvider({ children }) {
       await appTx.wait();
     }
 
-    const feeData = await provider.getFeeData();
-    const gasPrice = feeData.gasPrice || 1000000000n;
+    const gasPrice = (await getGasPrice(provider)) || 1000000000n;
     const isL2 = c.chainId !== '0x1';
     const gasEst = BigInt(isL2 ? 600000 : 200000) + 39400n;
     const disc = BigInt(batches) * (100000n - 5n * BigInt(batches));
@@ -562,7 +583,33 @@ export function WalletProvider({ children }) {
     if (estFee < (c.minFee || 0n)) estFee = c.minFee;
     const value = estFee * 2n > ethers.parseEther('0.0005') ? estFee * 2n : ethers.parseEther('0.0005');
 
-    const tx = await dbxen.burnBatch(batches, { value, gasLimit: 500000 });
+    const overrides = { value, gasLimit: 500000 };
+
+    // EIP-2930 access list — pre-warms the storage slots & addresses burnBatch touches
+    // (XEN token, DXN, protocol slots) so the EVM charges warm instead of cold-access gas.
+    // Auto-generated for this exact call via eth_createAccessList; attached ONLY when it
+    // actually lowers gas (an access list can cost more than it saves). Safe no-op on
+    // chains/nodes that don't support the RPC.
+    try {
+      const popTx = await dbxen.burnBatch.populateTransaction(batches, { value });
+      const callObj = { from: userAddr, to: popTx.to, data: popTx.data, value: ethers.toBeHex(value) };
+      const [al, baseGasHex] = await Promise.all([
+        provider.send('eth_createAccessList', [callObj, 'latest']),
+        provider.send('eth_estimateGas', [callObj]).catch(() => null),
+      ]);
+      if (al?.accessList?.length) {
+        const withList = BigInt(al.gasUsed || 0);
+        const without = baseGasHex ? BigInt(baseGasHex) : null;
+        if (withList > 0n && (!without || withList < without)) {
+          overrides.accessList = al.accessList;
+          console.log(`[burnBatch] access list attached: ${without ? Number(without - withList) : '?'} gas saved`);
+        }
+      }
+    } catch (e) {
+      console.log('[burnBatch] access list skipped:', e?.message || e);
+    }
+
+    const tx = await dbxen.burnBatch(batches, overrides);
     await tx.wait();
     toast.success('XEN burned successfully!');
     await refreshAll();
@@ -666,6 +713,25 @@ export function WalletProvider({ children }) {
     } catch { toast.error('Failed to add token'); }
   }, [chainKey]);
 
+  const disconnectWallet = useCallback(async () => {
+    // Best-effort: ask MetaMask to revoke site permission (EIP-2255, newer MM versions)
+    try {
+      await window.ethereum?.request({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {}
+    // Block auto-connect on next page load
+    try { localStorage.setItem('wallet-disconnected', '1'); } catch {}
+    // Clear local state
+    contractsRef.current = {};
+    setUserAddr(null);
+    setConnected(false);
+    setEthBal('0.00');
+    setXenBal(0n); setDxnBal(0n); setOldDxnBal(0n); setOldV2DxnBal(0n);
+    toast.success('Wallet disconnected');
+  }, []);
+
   const switchChain = useCallback(async (key) => {
     const c = CHAINS[key];
     if (!c?.contracts.DBXEN_V2) return;
@@ -685,8 +751,7 @@ export function WalletProvider({ children }) {
   const getGasInfo = useCallback(async () => {
     try {
       const { provider } = getReadProvider();
-      const feeData = await provider.getFeeData();
-      return feeData.gasPrice || 0n;
+      return (await getGasPrice(provider)) || 0n;
     } catch {
       return 0n;
     }
@@ -715,6 +780,8 @@ export function WalletProvider({ children }) {
     if (typeof window.ethereum === 'undefined') return;
     (async () => {
       try {
+        // Skip auto-connect if user explicitly disconnected
+        if (localStorage.getItem('wallet-disconnected') === '1') return;
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) connectWallet();
       } catch {}
@@ -788,7 +855,7 @@ export function WalletProvider({ children }) {
       chainKey, chain, addr, userAddr, ethBal, connected,
       xenBal, dxnBal, oldDxnBal, oldV2DxnBal,
       protocolStats, userStats, bridgeStats, legacyStats,
-      connectWallet, switchChain, refreshAll, refreshBalances, refreshProtocolStats, refreshBridgeStats,
+      connectWallet, disconnectWallet, switchChain, refreshAll, refreshBalances, refreshProtocolStats, refreshBridgeStats,
       burnBatch, stakeTokens, unstakeTokens, claimDxn, claimFees,
       migrate, legacyUnstake, legacyClaimDxn, legacyClaimFees,
       addTokenToWallet, getGasInfo, contractsRef, getReadProvider,

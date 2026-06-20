@@ -11,18 +11,17 @@ import BurnCard from './components/BurnCard';
 import StakeCard from './components/StakeCard';
 import RewardsCard from './components/RewardsCard';
 import LegacySection from './components/LegacySection';
-import BridgeCard from './components/BridgeCard';
+import SupplyPanel from './components/SupplyPanel';
+import MigrationStats from './components/MigrationStats';
 import ActivityDashboard from './components/ActivityDashboard';
 import AnalyticsPage from './components/AnalyticsPage';
 import HowItWorks from './components/HowItWorks';
 import WhyV2 from './components/WhyV2';
 import Footer from './components/Footer';
 import NXDHero from './components/nxd/NXDHero';
-import NXDMintCard from './components/nxd/NXDMintCard';
 import NXDStakeCard from './components/nxd/NXDStakeCard';
 import NXDVaultStats from './components/nxd/NXDVaultStats';
 import NXDAnalytics from './components/nxd/NXDAnalytics';
-import NXDReferralCard from './components/nxd/NXDReferralCard';
 import NXDMaintenance from './components/nxd/NXDMaintenance';
 
 function TabContent({ activeTab }) {
@@ -53,13 +52,14 @@ function TabContent({ activeTab }) {
             </div>
             <LegacySection />
           </section>
+          <SupplyPanel />
           <HowItWorks />
           <WhyV2 />
         </>
       )}
       {rendered === 'bridge' && (
         <section className="content">
-          <BridgeCard />
+          <MigrationStats />
         </section>
       )}
       {rendered === 'activity' && (
@@ -74,11 +74,7 @@ function TabContent({ activeTab }) {
       )}
       {rendered === 'nxd-mint' && (
         <section className="content">
-          <NXDReferralCard />
-          <div className="card-grid">
-            <NXDMintCard />
-            <NXDStakeCard />
-          </div>
+          <NXDStakeCard />
           <NXDVaultStats />
           <NXDMaintenance />
         </section>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
-import { fmt, formatTimer, shortAddr } from '../utils/helpers';
+import { fmt, formatTimer, shortAddr, getGasPrice } from '../utils/helpers';
 import { getBatchSize, CHAINS } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
 
@@ -115,9 +115,8 @@ export default function ActivityDashboard() {
       }
 
       // Get gas price once for estimating gas costs
-      const feeData = await provider.getFeeData();
+      const gasPrice = (await getGasPrice(provider)) || 1000000000n;
       if (isStale()) return;
-      const gasPrice = feeData.gasPrice || 1000000000n;
       const isL2 = c.chainId !== '0x1';
       const estGasPerTx = BigInt(isL2 ? 600000 : 200000);
 
