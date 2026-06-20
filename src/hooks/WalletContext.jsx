@@ -162,7 +162,9 @@ export function WalletProvider({ children }) {
   const connectWallet = useCallback(async () => {
     if (typeof window.ethereum === 'undefined') {
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        window.location.href = 'https://metamask.app.link/dapp/dbxen-v2.vercel.app';
+        // Domain-agnostic: deep-link back to wherever this app is actually served
+        // (vercel, an IPFS gateway, ENS .limo, etc.) — no hardcoded host.
+        window.location.href = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
       } else {
         toast.error('No wallet detected. Please install MetaMask.');
       }
