@@ -19,6 +19,7 @@ export default function StatsTicker() {
 
   const items = [
     `Cycle ${protocolStats.cycle || '—'}`,
+    protocolStats.dxnPrice ? `DXN: $${protocolStats.dxnPrice < 0.01 ? protocolStats.dxnPrice.toFixed(5) : protocolStats.dxnPrice.toFixed(4)}` : null,
     `Reward: ${protocolStats.reward ? fmt(protocolStats.reward) : '—'} DXN`,
     protocolStats.apy ? `APR: ${protocolStats.apy}%` : null,
     `Next cycle: ${timerStr}`,

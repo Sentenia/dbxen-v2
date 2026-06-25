@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { CHAINS, detectChainKey, getBatchSize, getBatchDisplay } from '../config/chains';
 import { ERC20_ABI, DBXEN_ABI, MIGRATION_ABI, DUAL_MIGRATION_ABI, OLD_DBXEN_ABI } from '../config/abis';
 import { fmt, getGasPrice } from '../utils/helpers';
-import { getDxnPriceInNative } from '../utils/price';
+import { getDxnPriceInNative, getDxnV2InEth, getEthUsd } from '../utils/price';
 import toast from 'react-hot-toast';
 
 const WalletContext = createContext(null);
@@ -26,7 +26,7 @@ export function WalletProvider({ children }) {
   // Protocol stats
   const [protocolStats, setProtocolStats] = useState({
     cycle: 0, reward: 0n, xenBurnedV1: 0n, xenBurnedV2: 0n, totalStaked: 0n, apy: null,
-    nextCycleTs: 0,
+    nextCycleTs: 0, dxnPrice: null,
   });
 
   // User stats
@@ -366,21 +366,32 @@ export function WalletProvider({ children }) {
         cycle: Number(cycle), reward, xenBurnedV1, xenBurnedV2, totalStaked, apy: null, nextCycleTs,
       });
 
-      // Real APR (async, non-blocking so it never delays the core stats):
-      // annual native protocol fees ÷ the native-token value of all staked DXN.
-      // DXN priced via DexScreener; null on chains with no DXN pool (ETHW, etc).
-      if (totalStaked > 0n && lastFees > 0n) {
-        getDxnPriceInNative(key, c.contracts.DXN_V2, Date.now()).then((dxnInNative) => {
-          if (!dxnInNative || chainEpochRef.current !== epoch) return;
-          const feesNative = parseFloat(ethers.formatEther(lastFees));
-          const stakedDxn = parseFloat(ethers.formatEther(totalStaked));
-          const stakeValueNative = stakedDxn * dxnInNative;
-          if (stakeValueNative > 0) {
-            const apy = ((feesNative * 365) / stakeValueNative * 100).toFixed(1);
-            setProtocolStats((prev) => ({ ...prev, apy }));
+      // DXNv2 price + real APR (async, non-blocking so it never delays core stats).
+      // On Ethereum, DXNv2/WETH lives in a Uniswap V3 pool DexScreener doesn't index,
+      // so we read it on-chain; other chains use DexScreener. APR = annual protocol
+      // fees ÷ the native-token value of all staked DXN.
+      (async () => {
+        try {
+          const now = Date.now();
+          let dxnInNative = null, dxnUsd = null;
+          if (key === 'ethereum') {
+            dxnInNative = await getDxnV2InEth(provider, now);
+            if (dxnInNative) { const e = await getEthUsd(now); if (e) dxnUsd = dxnInNative * e; }
+          } else {
+            dxnInNative = await getDxnPriceInNative(key, c.contracts.DXN_V2, now);
           }
-        }).catch(() => {});
-      }
+          if (chainEpochRef.current !== epoch) return;
+          const updates = {};
+          if (dxnUsd) updates.dxnPrice = dxnUsd;
+          if (dxnInNative && totalStaked > 0n && lastFees > 0n) {
+            const feesNative = parseFloat(ethers.formatEther(lastFees));
+            const stakedDxn = parseFloat(ethers.formatEther(totalStaked));
+            const sv = stakedDxn * dxnInNative;
+            if (sv > 0) updates.apy = ((feesNative * 365) / sv * 100).toFixed(1);
+          }
+          if (Object.keys(updates).length) setProtocolStats((prev) => ({ ...prev, ...updates }));
+        } catch {}
+      })();
     };
 
     try {
