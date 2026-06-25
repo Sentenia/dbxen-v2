@@ -6,6 +6,7 @@ import { shortAddr } from '../utils/helpers';
 import { NXD_CONTRACTS } from '../config/nxd';
 import ChainSelector from './ChainSelector';
 import MobileChainDot from './MobileChainDot';
+import TipJar from './TipJar';
 
 export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
   const { chain, chainKey, userAddr, ethBal, connected, connectWallet, disconnectWallet, switchChain } = useWallet();
@@ -101,6 +102,7 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
         </a>
       </div>
       <div className="wallet-area">
+        <TipJar />
         {!isNXD && <ChainSelector />}
         {!connected ? (
           <button className={`btn-connect${isNXD ? ' nxd-btn-connect' : ''}`} onClick={connectWallet}>
