@@ -23,7 +23,7 @@ const SPEED = 0.06;           // global time scale — small = barely-there drif
 // Sample well past the visible window (u 0..1 fills the viewBox) so the line ends
 // stay off-screen even when perspective pulls them inward as the cloth folds.
 const U_MIN = -0.4, U_MAX = 1.4;
-const S_MIN = 0.62, S_MAX = 2.4;    // clamp perspective so folds can't drag ends on-screen
+const S_MIN = 0.62, S_MAX = 2.9;    // clamp perspective; high max lets gusts balloon outward
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -51,29 +51,34 @@ const HARM = Array.from({ length: 5 }, (_, k) => ({
 }));
 const HARM_NORM = HARM.reduce((s, h) => s + h.amp, 0);
 
-// --- roaming bumps: wind gusts / a ball rolling under the cloth ---
-const BUMPS = Array.from({ length: 3 }, () => ({
-  su: rand(0.25, 0.6), pu: rand(0, Math.PI * 2),   // horizontal roam
-  sv: rand(0.2, 0.5), pv: rand(0, Math.PI * 2),    // vertical roam
-  wu: rand(0.03, 0.07),                             // horizontal spread (rounder bumps)
-  wv: rand(0.08, 0.16),                             // vertical spread
-  h: rand(1.1, 1.9),                                // lift height — strong, so lines arc around them
+// --- roaming gusts: wind pushing up from beneath the cloth, in random places ---
+const BUMPS = Array.from({ length: 4 }, () => ({
+  su: rand(0.2, 0.55), pu: rand(0, Math.PI * 2),   // horizontal roam
+  sv: rand(0.15, 0.45), pv: rand(0, Math.PI * 2),  // vertical roam
+  wu: rand(0.04, 0.15),                            // horizontal spread (some wide, some tight)
+  wv: rand(0.1, 0.32),                             // vertical spread
+  h: rand(1.3, 2.5),                               // lift strength — drives the ballooning
 }));
 
-// height field at horizontal u (0=pole..1=free), vNorm (0=top..1=bottom), time T
-function field(u, vNorm, T) {
+// gentle ripple (harmonics), ~[-1,1]
+function ripple(u, vNorm, T) {
   let w = 0;
   for (const h of HARM) {
     w += h.amp * Math.sin(u * Math.PI * 2 * h.fu + vNorm * h.fv * Math.PI + T * h.sp + h.ph);
   }
-  w /= HARM_NORM;
+  return w / HARM_NORM;
+}
+
+// roaming gust lift (>= 0): localized swells that drift around under the cloth
+function gust(u, vNorm, T) {
+  let g = 0;
   for (const b of BUMPS) {
     const bu = 0.5 + 0.42 * Math.sin(T * b.su + b.pu);
     const bv = 0.5 + 0.42 * Math.sin(T * b.sv + b.pv);
     const du = u - bu, dv = vNorm - bv;
-    w += b.h * Math.exp(-(du * du) / b.wu - (dv * dv) / b.wv);
+    g += b.h * Math.exp(-(du * du) / b.wu - (dv * dv) / b.wv);
   }
-  return w;
+  return g;
 }
 
 // Build the line list (thin filler lines first so the bright main lines sit on top).
@@ -116,12 +121,20 @@ export default function WaveBackground() {
         for (let j = 0; j <= COLS; j++) {
           const u = U_MIN + (j / COLS) * (U_MAX - U_MIN); // 0 = pole, 1 = free edge; extends past both
           const x = u * W;                       // u 0..1 maps across the viewBox
-          const env = Math.pow(Math.max(0, u), 0.7); // loose anchor — bends span most of the width
-          const w = field(u, vNorm, T);
+          const env = Math.pow(Math.max(0, u), 0.7); // ripple loosely anchored at the left pole
+          const envG = 0.55 + 0.45 * Math.pow(Math.max(0, u), 0.5); // gusts work even on the left
+          const w = ripple(u, vNorm, T);
+          const g = gust(u, vNorm, T);
           const a = 260 * env * tf * w;
-          const z = a * 0.55;                    // depth (perspective)
-          const yw = a * 0.95;                   // vertical bend — dominant, so lines curve into arcs
-          const s = Math.max(S_MIN, Math.min(S_MAX, FOCAL / (FOCAL + z))); // perspective scale (clamped)
+          // Wind from beneath: a gust pushes the cloth TOWARD the viewer, so that
+          // patch balloons outward (perspective scale > 1, lines spread wider) and
+          // lifts up. The ripple adds gentle depth/bend on top.
+          const z = a * 0.5 - g * 360 * envG;    // negative z (closer) = balloon
+          const yw = a * 0.9 - g * 150 * envG;   // gusts also lift the cloth up
+          // Clamp the DENOMINATOR (not s) so the scale can't blow through the
+          // z = -FOCAL pole — that pole is what spiked the fabric when gusts stacked.
+          const denom = Math.min(FOCAL / S_MIN, Math.max(FOCAL / S_MAX, FOCAL + z));
+          const s = FOCAL / denom;               // perspective scale, smoothly bounded
           const sx = CX + (x - CX) * s;
           const sy = CY + (baseY + yw - CY) * s;
           d += (j ? 'L' : 'M') + sx.toFixed(1) + ',' + sy.toFixed(1) + ' ';
