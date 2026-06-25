@@ -13,7 +13,7 @@ const ETH_RPCS = [
   import.meta.env.VITE_ETH_RPC_BACKUP2,
 ].filter(Boolean);
 if (ETH_RPCS.length === 0) {
-  ETH_RPCS.push('https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://eth.llamarpc.com');
+  ETH_RPCS.push('https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://1rpc.io/eth');
 }
 
 export function NXDProvider({ children }) {
@@ -106,15 +106,17 @@ export function NXDProvider({ children }) {
       const protocol = new ethers.Contract(NXD_CONTRACTS.NXDProtocol, NXD_ABIS.NXDProtocol, provider);
       const token = new ethers.Contract(NXD_CONTRACTS.NXDv2Token, NXD_ABIS.NXDv2Token, provider);
 
+      // Each read is independent — a single revert must NOT blank the whole hero.
+      const S = (pr, d = 0n) => pr.catch(() => d);
       const [
         supply, tokenBurned, protocolBurned, dxnStaked, dxnBurned,
         ethToVault, ethDevFee,
         start, end, totalDeposited, maxSup, pendingDxn, pairAddr,
       ] = await Promise.all([
-        token.totalSupply(), token.totalNXDBurned(), protocol.totalNXDBurned(), protocol.totalDXNStaked(), protocol.totalDXNBurned(),
-        protocol.totalETHToStakingVault(), protocol.totalETHDevFee(),
-        protocol.startTime(), protocol.endTime(), protocol.totalDXNDepositedLMP(),
-        token.maxSupply(), protocol.pendingDXNToStake(), token.uniswapV2Pair(),
+        S(token.totalSupply()), S(token.totalNXDBurned()), S(protocol.totalNXDBurned()), S(protocol.totalDXNStaked()), S(protocol.totalDXNBurned()),
+        S(protocol.totalETHToStakingVault()), S(protocol.totalETHDevFee()),
+        S(protocol.startTime()), S(protocol.endTime()), S(protocol.totalDXNDepositedLMP()),
+        S(token.maxSupply()), S(protocol.pendingDXNToStake()), S(token.uniswapV2Pair(), ethers.ZeroAddress),
       ]);
 
       // currentRate() reverts with Panic 0x11 once LMP has ended (~28 days post-deploy)

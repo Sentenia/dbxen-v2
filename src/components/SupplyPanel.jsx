@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Coins, RefreshCw } from 'lucide-react';
 import { CHAINS } from '../config/chains';
 import { fmt } from '../utils/helpers';
+import { useWallet } from '../hooks/WalletContext';
 
 // Circulating DXNv2 = totalSupply - balance held at the dead address (burned).
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -15,13 +16,14 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // Browser-friendly (CORS-enabled) public RPCs per chain, tried before the config
 // endpoints — the config uses ankr/cloudflare/polygon-rpc which often block CORS.
+// CORS-enabled public RPCs only (publicnode/drpc). NO llamarpc — it CORS-blocks in browsers.
 const SUPPLY_RPCS = {
-  ethereum:   ['https://eth.llamarpc.com', 'https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
-  optimism:   ['https://optimism.llamarpc.com', 'https://optimism-rpc.publicnode.com'],
-  base:       ['https://base.llamarpc.com', 'https://base-rpc.publicnode.com'],
-  avalanche:  ['https://avalanche-c-chain-rpc.publicnode.com', 'https://api.avax.network/ext/bc/C/rpc', 'https://avalanche.drpc.org'],
-  bsc:        ['https://binance.llamarpc.com', 'https://bsc-rpc.publicnode.com'],
-  polygon:    ['https://polygon.llamarpc.com', 'https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'],
+  ethereum:   ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
+  optimism:   ['https://optimism-rpc.publicnode.com', 'https://optimism.drpc.org'],
+  base:       ['https://base-rpc.publicnode.com', 'https://base.drpc.org'],
+  avalanche:  ['https://avalanche-c-chain-rpc.publicnode.com', 'https://api.avax.network/ext/bc/C/rpc'],
+  bsc:        ['https://bsc-rpc.publicnode.com', 'https://bsc.drpc.org'],
+  polygon:    ['https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'],
   ethw:       ['https://mainnet.ethereumpow.org'],
   pulsechain: ['https://rpc.pulsechain.com', 'https://rpc-pulsechain.g4mm4.io'],
 };
@@ -37,10 +39,10 @@ async function makeProvider(key, c) {
   const urls = [...(SUPPLY_RPCS[key] || []), c.rpc, c.rpcBackup].filter(Boolean);
   for (const url of urls) {
     try {
-      const p = new ethers.JsonRpcProvider(url);
+      const p = new ethers.JsonRpcProvider(url, undefined, { staticNetwork: true });
       await withTimeout(p.getBlockNumber(), 6000);
       return p;
-    } catch { /* try next */ }
+    } catch { /* fail fast, try next */ }
   }
   return null;
 }
@@ -66,6 +68,9 @@ async function fetchChainSupply(key, c) {
 }
 
 export default function SupplyPanel() {
+  // Feature whatever chain the wallet is on (defaults to ethereum / when disconnected).
+  const w = useWallet();
+  const activeKey = (w?.chainKey && CHAINS[w.chainKey]) ? w.chainKey : 'ethereum';
   const [data, setData] = useState(() => {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || null; } catch { return null; }
   });
@@ -114,7 +119,7 @@ export default function SupplyPanel() {
             <div>
               <h2 style={{ margin: 0, fontSize: 20 }}>DXNv2 Circulating Supply</h2>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Total minted across all chains, excluding burned (dead-address) tokens · updates daily
+                Circulating DXNv2 per chain (excludes burned tokens) · updates daily
               </div>
             </div>
           </div>
@@ -129,22 +134,17 @@ export default function SupplyPanel() {
           </button>
         </div>
 
-        {/* Grand total */}
+        {/* Featured: the connected chain */}
         <div style={{ textAlign: 'center', padding: '16px 0 24px' }}>
           <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--amber)', lineHeight: 1.1 }}>
-            {data?.grandCirc != null ? fmt(data.grandCirc) : (loading ? '…' : '—')}
+            {data?.chains?.[activeKey] ? fmt(data.chains[activeKey].circulating) : (loading ? '…' : '—')}
           </div>
-          <div className="hero-stat-label">Total DXNv2 in circulation (all chains)</div>
-          {data?.grandBurned != null && (
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              {fmt(data.grandBurned)} burned to dead address
-            </div>
-          )}
+          <div className="hero-stat-label">{CHAINS[activeKey]?.name} · DXNv2 in circulation</div>
         </div>
 
-        {/* Per-chain grid */}
+        {/* Other chains */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
-          {order.map((key) => {
+          {order.filter((key) => key !== activeKey).map((key) => {
             const c = CHAINS[key];
             const row = data?.chains?.[key];
             return (

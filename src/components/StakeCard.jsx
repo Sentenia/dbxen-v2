@@ -55,7 +55,7 @@ export default function StakeCard() {
         </div>
       )}
       {chain.dexUrl && (
-        <a href={chain.dexUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none', marginTop: 4, marginBottom: 8 }}>
+        <a href={chain.dexUrl.replace(chain.contracts.XEN, chain.contracts.DXN_V2)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none', marginTop: 4, marginBottom: 8 }}>
           Get {chain.dxnSym} <span style={{ fontSize: 10 }}>&#8599;</span>
         </a>
       )}

@@ -40,12 +40,6 @@ export function WalletProvider({ children }) {
     totalMigrated: 0n, poolRemaining: 0n, deadline: 0n, totalPool: 0n,
   });
 
-  // Legacy stats (PulseChain)
-  const [legacyStats, setLegacyStats] = useState({
-    unclaimedDxn: 0n, unclaimedFees: 0n, totalStake: 0n, withdrawable: 0n,
-    pendingStake: 0n, pendingUnlockTs: 0, deadline: 0n, oldDxnBal: 0n,
-  });
-
   // Contract refs (signer-based, for write txns)
   const contractsRef = useRef({});
   // Fallback read-only provider cache
@@ -141,19 +135,17 @@ export function WalletProvider({ children }) {
     const oldDxnC = new ethers.Contract(c.contracts.OLD_DXN, ERC20_ABI, signer);
     const dbxenC = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, signer);
 
-    let migC, oldV2DxnC, legacyDbxenC, legacyDxnC;
+    let migC, oldV2DxnC;
     if (c.dualMigration) {
       migC = new ethers.Contract(c.contracts.MIGRATION, DUAL_MIGRATION_ABI, signer);
       oldV2DxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
-      legacyDbxenC = new ethers.Contract(c.legacy.DBXEN_V2, DBXEN_ABI, signer);
-      legacyDxnC = new ethers.Contract(c.legacy.DXN_V2, ERC20_ABI, signer);
     } else {
       migC = new ethers.Contract(c.contracts.MIGRATION, MIGRATION_ABI, signer);
     }
 
     contractsRef.current = {
       provider, signer, xen: xenC, dxnV2: dxnV2C, oldDxn: oldDxnC, dbxen: dbxenC,
-      migration: migC, oldV2Dxn: oldV2DxnC, legacyDbxen: legacyDbxenC, legacyDxn: legacyDxnC,
+      migration: migC, oldV2Dxn: oldV2DxnC,
     };
     console.log('[fullReconnect] Complete for', key, '— contracts built');
   }, []);
@@ -343,8 +335,17 @@ export function WalletProvider({ children }) {
 
       let totalStaked = 0n, lastFees = 0n;
       try {
-        const summedStakes = await dbxRead.summedCycleStakes(storedCycle);
+        // Prefer the current cycle's summed stake (matches the protocol's live value).
+        // If it's not populated yet (an in-progress cycle reads 0), fall back to
+        // lastStartedCycle so DXN Staked never wrongly shows 0.
+        let summedStakes = await dbxRead.summedCycleStakes(storedCycle);
         if (isStale(epoch)) return;
+        if (summedStakes === 0n) {
+          const lsc = await dbxRead.lastStartedCycle();
+          if (isStale(epoch)) return;
+          summedStakes = await dbxRead.summedCycleStakes(lsc);
+          if (isStale(epoch)) return;
+        }
         totalStaked = summedStakes - reward + pendingStakeAmt;
         // Use the LAST COMPLETED cycle's fees for a stable 24h estimate — not the
         // in-progress cycle (which starts at ~0 and ramps up over the day).
@@ -462,105 +463,10 @@ export function WalletProvider({ children }) {
     }
   }, [chainKey, getReadProvider, getFallbackWithBackup]);
 
-  // ═══ REFRESH LEGACY (PULSECHAIN) ═══
-  const refreshLegacy = useCallback(async () => {
-    const c = CHAINS[chainKey];
-    if (!c.dualMigration || !userAddr) return;
-    const { legacyDbxen, oldV2Dxn, signer } = contractsRef.current;
-    if (!legacyDbxen) return;
-    try {
-      const v2Bal = await oldV2Dxn.balanceOf(userAddr);
-
-      let accRew = await legacyDbxen.accRewards(userAddr);
-      let accWithdraw = await legacyDbxen.accWithdrawableStake(userAddr);
-      let accFees = await legacyDbxen.accAccruedFees(userAddr);
-      const lastActive = await legacyDbxen.lastActiveCycle(userAddr);
-      const lastFeeUpdate = await legacyDbxen.lastFeeUpdateCycle(userAddr);
-      const cycleBatchesBurned = await legacyDbxen.accCycleBatchesBurned(userAddr);
-      const firstStake = await legacyDbxen.accFirstStake(userAddr);
-      const secondStake = await legacyDbxen.accSecondStake(userAddr);
-      const currentCycle = await legacyDbxen.getCurrentCycle();
-      const lastStarted = await legacyDbxen.lastStartedCycle();
-
-      if (currentCycle > lastActive && cycleBatchesBurned > 0n) {
-        const rpc = await legacyDbxen.rewardPerCycle(lastActive);
-        const tb = await legacyDbxen.cycleTotalBatchesBurned(lastActive);
-        if (tb > 0n) accRew += (cycleBatchesBurned * rpc) / tb;
-      }
-
-      const feeCp = await legacyDbxen.cycleFeesPerStakeSummed(lastStarted + 1n);
-      if (currentCycle > lastStarted && lastFeeUpdate > 0n && lastFeeUpdate !== lastStarted + 1n) {
-        const uCp = await legacyDbxen.cycleFeesPerStakeSummed(lastFeeUpdate);
-        const delta = feeCp - uCp;
-        if (delta > 0n && accRew > 0n) accFees += (accRew * delta) / SCALING;
-      }
-
-      let pending = 0n;
-      let sf = firstStake, ss = secondStake;
-      if (sf > 0n && currentCycle > sf) {
-        const u1 = await legacyDbxen.accStakeCycle(userAddr, sf);
-        accRew += u1; accWithdraw += u1;
-        if (lastStarted + 1n > sf) {
-          const c1 = await legacyDbxen.cycleFeesPerStakeSummed(sf);
-          accFees += (u1 * (feeCp - c1)) / SCALING;
-        }
-        if (ss > 0n) {
-          if (currentCycle > ss) {
-            const u2 = await legacyDbxen.accStakeCycle(userAddr, ss);
-            accRew += u2; accWithdraw += u2;
-            if (lastStarted + 1n > ss) {
-              const c2 = await legacyDbxen.cycleFeesPerStakeSummed(ss);
-              accFees += (u2 * (feeCp - c2)) / SCALING;
-            }
-          } else {
-            pending += await legacyDbxen.accStakeCycle(userAddr, ss);
-          }
-        }
-      } else if (sf > 0n && sf >= currentCycle) {
-        pending += await legacyDbxen.accStakeCycle(userAddr, sf);
-      }
-      if (ss > 0n && currentCycle <= ss) {
-        pending += await legacyDbxen.accStakeCycle(userAddr, ss);
-      }
-
-      let unlockTs = 0;
-      if (pending > 0n) {
-        let uc = 0n;
-        if (firstStake > 0n && firstStake >= currentCycle) uc = firstStake;
-        if (secondStake > 0n && secondStake >= currentCycle && (uc === 0n || secondStake < uc)) uc = secondStake;
-        if (uc > 0n) {
-          const iTs = await legacyDbxen.i_initialTimestamp();
-          const per = await legacyDbxen.i_periodDuration();
-          unlockTs = Number(iTs + ((uc + 1n) * per));
-        }
-      }
-
-      let deadlineVal = 0n;
-      try {
-        const oldMig = new ethers.Contract(c.legacy.MIGRATION, MIGRATION_ABI, signer);
-        deadlineVal = await oldMig.deadline();
-      } catch {}
-
-      const uDxn = accRew - accWithdraw;
-      setLegacyStats({
-        unclaimedDxn: uDxn > 0n ? uDxn : 0n,
-        unclaimedFees: accFees > 0n ? accFees : 0n,
-        totalStake: accWithdraw + pending,
-        withdrawable: accWithdraw,
-        pendingStake: pending,
-        pendingUnlockTs: unlockTs,
-        deadline: deadlineVal,
-        oldDxnBal: v2Bal,
-      });
-    } catch (e) {
-      console.error('Legacy refresh failed:', e);
-    }
-  }, [chainKey, userAddr]);
-
   // ═══ REFRESH ALL ═══
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshBalances(), refreshProtocolStats(), refreshBridgeStats(), refreshLegacy()]);
-  }, [refreshBalances, refreshProtocolStats, refreshBridgeStats, refreshLegacy]);
+    await Promise.all([refreshBalances(), refreshProtocolStats(), refreshBridgeStats()]);
+  }, [refreshBalances, refreshProtocolStats, refreshBridgeStats]);
 
   // ═══ TRANSACTION HELPERS ═══
   const burnBatch = useCallback(async (batches) => {
@@ -585,33 +491,18 @@ export function WalletProvider({ children }) {
     if (estFee < (c.minFee || 0n)) estFee = c.minFee;
     const value = estFee * 2n > ethers.parseEther('0.0005') ? estFee * 2n : ethers.parseEther('0.0005');
 
-    const overrides = { value, gasLimit: 500000 };
-
-    // EIP-2930 access list — pre-warms the storage slots & addresses burnBatch touches
-    // (XEN token, DXN, protocol slots) so the EVM charges warm instead of cold-access gas.
-    // Auto-generated for this exact call via eth_createAccessList; attached ONLY when it
-    // actually lowers gas (an access list can cost more than it saves). Safe no-op on
-    // chains/nodes that don't support the RPC.
+    // Estimate gas for THIS burn (gas varies with cycle catch-up); add headroom.
+    // If estimation reverts, surface the real reason instead of sending a tx that
+    // silently fails in the wallet ("Failed" with no explanation).
+    let gasLimit = 600000n;
     try {
-      const popTx = await dbxen.burnBatch.populateTransaction(batches, { value });
-      const callObj = { from: userAddr, to: popTx.to, data: popTx.data, value: ethers.toBeHex(value) };
-      const [al, baseGasHex] = await Promise.all([
-        provider.send('eth_createAccessList', [callObj, 'latest']),
-        provider.send('eth_estimateGas', [callObj]).catch(() => null),
-      ]);
-      if (al?.accessList?.length) {
-        const withList = BigInt(al.gasUsed || 0);
-        const without = baseGasHex ? BigInt(baseGasHex) : null;
-        if (withList > 0n && (!without || withList < without)) {
-          overrides.accessList = al.accessList;
-          console.log(`[burnBatch] access list attached: ${without ? Number(without - withList) : '?'} gas saved`);
-        }
-      }
+      const est = await dbxen.burnBatch.estimateGas(batches, { value });
+      gasLimit = est + est / 3n; // +33%
     } catch (e) {
-      console.log('[burnBatch] access list skipped:', e?.message || e);
+      throw new Error(e.reason || e.shortMessage || 'Burn would revert — check XEN balance, approval, and protocol fee');
     }
 
-    const tx = await dbxen.burnBatch(batches, overrides);
+    const tx = await dbxen.burnBatch(batches, { value, gasLimit });
     await tx.wait();
     toast.success('XEN burned successfully!');
     await refreshAll();
@@ -678,30 +569,6 @@ export function WalletProvider({ children }) {
     toast.success('DXN migrated!');
     await refreshAll();
   }, [chainKey, userAddr, refreshAll]);
-
-  const legacyUnstake = useCallback(async (amount) => {
-    const { legacyDbxen } = contractsRef.current;
-    const tx = await legacyDbxen.unstake(amount);
-    await tx.wait();
-    toast.success('Legacy unstaked!');
-    await refreshAll();
-  }, [refreshAll]);
-
-  const legacyClaimDxn = useCallback(async () => {
-    const { legacyDbxen } = contractsRef.current;
-    const tx = await legacyDbxen.claimRewards();
-    await tx.wait();
-    toast.success('Legacy DXN claimed!');
-    await refreshAll();
-  }, [refreshAll]);
-
-  const legacyClaimFees = useCallback(async () => {
-    const { legacyDbxen } = contractsRef.current;
-    const tx = await legacyDbxen.claimFees();
-    await tx.wait();
-    toast.success('Legacy fees claimed!');
-    await refreshAll();
-  }, [refreshAll]);
 
   const addTokenToWallet = useCallback(async () => {
     if (!window.ethereum) return;
@@ -773,7 +640,6 @@ export function WalletProvider({ children }) {
     // If wallet connected, also refresh user-specific data
     if (connected && !isFirstRender) {
       refreshBalances();
-      refreshLegacy();
     }
   }, [chainKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -841,6 +707,18 @@ export function WalletProvider({ children }) {
     if (connected && userAddr) refreshAll();
   }, [connected, userAddr, refreshAll]);
 
+  // ═══ SELF-HEALING STATS REFRESH ═══
+  // Protocol/bridge stats otherwise only refetch on a chain change, so a failed
+  // or raced first fetch left the hero on dashes until you switched chains.
+  // Retry quickly after mount, then refresh periodically to stay fresh.
+  useEffect(() => {
+    const tick = () => { refreshProtocolStats(); refreshBridgeStats(); };
+    const t1 = setTimeout(tick, 1500);
+    const t2 = setTimeout(tick, 5000);
+    const id = setInterval(tick, 30000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(id); };
+  }, [refreshProtocolStats, refreshBridgeStats]);
+
   // Mobile link fix
   useEffect(() => {
     if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
@@ -856,10 +734,10 @@ export function WalletProvider({ children }) {
     <WalletContext.Provider value={{
       chainKey, chain, addr, userAddr, ethBal, connected,
       xenBal, dxnBal, oldDxnBal, oldV2DxnBal,
-      protocolStats, userStats, bridgeStats, legacyStats,
+      protocolStats, userStats, bridgeStats,
       connectWallet, disconnectWallet, switchChain, refreshAll, refreshBalances, refreshProtocolStats, refreshBridgeStats,
       burnBatch, stakeTokens, unstakeTokens, claimDxn, claimFees,
-      migrate, legacyUnstake, legacyClaimDxn, legacyClaimFees,
+      migrate,
       addTokenToWallet, getGasInfo, contractsRef, getReadProvider,
     }}>
       {children}

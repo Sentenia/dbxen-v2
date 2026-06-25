@@ -14,13 +14,14 @@ const DUAL_ABI = [
 const CACHE_KEY = 'dxnv2_bridged_v1';
 
 // Browser-CORS-friendly public RPCs (config endpoints use ankr/cloudflare which block CORS).
+// CORS-enabled public RPCs only (publicnode/drpc). NO llamarpc — it CORS-blocks in browsers.
 const RPCS = {
-  ethereum:   ['https://eth.llamarpc.com', 'https://ethereum-rpc.publicnode.com'],
-  optimism:   ['https://optimism.llamarpc.com', 'https://optimism-rpc.publicnode.com'],
-  base:       ['https://base.llamarpc.com', 'https://base-rpc.publicnode.com'],
+  ethereum:   ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
+  optimism:   ['https://optimism-rpc.publicnode.com', 'https://optimism.drpc.org'],
+  base:       ['https://base-rpc.publicnode.com', 'https://base.drpc.org'],
   avalanche:  ['https://avalanche-c-chain-rpc.publicnode.com', 'https://api.avax.network/ext/bc/C/rpc'],
-  bsc:        ['https://binance.llamarpc.com', 'https://bsc-rpc.publicnode.com'],
-  polygon:    ['https://polygon.llamarpc.com', 'https://polygon-bor-rpc.publicnode.com'],
+  bsc:        ['https://bsc-rpc.publicnode.com', 'https://bsc.drpc.org'],
+  polygon:    ['https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'],
   ethw:       ['https://mainnet.ethereumpow.org'],
   pulsechain: ['https://rpc.pulsechain.com', 'https://rpc-pulsechain.g4mm4.io'],
 };
@@ -29,7 +30,7 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout
 
 async function makeProvider(key, c) {
   for (const url of [...(RPCS[key] || []), c.rpc, c.rpcBackup].filter(Boolean)) {
-    try { const p = new ethers.JsonRpcProvider(url); await withTimeout(p.getBlockNumber(), 6000); return p; }
+    try { const p = new ethers.JsonRpcProvider(url, undefined, { staticNetwork: true }); await withTimeout(p.getBlockNumber(), 6000); return p; }
     catch { /* next */ }
   }
   return null;

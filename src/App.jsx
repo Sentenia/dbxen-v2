@@ -10,7 +10,6 @@ import Hero from './components/Hero';
 import BurnCard from './components/BurnCard';
 import StakeCard from './components/StakeCard';
 import RewardsCard from './components/RewardsCard';
-import LegacySection from './components/LegacySection';
 import SupplyPanel from './components/SupplyPanel';
 import MigrationStats from './components/MigrationStats';
 import ActivityDashboard from './components/ActivityDashboard';
@@ -50,7 +49,6 @@ function TabContent({ activeTab }) {
               <StakeCard />
               <RewardsCard />
             </div>
-            <LegacySection />
           </section>
           <SupplyPanel />
           <HowItWorks />
