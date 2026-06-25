@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Flag-in-the-wind background. The fabric is a height field displaced in DEPTH
 // (z, toward/away from the viewer) then projected through a focal point. Where
@@ -13,13 +13,17 @@ import { useEffect, useRef } from 'react';
 // cloth — that lift the fabric locally as they drift around.
 
 const N = 22;                 // main contour lines
-const COLS = 46;              // horizontal samples per line
+const COLS = 84;              // horizontal samples per line (covers the extended span)
 const W = 1800, H = 900;
 const TOP_Y = 80, BOT_Y = 820;
 const SPACING = (BOT_Y - TOP_Y) / (N - 1);
 const CX = W * 0.5, CY = H * 0.4;   // projection focus
 const FOCAL = 1500;
 const SPEED = 0.06;           // global time scale — small = barely-there drift
+// Sample well past the visible window (u 0..1 fills the viewBox) so the line ends
+// stay off-screen even when perspective pulls them inward as the cloth folds.
+const U_MIN = -0.4, U_MAX = 1.4;
+const S_MIN = 0.62, S_MAX = 2.4;    // clamp perspective so folds can't drag ends on-screen
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -86,6 +90,17 @@ for (let i = 0; i < N; i++) {
 
 export default function WaveBackground() {
   const refs = useRef([]);
+  // On narrow screens the full 1800-wide viewBox gets squished, scrunching the
+  // waves. Show a narrower, centered window on mobile so the lines spread out.
+  const [viewBox, setViewBox] = useState('0 0 1800 900');
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const apply = () => setViewBox(mq.matches ? '550 0 700 900' : '0 0 1800 900');
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -99,14 +114,14 @@ export default function WaveBackground() {
         const vNorm = (baseY - TOP_Y) / (BOT_Y - TOP_Y);
         let d = '', meanZ = 0;
         for (let j = 0; j <= COLS; j++) {
-          const u = j / COLS;                    // 0 = pole (left), 1 = free edge
-          const x = -120 + u * (W + 240);
-          const env = Math.pow(u, 0.7);          // loose anchor — bends span most of the width
+          const u = U_MIN + (j / COLS) * (U_MAX - U_MIN); // 0 = pole, 1 = free edge; extends past both
+          const x = u * W;                       // u 0..1 maps across the viewBox
+          const env = Math.pow(Math.max(0, u), 0.7); // loose anchor — bends span most of the width
           const w = field(u, vNorm, T);
           const a = 260 * env * tf * w;
           const z = a * 0.55;                    // depth (perspective)
           const yw = a * 0.95;                   // vertical bend — dominant, so lines curve into arcs
-          const s = FOCAL / (FOCAL + z);         // perspective scale
+          const s = Math.max(S_MIN, Math.min(S_MAX, FOCAL / (FOCAL + z))); // perspective scale (clamped)
           const sx = CX + (x - CX) * s;
           const sy = CY + (baseY + yw - CY) * s;
           d += (j ? 'L' : 'M') + sx.toFixed(1) + ',' + sy.toFixed(1) + ' ';
@@ -133,7 +148,7 @@ export default function WaveBackground() {
   return (
     <>
       <div className="wave-bg">
-        <svg viewBox="0 0 1800 900" preserveAspectRatio="none">
+        <svg viewBox={viewBox} preserveAspectRatio="none">
           {LINES.map((l, i) => (
             <path
               key={i}
