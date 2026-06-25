@@ -30,6 +30,19 @@ async function tokenUsd(dexId, addr) {
   return Number.isFinite(px) && px > 0 ? px : null;
 }
 
+// Returns ETH (WETH) price in USD via DexScreener, cached 10 min. null on failure.
+export async function getEthUsd(nowMs) {
+  const hit = cache.__ethusd;
+  if (hit && nowMs - hit.ts < TTL) return hit.val;
+  try {
+    const val = await tokenUsd('ethereum', DEX.ethereum.wnative);
+    cache.__ethusd = { val, ts: nowMs };
+    return val;
+  } catch {
+    return null;
+  }
+}
+
 // Returns DXN price denominated in the chain's native token, or null if unavailable.
 export async function getDxnPriceInNative(chainKey, dxnAddr, nowMs) {
   const cfg = DEX[chainKey];

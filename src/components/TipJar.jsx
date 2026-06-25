@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWallet } from '../hooks/WalletContext';
 import { CHAINS } from '../config/chains';
+import { getEthUsd } from '../utils/price';
 
 // Community tip jar — collects USDC/USDT toward the DexScreener logo listing.
 // The fill level reflects the LIVE on-chain USDC+USDT balance of the community
@@ -22,7 +23,9 @@ const STABLE_ABI = [
   'function balanceOf(address) view returns (uint256)',
   'function transfer(address,uint256)',
 ];
-const PRESETS = [5, 10, 25];
+const TOKEN_LIST = ['USDC', 'USDT', 'ETH'];
+// Presets are token-native: dollars for stablecoins, ETH for ETH.
+const PRESETS = { USDC: [5, 10, 25], USDT: [5, 10, 25], ETH: [0.005, 0.01, 0.05] };
 
 export default function TipJar() {
   const { chainKey, connected, connectWallet, switchChain, contractsRef } = useWallet();
@@ -39,9 +42,15 @@ export default function TipJar() {
       const p = new ethers.JsonRpcProvider(rpc);
       const usdc = new ethers.Contract(TOKENS.USDC.address, STABLE_ABI, p);
       const usdt = new ethers.Contract(TOKENS.USDT.address, STABLE_ABI, p);
-      const [c, t] = await Promise.all([usdc.balanceOf(JAR_ADDRESS), usdt.balanceOf(JAR_ADDRESS)]);
+      const [c, t, ethBal] = await Promise.all([
+        usdc.balanceOf(JAR_ADDRESS), usdt.balanceOf(JAR_ADDRESS), p.getBalance(JAR_ADDRESS),
+      ]);
       provRef.current = p;
-      return Number(ethers.formatUnits(c, 6)) + Number(ethers.formatUnits(t, 6));
+      let total = Number(ethers.formatUnits(c, 6)) + Number(ethers.formatUnits(t, 6));
+      // Add the ETH balance in USD (skipped if the price lookup fails).
+      const ethUsd = await getEthUsd(Date.now());
+      if (ethUsd) total += Number(ethers.formatEther(ethBal)) * ethUsd;
+      return total;
     };
     try {
       setRaised(await read(CHAINS.ethereum.rpc));
@@ -82,9 +91,14 @@ export default function TipJar() {
     if (!signer) { toast.error('Wallet not ready'); return; }
     setBusy(true);
     try {
-      const tk = TOKENS[token];
-      const c = new ethers.Contract(tk.address, STABLE_ABI, signer);
-      const tx = await c.transfer(JAR_ADDRESS, ethers.parseUnits(amount, tk.decimals));
+      let tx;
+      if (token === 'ETH') {
+        tx = await signer.sendTransaction({ to: JAR_ADDRESS, value: ethers.parseEther(amount) });
+      } else {
+        const tk = TOKENS[token];
+        const c = new ethers.Contract(tk.address, STABLE_ABI, signer);
+        tx = await c.transfer(JAR_ADDRESS, ethers.parseUnits(amount, tk.decimals));
+      }
       toast('Sending tip…');
       await tx.wait();
       toast.success(`Thanks for the ${amount} ${token} tip! 🫙`);
@@ -144,16 +158,18 @@ export default function TipJar() {
           </div>
 
           <div className="tipjar-tokens">
-            {Object.keys(TOKENS).map((t) => (
-              <button key={t} className={`tipjar-token${token === t ? ' active' : ''}`} onClick={() => setToken(t)}>{t}</button>
+            {TOKEN_LIST.map((t) => (
+              <button key={t} className={`tipjar-token${token === t ? ' active' : ''}`} onClick={() => { setToken(t); setAmount(''); }}>{t}</button>
             ))}
           </div>
 
           <input className="input-field" type="text" inputMode="decimal" placeholder="0.00"
             value={amount} onChange={(e) => setAmount(e.target.value)} style={{ marginBottom: 8 }} />
           <div className="tipjar-presets">
-            {PRESETS.map((p) => (
-              <button key={p} className="tipjar-preset" onClick={() => setAmount(String(p))}>${p}</button>
+            {PRESETS[token].map((p) => (
+              <button key={p} className="tipjar-preset" onClick={() => setAmount(String(p))}>
+                {token === 'ETH' ? `${p} ETH` : `$${p}`}
+              </button>
             ))}
           </div>
 
@@ -164,7 +180,7 @@ export default function TipJar() {
           <a className="tipjar-link" href={`https://etherscan.io/address/${JAR_ADDRESS}`} target="_blank" rel="noopener noreferrer">
             View community wallet <ExternalLink size={11} />
           </a>
-          <div className="tipjar-note">USDC &amp; USDT on Ethereum · sent directly to the community wallet</div>
+          <div className="tipjar-note">USDC, USDT &amp; ETH on Ethereum · sent directly to the community wallet</div>
         </div>
       )}
     </div>
