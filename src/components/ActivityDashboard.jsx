@@ -37,26 +37,52 @@ export default function ActivityDashboard() {
     if (!provider) return;
     const c = CHAINS[chainKey];
     const isStale = () => epoch !== epochRef.current;
+    const myAddr = userAddr?.toLowerCase() || '';
     try {
       const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
 
-      let cycle, reward, initTs, period;
+      // ── Reliable contract reads (single eth_calls; work on ANY RPC). The cycle
+      //    totals + the user's own batches come from here, NOT from getLogs, so the
+      //    stats and "Your position" survive even when log queries are unavailable. ──
+      let cycle, reward, initTs, period, cycleTotalBN, totalEthFees;
       if (isFallback) {
-        cycle = await dbxRead.getCurrentCycle();
-        if (isStale()) return;
-        reward = await dbxRead.currentCycleReward();
-        if (isStale()) return;
-        initTs = await dbxRead.i_initialTimestamp();
-        if (isStale()) return;
-        period = await dbxRead.i_periodDuration();
+        cycle = await dbxRead.getCurrentCycle(); if (isStale()) return;
+        reward = await dbxRead.currentCycleReward(); if (isStale()) return;
+        initTs = await dbxRead.i_initialTimestamp(); if (isStale()) return;
+        period = await dbxRead.i_periodDuration(); if (isStale()) return;
+        cycleTotalBN = await dbxRead.cycleTotalBatchesBurned(cycle); if (isStale()) return;
+        try { totalEthFees = await dbxRead.cycleAccruedFees(cycle); } catch { totalEthFees = 0n; }
         if (isStale()) return;
       } else {
         [cycle, reward, initTs, period] = await Promise.all([
           dbxRead.getCurrentCycle(), dbxRead.currentCycleReward(), dbxRead.i_initialTimestamp(), dbxRead.i_periodDuration(),
         ]);
         if (isStale()) return;
+        [cycleTotalBN, totalEthFees] = await Promise.all([
+          dbxRead.cycleTotalBatchesBurned(cycle), dbxRead.cycleAccruedFees(cycle).catch(() => 0n),
+        ]);
+        if (isStale()) return;
+      }
+      const contractTotalBatches = Number(cycleTotalBN);
+
+      // Your position, straight from the contract — accCycleBatchesBurned is your
+      // batch count for your last active cycle, valid only if that IS this cycle.
+      let myBatches = 0;
+      if (userAddr) {
+        try {
+          const [accB, lac] = await Promise.all([
+            dbxRead.accCycleBatchesBurned(userAddr), dbxRead.lastActiveCycle(userAddr),
+          ]);
+          if (lac === cycle) myBatches = Number(accB);
+        } catch { /* leave at 0 */ }
+        if (isStale()) return;
       }
 
+      // ── Burn feed (the per-address table) via getLogs — BEST EFFORT. Many public
+      //    RPCs now gate wide getLogs behind API keys, so wrap it: a failure leaves
+      //    the table empty but must NOT zero out the contract-derived stats above. ──
+      let sorted = [], burnerCount = 0, totalGasCost = 0n, myGasCost = 0n, logsOk = false;
+      try {
       const now = BigInt(Math.floor(Date.now() / 1000));
       const cycleStartTs = initTs + (cycle * period);
       const secsIntoCycle = Number(now - cycleStartTs);
@@ -159,22 +185,21 @@ export default function ActivityDashboard() {
         data.gasCost = gasPrice * estGasPerTx * BigInt(data.txCount);
       }
 
-      let totalEthFees = 0n;
-      try {
-        totalEthFees = await dbxRead.cycleAccruedFees(cycle);
-        if (isStale()) return;
-      } catch {}
-
-      const sorted = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
-      let totalGasCost = 0n;
-      for (const [, d] of sorted) totalGasCost += d.gasCost;
+      const built = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
+      sorted = built;
+      burnerCount = built.length;
+      for (const [, dd] of built) totalGasCost += dd.gasCost;
+      myGasCost = burners[myAddr]?.gasCost || 0n;
+      logsOk = true;
+      } catch (e) {
+        console.warn('[Activity] burn feed unavailable (RPC getLogs limited):', e?.message || e);
+      }
 
       if (isStale()) return;
       const prev = actDataRef.current;
-      if (totalBatches === 0 && prev?.totalBatches > 0 && prev?.cycle === Number(cycle)) return;
       const newData = {
-        cycle: Number(cycle), reward, totalBatches, burnerCount: sorted.length,
-        totalEthFees, sorted, totalGasCost,
+        cycle: Number(cycle), reward, totalBatches: contractTotalBatches,
+        burnerCount, totalEthFees, sorted, totalGasCost, myBatches, myGasCost, logsOk,
       };
       actDataRef.current = newData;
       setActData(newData);
@@ -182,7 +207,7 @@ export default function ActivityDashboard() {
     } catch (e) {
       console.error('Activity refresh failed:', e);
     }
-  }, [chainKey, getReadProvider]);
+  }, [chainKey, getReadProvider, userAddr]);
 
   useEffect(() => { refreshActivity(); }, [refreshActivity]);
 
@@ -193,13 +218,14 @@ export default function ActivityDashboard() {
 
   const myAddr = userAddr?.toLowerCase() || '';
   const d = actData || {};
-  const myBurner = d.sorted?.find(([a]) => a === myAddr)?.[1];
-  const myBatches = myBurner?.batches || 0;
+  // Your position comes from the contract (d.myBatches), not the getLogs feed, so
+  // it's accurate even when the burn list below can't load.
+  const myBatches = d.myBatches || 0;
   const myShare = d.totalBatches > 0 ? ((myBatches / d.totalBatches) * 100) : 0;
   const rewardFloat = d.reward ? parseFloat(ethers.formatEther(d.reward)) : 0;
   const myReward = d.totalBatches > 0 ? (myBatches / d.totalBatches) * rewardFloat : 0;
   const totalEthFloat = d.totalEthFees ? parseFloat(ethers.formatEther(d.totalEthFees)) : 0;
-  const myGasCost = myBurner?.gasCost || 0n;
+  const myGasCost = d.myGasCost || 0n;
   const myProtocolFee = d.totalBatches > 0 ? (myBatches / d.totalBatches) * totalEthFloat : 0;
 
   const totalPages = d.sorted ? Math.ceil(d.sorted.length / PAGE_SIZE) : 1;
@@ -255,7 +281,9 @@ export default function ActivityDashboard() {
             <tbody>
               {pageData.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
-                  {actData === null ? 'Loading burn activity...' : 'No burns this cycle yet.'}
+                  {actData === null ? 'Loading burn activity...'
+                    : d.totalBatches > 0 ? 'Per-address list unavailable on this RPC — cycle totals and your position above are accurate.'
+                    : 'No burns this cycle yet.'}
                 </td></tr>
               ) : pageData.map(([addr, data]) => {
                 const isYou = addr === myAddr;

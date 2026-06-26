@@ -31,6 +31,7 @@ Deploys to dbxen-v2.vercel.app via Vercel from GitHub repo Sentenia/dbxen-v2.
 - DXNv2/WETH has NO DexScreener pool; price is read on-chain from its Uniswap V3 1% pool (0x582B074e1016e8774D91dBF5c88E9859a6c7E7d8) in price.js
 - Community donate chest sends to the DXN community wallet 0x0A946dB17243332C9754C6c59B31A67201F337c6; the fill bar sums that wallet's balance across all chains
 - The background's storm/billow, the cursor "presence", and the easter eggs (Konami code, typed words like gm/wagmi/lfg, chest coin spills, console message) are INTENTIONAL — don't "fix" them as bugs
+- Free public RPCs now gate wide eth_getLogs (publicnode/ankr/drpc demand a key for archive ranges). Activity cycle stats + "Your position" read from the contract (getCurrentCycle / cycleTotalBatchesBurned / accCycleBatchesBurned / lastActiveCycle), NOT logs — the per-address burn feed is best-effort getLogs and may be empty on a chain whose RPC blocks it
 
 ## Rules
 - npm run build must pass before committing
