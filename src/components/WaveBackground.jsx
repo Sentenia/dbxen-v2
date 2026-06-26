@@ -27,10 +27,9 @@ const U_MIN = -0.4, U_MAX = 1.4;
 const S_MIN = 0.62, S_MAX = 2.9;    // clamp perspective; high max lets gusts balloon outward
 // cursor "weight": the cloth eases toward the pointer slowly, with a little wander
 // so it's a loose reaction rather than a 1:1 lock.
-const CURSOR_EASE = 0.004;          // per-frame lean rate once engaged — barely creeps
-const CURSOR_DELAY = 5;             // seconds the cursor must rest still before the cloth leans in
-const CURSOR_RADIUS = 0.03;         // movement beyond this resets the dwell timer
-const CURSOR_WU = 0.10, CURSOR_WV = 0.28, CURSOR_H = 0.22; // broad + very faint = barely-there
+const CURSOR_EASE = 0.01;           // per-frame rate of EACH smoothing stage (cascaded = ultra-smooth)
+const CURSOR_DELAY = 3;             // seconds of pure latency before anything reacts (hides the link)
+const CURSOR_WU = 0.10, CURSOR_WV = 0.28, CURSOR_H = 0.08; // broad + extremely faint = barely a tug
 const WPH1 = rand(0, Math.PI * 2), WPH2 = rand(0, Math.PI * 2), WPH3 = rand(0, Math.PI * 2);
 
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -105,7 +104,8 @@ export default function WaveBackground() {
   const refs = useRef([]);
   const mouse = useRef({ u: 0.5, v: 0.5, on: 0 });        // raw pointer target (field coords)
   const mouseSmooth = useRef({ u: 0.5, v: 0.5, s: 0 });    // eased position + strength
-  const dwell = useRef({ u: 0.5, v: 0.5, since: 0 });      // rest anchor + when the cursor settled
+  const trail = useRef([]);                                // pointer history, for the latency delay
+  const lag = useRef({ u: 0.5, v: 0.5 });                  // first smoothing stage (cascaded)
   const storm = useRef({ pending: false, until: 0, s: 0 }); // konami-code storm burst
   const vb = useRef({ x: 0, w: W });                       // current viewBox window (for mapping)
 
@@ -150,21 +150,25 @@ export default function WaveBackground() {
     let raf, t0;
 
     const render = (T, realT) => {
-      // Dwell-based, but everything moves slowly. The dwell timer decides WHETHER
-      // it reacts (cursor must rest ~CURSOR_DELAY s); the position always eases
-      // toward the live cursor very slowly (never snaps to a stale spot), and the
-      // strength fades in/out at the same slow rate — so engaging or moving away is
-      // a gentle drift with no quick jumps or jerk-backs.
-      const m = mouse.current, ms = mouseSmooth.current, d = dwell.current;
-      if (!m.on || Math.hypot(m.u - d.u, m.v - d.v) > CURSOR_RADIUS) {
-        d.u = m.u; d.v = m.v; d.since = realT;   // moved → restart the rest countdown
-      }
-      const engaged = m.on && realT - d.since >= CURSOR_DELAY;
-      ms.u += (m.u - ms.u) * CURSOR_EASE;
-      ms.v += (m.v - ms.v) * CURSOR_EASE;
-      ms.s += ((engaged ? 1 : 0) - ms.s) * 0.004; // symmetric slow fade — no quick on/off
-      const cu = ms.u + 0.018 * Math.sin(T * 0.7 + WPH1);
-      const cv = ms.v + 0.018 * Math.sin(T * 0.5 + WPH2);
+      // Undetectable cursor presence: react to where the pointer was CURSOR_DELAY
+      // seconds ago (pure latency → no immediate response), then run that through
+      // TWO cascaded lerps so the influence point's velocity always ramps from zero
+      // — it can never snap to a new direction. Net: a slow, delayed drift that
+      // takes several seconds and shows no obvious link to the cursor.
+      const m = mouse.current, ms = mouseSmooth.current, tr = trail.current, lg = lag.current;
+      tr.push({ t: realT, u: m.u, v: m.v });
+      while (tr.length && realT - tr[0].t > CURSOR_DELAY + 0.5) tr.shift();
+      let past = null;
+      for (let i = tr.length - 1; i >= 0; i--) { if (realT - tr[i].t >= CURSOR_DELAY) { past = tr[i]; break; } }
+      const tu = past ? past.u : ms.u;   // no history yet → hold (no motion at all)
+      const tv = past ? past.v : ms.v;
+      lg.u += (tu - lg.u) * CURSOR_EASE;
+      lg.v += (tv - lg.v) * CURSOR_EASE;
+      ms.u += (lg.u - ms.u) * CURSOR_EASE;
+      ms.v += (lg.v - ms.v) * CURSOR_EASE;
+      ms.s += (((past && m.on) ? 1 : 0) - ms.s) * 0.004;
+      const cu = ms.u + 0.015 * Math.sin(T * 0.7 + WPH1);
+      const cv = ms.v + 0.015 * Math.sin(T * 0.5 + WPH2);
       const cstr = ms.s * CURSOR_H * (1 + 0.15 * Math.sin(T * 1.1 + WPH3));
       // storm easter egg: briefly amplify the gusts into a wild billow
       const sr = storm.current;
