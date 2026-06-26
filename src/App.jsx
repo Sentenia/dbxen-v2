@@ -12,6 +12,7 @@ import BurnCard from './components/BurnCard';
 import StakeCard from './components/StakeCard';
 import RewardsCard from './components/RewardsCard';
 import SupplyPanel from './components/SupplyPanel';
+import DexChart from './components/DexChart';
 import MigrationStats from './components/MigrationStats';
 import ActivityDashboard from './components/ActivityDashboard';
 import AnalyticsPage from './components/AnalyticsPage';
@@ -52,6 +53,7 @@ function TabContent({ activeTab }) {
             </div>
           </section>
           <SupplyPanel />
+          <DexChart />
           <HowItWorks />
           <WhyV2 />
         </>
