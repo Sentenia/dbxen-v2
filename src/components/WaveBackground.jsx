@@ -24,6 +24,13 @@ const SPEED = 0.06;           // global time scale — small = barely-there drif
 // stay off-screen even when perspective pulls them inward as the cloth folds.
 const U_MIN = -0.4, U_MAX = 1.4;
 const S_MIN = 0.62, S_MAX = 2.9;    // clamp perspective; high max lets gusts balloon outward
+// cursor "weight": the cloth eases toward the pointer slowly, with a little wander
+// so it's a loose reaction rather than a 1:1 lock.
+const CURSOR_EASE = 0.004;          // per-frame lean rate once engaged — barely creeps
+const CURSOR_DELAY = 5;             // seconds the cursor must rest still before the cloth leans in
+const CURSOR_RADIUS = 0.03;         // movement beyond this resets the dwell timer
+const CURSOR_WU = 0.10, CURSOR_WV = 0.28, CURSOR_H = 0.22; // broad + very faint = barely-there
+const WPH1 = rand(0, Math.PI * 2), WPH2 = rand(0, Math.PI * 2), WPH3 = rand(0, Math.PI * 2);
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -95,23 +102,66 @@ for (let i = 0; i < N; i++) {
 
 export default function WaveBackground() {
   const refs = useRef([]);
+  const mouse = useRef({ u: 0.5, v: 0.5, on: 0 });        // raw pointer target (field coords)
+  const mouseSmooth = useRef({ u: 0.5, v: 0.5, s: 0 });    // eased position + strength
+  const dwell = useRef({ u: 0.5, v: 0.5, since: 0 });      // rest anchor + when the cursor settled
+  const vb = useRef({ x: 0, w: W });                       // current viewBox window (for mapping)
   // On narrow screens the full 1800-wide viewBox gets squished, scrunching the
   // waves. Show a narrower, centered window on mobile so the lines spread out.
   const [viewBox, setViewBox] = useState('0 0 1800 900');
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
-    const apply = () => setViewBox(mq.matches ? '550 0 700 900' : '0 0 1800 900');
+    const apply = () => {
+      const m = mq.matches;
+      setViewBox(m ? '550 0 700 900' : '0 0 1800 900');
+      vb.current = m ? { x: 550, w: 700 } : { x: 0, w: W };
+    };
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
+  }, []);
+
+  // Map the pointer into field coordinates (u across the viewBox, v top→bottom).
+  useEffect(() => {
+    const onMove = (e) => {
+      const nx = e.clientX / window.innerWidth;
+      const ny = e.clientY / window.innerHeight;
+      mouse.current.u = (vb.current.x + nx * vb.current.w) / W;
+      mouse.current.v = Math.min(1, Math.max(0, (ny * H - TOP_Y) / (BOT_Y - TOP_Y)));
+      mouse.current.on = 1;
+    };
+    const onLeave = () => { mouse.current.on = 0; };
+    window.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseleave', onLeave);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseleave', onLeave);
+    };
   }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf, t0;
 
-    const render = (T) => {
+    const render = (T, realT) => {
+      // Dwell-based, but everything moves slowly. The dwell timer decides WHETHER
+      // it reacts (cursor must rest ~CURSOR_DELAY s); the position always eases
+      // toward the live cursor very slowly (never snaps to a stale spot), and the
+      // strength fades in/out at the same slow rate — so engaging or moving away is
+      // a gentle drift with no quick jumps or jerk-backs.
+      const m = mouse.current, ms = mouseSmooth.current, d = dwell.current;
+      if (!m.on || Math.hypot(m.u - d.u, m.v - d.v) > CURSOR_RADIUS) {
+        d.u = m.u; d.v = m.v; d.since = realT;   // moved → restart the rest countdown
+      }
+      const engaged = m.on && realT - d.since >= CURSOR_DELAY;
+      ms.u += (m.u - ms.u) * CURSOR_EASE;
+      ms.v += (m.v - ms.v) * CURSOR_EASE;
+      ms.s += ((engaged ? 1 : 0) - ms.s) * 0.004; // symmetric slow fade — no quick on/off
+      const cu = ms.u + 0.018 * Math.sin(T * 0.7 + WPH1);
+      const cv = ms.v + 0.018 * Math.sin(T * 0.5 + WPH2);
+      const cstr = ms.s * CURSOR_H * (1 + 0.15 * Math.sin(T * 1.1 + WPH3));
+
       for (let li = 0; li < LINES.length; li++) {
         const el = refs.current[li];
         if (!el) continue;
@@ -124,13 +174,18 @@ export default function WaveBackground() {
           const env = Math.pow(Math.max(0, u), 0.7); // ripple loosely anchored at the left pole
           const envG = 0.55 + 0.45 * Math.pow(Math.max(0, u), 0.5); // gusts work even on the left
           const w = ripple(u, vNorm, T);
-          const g = gust(u, vNorm, T);
+          // gusts + a weighted, wandering "press" wherever the cursor has settled
+          const g = gust(u, vNorm, T)
+            + cstr * Math.exp(-((u - cu) ** 2) / CURSOR_WU - ((vNorm - cv) ** 2) / CURSOR_WV);
           const a = 260 * env * tf * w;
           // Wind from beneath: a gust pushes the cloth TOWARD the viewer, so that
           // patch balloons outward (perspective scale > 1, lines spread wider) and
-          // lifts up. The ripple adds gentle depth/bend on top.
-          const z = a * 0.5 - g * 360 * envG;    // negative z (closer) = balloon
-          const yw = a * 0.9 - g * 150 * envG;   // gusts also lift the cloth up
+          // lifts up. The ripple carries strong depth too, so its troughs RECEDE
+          // (scale < 1, lines bunch tight) — that compression, plus the steep
+          // vertical arc the gust adds across lines, is what reads as the fabric
+          // folding/creasing over itself.
+          const z = a * 0.8 - g * 340 * envG;    // ripple depth (folds) + gust balloon
+          const yw = a * 0.9 - g * 260 * envG;   // strong gust arc → lines cross into folds
           // Clamp the DENOMINATOR (not s) so the scale can't blow through the
           // z = -FOCAL pole — that pole is what spiked the fabric when gusts stacked.
           const denom = Math.min(FOCAL / S_MIN, Math.max(FOCAL / S_MAX, FOCAL + z));
@@ -148,10 +203,11 @@ export default function WaveBackground() {
       }
     };
 
-    if (reduce) { render(0); return; }
+    if (reduce) { render(0, 0); return; }
     const loop = (now) => {
       if (t0 == null) t0 = now;
-      render(((now - t0) / 1000) * SPEED);
+      const realT = (now - t0) / 1000;
+      render(realT * SPEED, realT);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
