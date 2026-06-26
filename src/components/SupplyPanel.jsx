@@ -75,6 +75,16 @@ export default function SupplyPanel() {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || null; } catch { return null; }
   });
   const [loading, setLoading] = useState(!data);
+  const [cooldown, setCooldown] = useState(false);
+
+  // Manual refresh: fetches all chains, then locks the button for a minute so it
+  // can't be spam-clicked into hammering 8 chains' worth of RPCs.
+  async function handleRefresh() {
+    if (loading || cooldown) return;
+    setCooldown(true);
+    setTimeout(() => setCooldown(false), 60000);
+    await load(true);
+  }
 
   async function load(force = false) {
     setLoading(true);
@@ -125,10 +135,10 @@ export default function SupplyPanel() {
           </div>
           <button
             className="icon-btn"
-            onClick={() => load(true)}
-            disabled={loading}
-            title="Refresh"
-            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: 8, cursor: 'pointer', color: 'var(--text-muted)' }}
+            onClick={handleRefresh}
+            disabled={loading || cooldown}
+            title={cooldown ? 'Just refreshed — try again in a moment' : 'Refresh all chains'}
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: 8, cursor: loading || cooldown ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', opacity: loading || cooldown ? 0.5 : 1 }}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>

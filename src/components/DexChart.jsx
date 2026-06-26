@@ -65,7 +65,7 @@ export default function DexChart() {
           </a>
         </div>
         <div className="dexchart-frame">
-          <iframe key={chainKey} title={`DXNv2 price chart on ${chain.name}`} src={chart.src} loading="lazy" />
+          <iframe key={chainKey} title={`DXNv2 price chart on ${chain.name}`} src={chart.src} />
         </div>
       </div>
     </section>
