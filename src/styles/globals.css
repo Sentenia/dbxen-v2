@@ -55,6 +55,45 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 /* ═══ WALLET ═══ */
 .wallet-area { position: relative; display: flex; align-items: center; gap: 8px; }
 
+/* ═══ EASTER EGGS ═══ */
+.egg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 99999; overflow: hidden; }
+.egg-float { position: absolute; bottom: -50px; font-size: 42px; animation: egg-rise 3.2s ease-out forwards; }
+@keyframes egg-rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateY(-98vh) scale(1.15); opacity: 0; }
+}
+.egg-confetti { position: absolute; top: -14px; width: 9px; height: 14px; border-radius: 2px; animation: egg-fall 2.8s linear forwards; }
+@keyframes egg-fall {
+  0% { transform: translateY(-10px) rotate(0); opacity: 1; }
+  100% { transform: translateY(106vh) rotate(760deg); opacity: 0.9; }
+}
+.egg-shake { animation: egg-shake 0.55s ease; }
+@keyframes egg-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); } 40% { transform: translateX(7px); }
+  60% { transform: translateX(-4px); } 80% { transform: translateX(4px); }
+}
+.nav-logo.logo-spin { animation: logo-spin 0.9s ease; }
+@keyframes logo-spin { to { transform: rotate(360deg); } }
+.tipjar-coin { position: absolute; top: 16px; left: 12px; font-size: 14px; pointer-events: none; z-index: 1003; animation: coin-spill 1.6s ease-in forwards; }
+@keyframes coin-spill {
+  0% { transform: translate(0, 0) rotate(0); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--dx), 70px) rotate(var(--rot)); opacity: 0; }
+}
+.card-icon.flare { animation: icon-flare 1s ease; }
+@keyframes icon-flare {
+  0%, 100% { transform: scale(1); box-shadow: none; }
+  40% { transform: scale(1.25) rotate(-6deg); box-shadow: 0 0 22px rgba(245, 158, 11, 0.9); }
+}
+.burn-ember { position: absolute; bottom: 30px; font-size: 16px; pointer-events: none; z-index: 2; animation: ember-rise 1.8s ease-out forwards; }
+@keyframes ember-rise {
+  0% { transform: translateY(0) scale(0.7); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-180px) scale(1.1); opacity: 0; }
+}
+
 /* ═══ COMMUNITY TIP JAR ═══ */
 .tipjar { position: relative; display: flex; align-items: center; }
 .tipjar-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; background: none; border: none; padding: 2px; cursor: pointer; font-family: var(--font); transition: transform 0.2s; }

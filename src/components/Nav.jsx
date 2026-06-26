@@ -11,7 +11,21 @@ import TipJar from './TipJar';
 export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocolMode }) {
   const { chain, chainKey, userAddr, ethBal, connected, connectWallet, disconnectWallet, switchChain } = useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [logoSpin, setLogoSpin] = useState(false);
   const walletRef = useRef(null);
+  const logoClicks = useRef([]);
+
+  const onLogoClick = () => {
+    const now = Date.now();
+    logoClicks.current = logoClicks.current.filter((t) => now - t < 600);
+    logoClicks.current.push(now);
+    if (logoClicks.current.length >= 3) {
+      logoClicks.current = [];
+      setLogoSpin(true);
+      setTimeout(() => setLogoSpin(false), 900);
+      toast('🛠️ built by the DBXen community');
+    }
+  };
 
   // Close wallet dropdown on tap/click outside
   useEffect(() => {
@@ -49,8 +63,8 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
 
   return (
     <nav>
-      <div className="nav-brand">
-        <div className={`nav-logo${isNXD ? ' nxd-logo' : ''}`}>{isNXD ? 'NX' : 'V2'}</div>
+      <div className="nav-brand" onClick={onLogoClick}>
+        <div className={`nav-logo${isNXD ? ' nxd-logo' : ''}${logoSpin ? ' logo-spin' : ''}`}>{isNXD ? 'NX' : 'V2'}</div>
         <div className="nav-name">
           {isNXD ? <>NXD <span className="nxd-accent">V2</span></> : <>DBXen <span>V2</span></>}
         </div>

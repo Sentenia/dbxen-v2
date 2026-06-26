@@ -52,7 +52,29 @@ export default function TipJar() {
   const [busy, setBusy] = useState(false);
   const [raised, setRaised] = useState(null);   // total USD across all chains
   const [nativeUsd, setNativeUsd] = useState(null); // connected chain's native price
+  const [coins, setCoins] = useState([]);       // easter-egg coin spill
   const rootRef = useRef(null);
+  const coinId = useRef(0);
+  const clicks = useRef([]);
+  const hoverT = useRef(null);
+
+  const spawnCoins = (n) => {
+    const batch = Array.from({ length: n }, () => ({
+      id: ++coinId.current,
+      dx: Math.round((Math.random() - 0.5) * 80),
+      rot: Math.round((Math.random() - 0.5) * 720),
+      delay: (Math.random() * 0.3).toFixed(2),
+    }));
+    setCoins((c) => [...c, ...batch]);
+    setTimeout(() => setCoins((c) => c.filter((x) => !batch.some((b) => b.id === x.id))), 1700);
+  };
+  const onChestClick = () => {
+    setOpen((o) => !o);
+    const now = Date.now();
+    clicks.current = clicks.current.filter((t) => now - t < 3000);
+    clicks.current.push(now);
+    if (clicks.current.length >= 7) { clicks.current = []; spawnCoins(14); toast('the chest approves 🏴‍☠️'); }
+  };
 
   const stables = STABLES[chainKey] || {};
   const tokenList = ['NATIVE', ...Object.keys(stables)];
@@ -132,7 +154,9 @@ export default function TipJar() {
       }
       toast('Sending donation…');
       await tx.wait();
-      toast.success(`Thanks for the ${amount} ${symbolOf(token)} donation! 💰`);
+      const elite = Math.abs(parseFloat(amount) - 13.37) < 1e-9;
+      toast.success(elite ? 'elite donor 😎 — thanks for the 13.37!' : `Thanks for the ${amount} ${symbolOf(token)} donation! 💰`);
+      if (elite) spawnCoins(10);
       setAmount('');
       fetchRaised();
     } catch (e) {
@@ -148,7 +172,13 @@ export default function TipJar() {
 
   return (
     <div className="tipjar" ref={rootRef}>
-      <button className="tipjar-btn" onClick={() => setOpen((o) => !o)} title="Community chest for DexScreener logo">
+      {coins.map((c) => (
+        <span key={c.id} className="tipjar-coin" style={{ '--dx': c.dx + 'px', '--rot': c.rot + 'deg', animationDelay: c.delay + 's' }}>🪙</span>
+      ))}
+      <button className="tipjar-btn" onClick={onChestClick}
+        onMouseEnter={() => { hoverT.current = setTimeout(() => spawnCoins(1), 10000); }}
+        onMouseLeave={() => clearTimeout(hoverT.current)}
+        title="Community chest for DexScreener logo">
         <svg className="jar-svg" viewBox="0 0 30 26" width="30" height="26" aria-hidden="true">
           <defs>
             <linearGradient id="chestGold" x1="0" y1="0" x2="0" y2="1">

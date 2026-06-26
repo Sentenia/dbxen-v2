@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { WalletProvider } from './hooks/WalletContext';
 import { NXDProvider } from './hooks/NXDContext';
 import WaveBackground from './components/WaveBackground';
+import EasterEggs from './components/EasterEggs';
 import Nav from './components/Nav';
 import StatsTicker from './components/StatsTicker';
 import Hero from './components/Hero';
@@ -139,6 +140,7 @@ export default function App() {
           }}
         />
         <WaveBackground />
+        <EasterEggs />
         <div className={`app${isNXD ? ' nxd-mode' : ''}`}>
           <Nav activeTab={activeTab} setActiveTab={setActiveTab} protocolMode={protocolMode} setProtocolMode={setProtocolMode} />
           {!isNXD && <StatsTicker />}

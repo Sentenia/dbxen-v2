@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Flame, Fuel, TrendingDown, Wallet, Loader2 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimer } from '../utils/helpers';
 import { getBatchSize, getBatchDisplay } from '../config/chains';
+import { onEgg } from '../utils/eggs';
 import toast from 'react-hot-toast';
 
 export default function BurnCard() {
@@ -12,6 +13,22 @@ export default function BurnCard() {
   const [gasPrice, setGasPrice] = useState(null);
   const [burning, setBurning] = useState(false);
   const [timerStr, setTimerStr] = useState('—');
+  const [flaring, setFlaring] = useState(false);
+  const [embers, setEmbers] = useState([]);
+  const emberId = useRef(0);
+
+  const flare = () => {
+    setFlaring(true);
+    setTimeout(() => setFlaring(false), 1000);
+    const batch = Array.from({ length: 14 }, () => ({
+      id: ++emberId.current, left: Math.round(Math.random() * 100), delay: (Math.random() * 0.5).toFixed(2),
+    }));
+    setEmbers((e) => [...e, ...batch]);
+    setTimeout(() => setEmbers((e) => e.filter((x) => !batch.some((b) => b.id === x.id))), 1900);
+  };
+
+  // "lfg" easter egg flares the burn flame
+  useEffect(() => onEgg('flare', flare), []);
 
   const batchDisplay = getBatchDisplay(chain);
   const maxBatches = Number(xenBal / getBatchSize(chain));
@@ -51,7 +68,7 @@ export default function BurnCard() {
   const handleBurn = async () => {
     if (!connected) { connectWallet(); return; }
     setBurning(true);
-    try { await burnBatch(batches); setBatches(1); }
+    try { const n = batches; await burnBatch(batches); setBatches(1); if (n >= 100) flare(); }
     catch (e) { toast.error('Burn failed: ' + (e.reason || e.message)); }
     finally { setBurning(false); }
   };
@@ -60,9 +77,12 @@ export default function BurnCard() {
   const sliderPct = ((batches - 1) / (10000 - 1)) * 100;
 
   return (
-    <div className="card card-hover fade-up fade-up-2">
+    <div className="card card-hover fade-up fade-up-2" style={{ position: 'relative', overflow: 'hidden' }}>
+      {embers.map((e) => (
+        <span key={e.id} className="burn-ember" style={{ left: e.left + '%', animationDelay: e.delay + 's' }}>🔥</span>
+      ))}
       <div className="card-header">
-        <div className="card-icon burn"><Flame size={20} color="white" /></div>
+        <div className={`card-icon burn${flaring ? ' flare' : ''}`}><Flame size={20} color="white" /></div>
         <div>
           <div className="card-title">Burn XEN</div>
           <div className="card-desc">Burn XEN tokens to earn DXN rewards</div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { onEgg } from '../utils/eggs';
 
 // Flag-in-the-wind background. The fabric is a height field displaced in DEPTH
 // (z, toward/away from the viewer) then projected through a focal point. Where
@@ -105,7 +106,11 @@ export default function WaveBackground() {
   const mouse = useRef({ u: 0.5, v: 0.5, on: 0 });        // raw pointer target (field coords)
   const mouseSmooth = useRef({ u: 0.5, v: 0.5, s: 0 });    // eased position + strength
   const dwell = useRef({ u: 0.5, v: 0.5, since: 0 });      // rest anchor + when the cursor settled
+  const storm = useRef({ pending: false, until: 0, s: 0 }); // konami-code storm burst
   const vb = useRef({ x: 0, w: W });                       // current viewBox window (for mapping)
+
+  // Konami code → a brief wild billow.
+  useEffect(() => onEgg('storm', () => { storm.current.pending = true; }), []);
   // On narrow screens the full 1800-wide viewBox gets squished, scrunching the
   // waves. Show a narrower, centered window on mobile so the lines spread out.
   const [viewBox, setViewBox] = useState('0 0 1800 900');
@@ -161,6 +166,11 @@ export default function WaveBackground() {
       const cu = ms.u + 0.018 * Math.sin(T * 0.7 + WPH1);
       const cv = ms.v + 0.018 * Math.sin(T * 0.5 + WPH2);
       const cstr = ms.s * CURSOR_H * (1 + 0.15 * Math.sin(T * 1.1 + WPH3));
+      // storm easter egg: briefly amplify the gusts into a wild billow
+      const sr = storm.current;
+      if (sr.pending) { sr.until = realT + 6; sr.pending = false; }
+      sr.s += (((realT < sr.until) ? 1 : 0) - sr.s) * 0.06;
+      const stormBoost = 1 + sr.s * 3;
 
       for (let li = 0; li < LINES.length; li++) {
         const el = refs.current[li];
@@ -184,8 +194,8 @@ export default function WaveBackground() {
           // (scale < 1, lines bunch tight) — that compression, plus the steep
           // vertical arc the gust adds across lines, is what reads as the fabric
           // folding/creasing over itself.
-          const z = a * 0.8 - g * 340 * envG;    // ripple depth (folds) + gust balloon
-          const yw = a * 0.9 - g * 260 * envG;   // strong gust arc → lines cross into folds
+          const z = a * 0.8 - g * 340 * envG * stormBoost;  // ripple depth (folds) + gust balloon
+          const yw = a * 0.9 - g * 260 * envG * stormBoost; // strong gust arc → lines cross into folds
           // Clamp the DENOMINATOR (not s) so the scale can't blow through the
           // z = -FOCAL pole — that pole is what spiked the fabric when gusts stacked.
           const denom = Math.min(FOCAL / S_MIN, Math.max(FOCAL / S_MAX, FOCAL + z));
