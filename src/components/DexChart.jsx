@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { CandlestickChart, ExternalLink } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 
@@ -38,6 +39,15 @@ function chartFor(chainKey) {
 export default function DexChart() {
   const { chainKey, chain } = useWallet();
   const chart = chartFor(chainKey);
+  // Force one remount of the embed shortly after mount. In production (single
+  // mount) the first embed load can be dropped during the heavy initial render and
+  // never retries — only the default chain's chart is affected. Dev's StrictMode
+  // double-mount hides this, which is why it only failed on Vercel.
+  const [retry, setRetry] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setRetry(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!chart) {
     return (
@@ -65,7 +75,7 @@ export default function DexChart() {
           </a>
         </div>
         <div className="dexchart-frame">
-          <iframe key={chainKey} title={`DXNv2 price chart on ${chain.name}`} src={chart.src} />
+          <iframe key={`${chainKey}-${retry}`} title={`DXNv2 price chart on ${chain.name}`} src={chart.src} />
         </div>
       </div>
     </section>
