@@ -70,6 +70,7 @@ async function fetchChainSupply(key, c) {
 export default function SupplyPanel() {
   // Feature whatever chain the wallet is on (defaults to ethereum / when disconnected).
   const w = useWallet();
+  const switchChain = w?.switchChain;
   const activeKey = (w?.chainKey && CHAINS[w.chainKey]) ? w.chainKey : 'ethereum';
   const [data, setData] = useState(() => {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || null; } catch { return null; }
@@ -158,7 +159,7 @@ export default function SupplyPanel() {
             const c = CHAINS[key];
             const row = data?.chains?.[key];
             return (
-              <div key={key} style={{ background: 'var(--bg-card-hover, rgba(255,255,255,0.03))', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+              <div key={key} className="supply-chain-card" onClick={() => switchChain?.(key)} title={`Switch to ${c.name}`} style={{ background: 'var(--bg-card-hover, rgba(255,255,255,0.03))', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.color, display: 'inline-block', flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: 'var(--text-secondary, #cbd5e1)', fontWeight: 600 }}>{c.name}</span>
