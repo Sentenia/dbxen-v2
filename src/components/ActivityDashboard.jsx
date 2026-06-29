@@ -295,7 +295,7 @@ export default function ActivityDashboard() {
                 return (
                   <tr key={addr} className={isYou ? 'you-row' : ''}>
                     <td style={{ textAlign: 'left' }}>
-                      <code className="burn-addr" onClick={() => navigator.clipboard.writeText(addr)} title="Click to copy">{shortAddr(addr)}</code>
+                      <a className="burn-addr" href={`${chain.explorer}/address/${addr}`} target="_blank" rel="noopener noreferrer" title={`View on ${chain.name} explorer`}>{shortAddr(addr)}</a>
                       {isYou && <span className="burn-you-badge">you</span>}
                     </td>
                     <td style={{ textAlign: 'left', fontWeight: 700 }}>{data.batches}</td>
