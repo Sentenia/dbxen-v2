@@ -17,7 +17,7 @@ export default function NXDVaultStats() {
       if (connected && chainKey === 'ethereum' && contractsRef.current.provider) {
         provider = contractsRef.current.provider;
       } else {
-        provider = new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com');
+        provider = new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com', 1, { staticNetwork: true });
       }
       const token = new ethers.Contract(NXD_CONTRACTS.NXDv2Token, NXD_ABIS.NXDv2Token, provider);
       const gov = await token.governance();

@@ -36,13 +36,18 @@ function withTimeout(promise, ms) {
 }
 
 async function makeProvider(key, c) {
+  // Pin the chainId so ethers never runs network detection — against an
+  // unreachable/CORS-blocked RPC (ETHW went dark in 2026-07) the detection
+  // retry-loops "failed to detect network" every 1s forever, even after our
+  // timeout abandons the call. destroy() failed probes so they can't linger.
+  const network = parseInt(c.chainId, 16);
   const urls = [...(SUPPLY_RPCS[key] || []), c.rpc, c.rpcBackup].filter(Boolean);
   for (const url of urls) {
+    const p = new ethers.JsonRpcProvider(url, network, { staticNetwork: true });
     try {
-      const p = new ethers.JsonRpcProvider(url, undefined, { staticNetwork: true });
       await withTimeout(p.getBlockNumber(), 6000);
       return p;
-    } catch { /* fail fast, try next */ }
+    } catch { p.destroy(); /* fail fast, try next */ }
   }
   return null;
 }

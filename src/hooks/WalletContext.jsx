@@ -71,8 +71,12 @@ export function WalletProvider({ children }) {
     }
     const c = CHAINS[key];
     console.log('[getReadProvider] Creating new fallback for', key, '→', c.rpc);
+    // Pinned chainId + staticNetwork: skips ethers' network detection, which
+    // retry-loops "failed to detect network" every 1s forever against a
+    // dead/CORS-blocked RPC (ETHW's went dark in 2026-07).
+    const network = parseInt(c.chainId, 16);
     try {
-      const p = new ethers.JsonRpcProvider(c.rpc);
+      const p = new ethers.JsonRpcProvider(c.rpc, network, { staticNetwork: true });
       p._forChain = key;
       fallbackProviderRef.current = p;
       return { provider: p, isFallback: true };
@@ -80,7 +84,7 @@ export function WalletProvider({ children }) {
       console.error('[getReadProvider] Primary RPC failed for', key, c.rpc, e);
       if (c.rpcBackup) {
         console.log('[getReadProvider] Trying backup RPC for', key, '→', c.rpcBackup);
-        const p = new ethers.JsonRpcProvider(c.rpcBackup);
+        const p = new ethers.JsonRpcProvider(c.rpcBackup, network, { staticNetwork: true });
         p._forChain = key;
         fallbackProviderRef.current = p;
         return { provider: p, isFallback: true };
@@ -88,6 +92,19 @@ export function WalletProvider({ children }) {
       throw e;
     }
   }, [chainKey]);
+
+  // Public primary RPC provider — rescues reads when the wallet's own RPC
+  // (MetaMask → Infura) throttles a burst and rejects. Reuses the cached
+  // fallback when one exists for this chain.
+  const getPublicProvider = useCallback((key) => {
+    if (fallbackProviderRef.current && fallbackProviderRef.current._forChain === key) {
+      return fallbackProviderRef.current;
+    }
+    const p = new ethers.JsonRpcProvider(CHAINS[key].rpc, parseInt(CHAINS[key].chainId, 16), { staticNetwork: true });
+    p._forChain = key;
+    fallbackProviderRef.current = p;
+    return p;
+  }, []);
 
   // Try backup RPC if primary fails (called from refresh functions on catch)
   const getFallbackWithBackup = useCallback((key) => {
@@ -97,7 +114,7 @@ export function WalletProvider({ children }) {
       return null;
     }
     console.log('[getFallbackWithBackup] Creating backup provider for', key, '→', c.rpcBackup);
-    const p = new ethers.JsonRpcProvider(c.rpcBackup);
+    const p = new ethers.JsonRpcProvider(c.rpcBackup, parseInt(c.chainId, 16), { staticNetwork: true });
     p._forChain = key;
     fallbackProviderRef.current = p;
     return p;
@@ -398,16 +415,17 @@ export function WalletProvider({ children }) {
       await tryWithProvider(readProvider, isFallback);
     } catch (e) {
       console.error('[refreshProtocolStats] FAILED (primary) for', key, '— isFallback:', isFallback, e);
-      // If fallback RPC failed, try backup
-      if (isFallback) {
-        const backup = getFallbackWithBackup(key);
-        if (backup) {
-          try { await tryWithProvider(backup, true); }
-          catch (e2) { console.error('[refreshProtocolStats] FAILED (backup) for', key, e2); }
-        }
+      // Wallet-provider reads previously had no second chance — when MetaMask's
+      // RPC throttles a burst, rescue the read via the public RPC, then backup.
+      const retries = isFallback ? [] : [getPublicProvider(key)];
+      const backup = getFallbackWithBackup(key);
+      if (backup) retries.push(backup);
+      for (const p of retries) {
+        try { await tryWithProvider(p, true); return; }
+        catch (e2) { console.error('[refreshProtocolStats] FAILED (retry) for', key, e2); }
       }
     }
-  }, [chainKey, getReadProvider, getFallbackWithBackup]);
+  }, [chainKey, getReadProvider, getPublicProvider, getFallbackWithBackup]);
 
   // ═══ REFRESH BRIDGE STATS ═══
   const refreshBridgeStats = useCallback(async () => {
@@ -464,15 +482,16 @@ export function WalletProvider({ children }) {
       await tryWithProvider(readProvider, isFallback);
     } catch (e) {
       console.error('[refreshBridgeStats] FAILED (primary) for', key, '— isFallback:', isFallback, e);
-      if (isFallback) {
-        const backup = getFallbackWithBackup(key);
-        if (backup) {
-          try { await tryWithProvider(backup, true); }
-          catch (e2) { console.error('[refreshBridgeStats] FAILED (backup) for', key, e2); }
-        }
+      // Same wallet-provider rescue as refreshProtocolStats.
+      const retries = isFallback ? [] : [getPublicProvider(key)];
+      const backup = getFallbackWithBackup(key);
+      if (backup) retries.push(backup);
+      for (const p of retries) {
+        try { await tryWithProvider(p, true); return; }
+        catch (e2) { console.error('[refreshBridgeStats] FAILED (retry) for', key, e2); }
       }
     }
-  }, [chainKey, getReadProvider, getFallbackWithBackup]);
+  }, [chainKey, getReadProvider, getPublicProvider, getFallbackWithBackup]);
 
   // ═══ REFRESH ALL ═══
   const refreshAll = useCallback(async () => {

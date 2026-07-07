@@ -29,9 +29,13 @@ const RPCS = {
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
 
 async function makeProvider(key, c) {
+  // Pinned chainId: skips ethers' network detection, which retry-loops forever
+  // against a dead/CORS-blocked RPC (see SupplyPanel.makeProvider).
+  const network = parseInt(c.chainId, 16);
   for (const url of [...(RPCS[key] || []), c.rpc, c.rpcBackup].filter(Boolean)) {
-    try { const p = new ethers.JsonRpcProvider(url, undefined, { staticNetwork: true }); await withTimeout(p.getBlockNumber(), 6000); return p; }
-    catch { /* next */ }
+    const p = new ethers.JsonRpcProvider(url, network, { staticNetwork: true });
+    try { await withTimeout(p.getBlockNumber(), 6000); return p; }
+    catch { p.destroy(); /* next */ }
   }
   return null;
 }

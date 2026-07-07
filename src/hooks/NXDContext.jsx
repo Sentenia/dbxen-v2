@@ -66,7 +66,9 @@ export function NXDProvider({ children }) {
     }
     if (fallbackRef.current) return fallbackRef.current;
     const url = ETH_RPCS[fallbackIdxRef.current] || ETH_RPCS[0];
-    const p = new ethers.JsonRpcProvider(url);
+    // Pinned chainId (NXD is Ethereum-only): skips ethers' network detection,
+    // which retry-loops every 1s forever against a dead/CORS-blocked RPC.
+    const p = new ethers.JsonRpcProvider(url, 1, { staticNetwork: true });
     fallbackRef.current = p;
     return p;
   }, [connected, chainKey, contractsRef]);
