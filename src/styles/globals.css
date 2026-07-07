@@ -134,7 +134,40 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 .tipjar-preset:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-glow); }
 .tipjar-preset:disabled { opacity: 0.4; cursor: not-allowed; }
 .tipjar-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--cyan); text-decoration: none; margin-top: 12px; }
+.tipjar-board-link { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font); }
 .tipjar-note { font-size: 10px; color: var(--text-secondary); margin-top: 8px; line-height: 1.3; }
+
+/* ═══ DONOR SCOREBOARD ═══ */
+.scoreboard-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(5, 8, 15, 0.7); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.scoreboard-modal { position: relative; width: 100%; max-width: 780px; max-height: min(86vh, 760px); display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); padding: 24px; }
+.scoreboard-close { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: var(--bg-deep); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.scoreboard-close:hover { color: var(--text-primary); border-color: var(--border-glow); }
+.scoreboard-title { display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 700; color: var(--amber); padding-right: 30px; }
+.scoreboard-sub { font-size: 13px; color: var(--text-secondary); margin: 5px 0 16px; }
+.scoreboard-bonus { font-size: 13px; font-weight: 600; color: var(--amber); background: var(--amber-glow); border: 1px solid var(--amber); border-radius: 10px; padding: 11px 14px; margin-bottom: 14px; line-height: 1.45; }
+.scoreboard-empty { font-size: 13px; color: var(--text-secondary); text-align: center; padding: 32px 12px; }
+.scoreboard-retry { display: flex; align-items: center; gap: 6px; margin: 12px auto 0; padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--cyan); background: var(--cyan-glow); border: 1px solid var(--cyan-dim); border-radius: 8px; cursor: pointer; font-family: var(--font); }
+.scoreboard-retry:hover { color: var(--text-primary); }
+.scoreboard-decay { margin-bottom: 16px; }
+.scoreboard-decay-caption { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); margin: 5px 0; }
+.scoreboard-decay-track { position: relative; display: flex; height: 24px; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.scoreboard-decay-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--bg-deep); }
+.scoreboard-decay-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.scoreboard-table-wrap { overflow: auto; margin-right: -8px; padding-right: 8px; }
+.scoreboard-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.scoreboard-table th { position: sticky; top: 0; background: var(--bg-card); text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+.scoreboard-table th.rank { cursor: default; }
+.scoreboard-table th.active { color: var(--amber); }
+.scoreboard-table th:hover:not(.rank) { color: var(--text-primary); }
+.scoreboard-table th.num, .scoreboard-table td.num { text-align: right; }
+.scoreboard-table td { padding: 10px; border-bottom: 1px solid var(--border); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scoreboard-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+.scoreboard-table tbody tr:hover { background: var(--bg-deep); }
+.scoreboard-table tr.you td { background: var(--cyan-glow); }
+.scoreboard-table td.rank { font-size: 14px; color: var(--text-secondary); font-weight: 700; }
+.scoreboard-table td.addr { font-family: monospace; color: var(--text-primary); }
+.scoreboard-table td.pts { font-weight: 700; color: var(--amber); }
+.scoreboard-note { font-size: 11px; color: var(--text-secondary); margin-top: 14px; line-height: 1.35; text-align: center; }
 .wallet-connected { display: flex; align-items: center; gap: 0; position: relative; }
 .wallet-eth { padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-right: none; border-radius: 8px 0 0 8px; font-family: var(--font); white-space: nowrap; }
 .wallet-addr-btn { display: flex; align-items: center; gap: 5px; padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-deep); border: 1px solid var(--border); border-radius: 0 8px 8px 0; cursor: pointer; font-family: var(--font); transition: all 0.2s; white-space: nowrap; }
@@ -281,6 +314,10 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .footer-address code { font-family: 'Plus Jakarta Sans', monospace; font-size: 13px; font-weight: 500; color: var(--text-primary); background: var(--bg-deep); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
 .footer-copy-btn { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; transition: all 0.2s; }
 .footer-copy-btn:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+/* Explorer-arrow link next to each contract address. Give it a real touch target —
+   a bare 12px icon is nearly impossible to tap on a phone (44px is the guideline). */
+.footer-icon-link { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; margin: -9px 0; border-radius: 8px; color: var(--text-muted); transition: all 0.2s; }
+.footer-icon-link:hover { color: var(--cyan); background: var(--bg-deep); }
 .footer-link { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); text-decoration: none; margin-bottom: 10px; transition: color 0.2s; justify-content: center; }
 .footer-link:hover { color: var(--cyan); }
 .footer-socials { display: flex; gap: 10px; justify-content: center; }
@@ -618,6 +655,9 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
   /* ─── FOOTER ─── */
   footer { padding: 32px 16px; padding-bottom: calc(24px + 56px + env(safe-area-inset-bottom)); }
   .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+  /* Finger-sized tap targets for the per-address copy + explorer buttons */
+  .footer-copy-btn { min-width: 40px; min-height: 40px; justify-content: center; }
+  .footer-icon-link { min-width: 44px; min-height: 44px; margin: -10px 0; }
 
   /* ─── WHY V2 ─── */
   .why-v2 { padding: 0 16px 48px; }

@@ -4,35 +4,20 @@ import { ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWallet } from '../hooks/WalletContext';
 import { CHAINS } from '../config/chains';
+import { JAR_ADDRESS, STABLES, STABLE_ABI } from '../config/chest';
 import { getNativeUsd } from '../utils/price';
+import DonorScoreboard from './DonorScoreboard';
 
 // Community treasure chest — collects donations toward the DexScreener logo listing.
 // Works on every supported chain: you donate the chain's native coin (ETH/POL/BNB/…)
 // or its USDC/USDT, sent to the community wallet (same address on every EVM chain).
 // The fill bar sums the wallet's holdings across ALL chains, in USD, vs the goal.
-const JAR_ADDRESS = '0x0A946dB17243332C9754C6c59B31A67201F337c6'; // DXN community wallet
 const GOAL_USD = 300;
 const PRESETS = [5, 10, 25]; // USD
 
-// Per-chain stablecoins — addresses + decimals VERIFIED on-chain (BNB's are 18-dec).
-// Chains not listed (EthereumPoW, PulseChain) are native-only.
-const STABLES = {
-  ethereum:  { USDC: { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },  USDT: { address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6 } },
-  polygon:   { USDC: { address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6 },  USDT: { address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6 } },
-  bsc:       { USDC: { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18 }, USDT: { address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 } },
-  avalanche: { USDC: { address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', decimals: 6 },  USDT: { address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', decimals: 6 } },
-  base:      { USDC: { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },  USDT: { address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6 } },
-  optimism:  { USDC: { address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', decimals: 6 },  USDT: { address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6 } },
-};
-// transfer() declared without a return value so it also works for USDT-style tokens.
-const STABLE_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function transfer(address,uint256)',
-];
-
 const provCache = {};
 function provFor(key) {
-  if (!provCache[key]) provCache[key] = new ethers.JsonRpcProvider(CHAINS[key].rpc, undefined, { staticNetwork: true });
+  if (!provCache[key]) provCache[key] = new ethers.JsonRpcProvider(CHAINS[key].rpc, parseInt(CHAINS[key].chainId, 16), { staticNetwork: true });
   return provCache[key];
 }
 
@@ -47,6 +32,7 @@ function usdToAmount(usd, isNative, nativeUsd) {
 export default function TipJar() {
   const { chain, chainKey, connected, connectWallet, contractsRef } = useWallet();
   const [open, setOpen] = useState(false);
+  const [board, setBoard] = useState(false);
   const [token, setToken] = useState('NATIVE'); // 'NATIVE' | 'USDC' | 'USDT'
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
@@ -252,9 +238,14 @@ export default function TipJar() {
           <a className="tipjar-link" href={`${chain.explorer}/address/${JAR_ADDRESS}`} target="_blank" rel="noopener noreferrer">
             View community wallet <ExternalLink size={11} />
           </a>
+          <button type="button" className="tipjar-link tipjar-board-link" onClick={() => setBoard(true)}>
+            🏆 Chest Scoreboard — 10× points for early donors
+          </button>
           <div className="tipjar-note">Donate on {chain.name} · bar shows the total raised across all chains</div>
         </div>
       )}
+
+      {board && <DonorScoreboard onClose={() => setBoard(false)} />}
     </div>
   );
 }
