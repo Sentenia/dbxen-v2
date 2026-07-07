@@ -24,6 +24,7 @@ import NXDStakeCard from './components/nxd/NXDStakeCard';
 import NXDVaultStats from './components/nxd/NXDVaultStats';
 import NXDAnalytics from './components/nxd/NXDAnalytics';
 import NXDMaintenance from './components/nxd/NXDMaintenance';
+import NXDChart from './components/nxd/NXDChart';
 
 function TabContent({ activeTab }) {
   const [rendered, setRendered] = useState(activeTab);
@@ -78,6 +79,7 @@ function TabContent({ activeTab }) {
           <NXDStakeCard />
           <NXDVaultStats />
           <NXDMaintenance />
+          <NXDChart />
         </section>
       )}
 {rendered === 'nxd-analytics' && (
