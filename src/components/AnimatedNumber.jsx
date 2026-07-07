@@ -20,16 +20,24 @@ export default function AnimatedNumber({ value, decimals = 2, suffix = '', prefi
   useEffect(() => {
     if (value === null || value === undefined || value === '—') {
       setDisplay('—');
+      prevValue.current = null;
       return;
     }
 
     const numVal = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(numVal)) { setDisplay(String(value)); return; }
 
-    // Same value — do nothing
-    if (prevValue.current !== null && prevValue.current === numVal) return;
+    // Same value re-run: snap straight to the final number. React StrictMode (dev)
+    // re-runs every effect after cancelling the first pass's animation — a bare
+    // "do nothing" here left the display stuck on '—' forever whenever the value
+    // was already loaded at mount (hero remounts, fast RPC responses).
+    if (prevValue.current !== null && prevValue.current === numVal) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      setDisplay(formatNum(numVal, numVal, decimals));
+      setFading(false);
+      return;
+    }
 
-    const oldVal = prevValue.current;
     prevValue.current = numVal;
 
     if (!hasAnimatedOnce.current) {
