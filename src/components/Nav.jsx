@@ -111,7 +111,21 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
             </a>
           </>
         )}
-        <a className="nav-link lp-link" href="https://dbxen-v2-lp.vercel.app" target="_blank" rel="noopener noreferrer" title="Community-built LP, locked forever">
+        <a
+          className="nav-link lp-link"
+          href="https://dbxen-v2-lp.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Community-built LP, locked forever"
+          onClick={(e) => {
+            // In-app wallet browsers (MetaMask mobile) swallow target="_blank" and
+            // just re-render the current page. Navigate in the same tab there.
+            if (window.ethereum?.isMetaMask && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+              e.preventDefault();
+              window.location.assign('https://dbxen-v2-lp.vercel.app');
+            }
+          }}
+        >
           <Droplet size={14} /> LP
         </a>
         <a className="nav-link" href={contractLink} target="_blank" rel="noopener noreferrer">
