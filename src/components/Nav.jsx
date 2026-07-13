@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut, Zap, Shield } from 'lucide-react';
+import { Flame, ArrowLeftRight, Activity, BarChart3, FileCode, Wallet, ChevronDown, Copy, ExternalLink, LogOut, Zap, Shield, Droplet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
@@ -111,6 +111,9 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
             </a>
           </>
         )}
+        <a className="nav-link lp-link" href="https://dbxen-v2-lp.vercel.app" target="_blank" rel="noopener noreferrer" title="Community-built LP, locked forever">
+          <Droplet size={14} /> LP
+        </a>
         <a className="nav-link" href={contractLink} target="_blank" rel="noopener noreferrer">
           <FileCode size={14} /> Contract
         </a>

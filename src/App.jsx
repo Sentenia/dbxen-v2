@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Flame, ArrowLeftRight, Activity, BarChart3, Zap } from 'lucide-react';
+import { Flame, ArrowLeftRight, Activity, BarChart3, Zap, Droplet } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { WalletProvider } from './hooks/WalletContext';
 import { NXDProvider } from './hooks/NXDContext';
@@ -117,6 +117,16 @@ function BottomTabBar({ activeTab, setActiveTab, protocolMode }) {
           <Icon size={22} />
         </button>
       ))}
+      <a
+        className={`bottom-tab${isNXD ? ' nxd-bottom-tab' : ''}`}
+        href="https://dbxen-v2-lp.vercel.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Community LP"
+        aria-label="Community LP"
+      >
+        <Droplet size={22} />
+      </a>
     </div>
   );
 }
