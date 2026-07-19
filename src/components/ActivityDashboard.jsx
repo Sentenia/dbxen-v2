@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimer, shortAddr, getGasPrice } from '../utils/helpers';
 import { getBatchSize, CHAINS } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
+import { fetchBurnHistory, isBurnHistorySupported } from '../utils/burnHistory';
+
+const HIST_PAGE_SIZES = [5, 10, 20, 50];
+const cycleDate = (ts) => new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 const BURN_EVENT_SIG = ethers.id('Burn(address,uint256)');
 const PAGE_SIZE = 10;
@@ -15,10 +19,62 @@ export default function ActivityDashboard() {
   const [actData, setActData] = useState(null);
   const actDataRef = useRef(null);
   const [page, setPage] = useState(1);
+  const [expanded, setExpanded] = useState(null);   // address whose history row is open
+  const [details, setDetails] = useState({});       // addr -> { loading, error, ...on-chain accounting, history }
+  const [histPage, setHistPage] = useState(1);      // pagination for the open row's per-cycle table
+  const [histSize, setHistSize] = useState(5);
   const epochRef = useRef(0);
 
-  // Bump epoch on chain change to abort stale fetches
-  useEffect(() => { epochRef.current += 1; }, [chainKey]);
+  // Bump epoch on chain change to abort stale fetches; also drop any open history
+  // dropdown + cached per-address reads (they're chain-specific).
+  useEffect(() => { epochRef.current += 1; setExpanded(null); setDetails({}); }, [chainKey]);
+
+  // Fresh cycle table (page 1, default size) whenever a different row opens.
+  useEffect(() => { setHistPage(1); setHistSize(5); }, [expanded]);
+
+  // Lazily read a single address's lifetime on-chain accounting. These are cheap
+  // single eth_calls that work on ANY RPC (unlike the getLogs burn feed), so the
+  // per-user history is reliable everywhere.
+  const fetchAddrDetails = useCallback(async (addr) => {
+    setDetails(prev => ({ ...prev, [addr]: { loading: true } }));
+    try {
+      const { provider } = getReadProvider();
+      if (!provider) throw new Error('no provider');
+      const c = CHAINS[chainKey];
+      const dbx = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
+      const [accR, accF, stake, lac, accB] = await Promise.all([
+        dbx.accRewards(addr).catch(() => 0n),
+        dbx.accAccruedFees(addr).catch(() => 0n),
+        dbx.accWithdrawableStake(addr).catch(() => 0n),
+        dbx.lastActiveCycle(addr).catch(() => 0n),
+        dbx.accCycleBatchesBurned(addr).catch(() => 0n),
+      ]);
+      const supported = isBurnHistorySupported(chainKey);
+      setDetails(prev => ({ ...prev, [addr]: {
+        loading: false, accRewards: accR, accFees: accF, stake,
+        lastCycle: Number(lac), lastCycleBatches: Number(accB),
+        supported, histLoading: supported,
+      } }));
+
+      // On supported chains, reconstruct the per-cycle spreadsheet from explorer
+      // history in the background — the snapshot above renders immediately.
+      if (supported) {
+        try {
+          const hist = await fetchBurnHistory(chainKey, addr, provider);
+          setDetails(prev => ({ ...prev, [addr]: { ...prev[addr], histLoading: false, history: hist } }));
+        } catch (e) {
+          setDetails(prev => ({ ...prev, [addr]: { ...prev[addr], histLoading: false, histError: true } }));
+        }
+      }
+    } catch (e) {
+      setDetails(prev => ({ ...prev, [addr]: { loading: false, error: true } }));
+    }
+  }, [chainKey, getReadProvider]);
+
+  const toggleRow = useCallback((addr) => {
+    setExpanded(cur => (cur === addr ? null : addr));
+    if (!details[addr]) fetchAddrDetails(addr);
+  }, [details, fetchAddrDetails]);
 
   useEffect(() => {
     if (!protocolStats.nextCycleTs) return;
@@ -287,15 +343,21 @@ export default function ActivityDashboard() {
                 </td></tr>
               ) : pageData.map(([addr, data]) => {
                 const isYou = addr === myAddr;
+                const isOpen = expanded === addr;
+                const det = details[addr];
                 const share = ((data.batches / d.totalBatches) * 100).toFixed(2);
                 const estDxn = ((data.batches / d.totalBatches) * rewardFloat).toFixed(2);
                 const gasCost = parseFloat(ethers.formatEther(data.gasCost)).toFixed(4);
                 const protFee = ((data.batches / d.totalBatches) * totalEthFloat).toFixed(4);
                 const xenBurned = fmt(BigInt(data.batches) * getBatchSize(chain), 0);
                 return (
-                  <tr key={addr} className={isYou ? 'you-row' : ''}>
+                  <Fragment key={addr}>
+                  <tr className={`${isYou ? 'you-row ' : ''}burn-row${isOpen ? ' is-open' : ''}`} onClick={() => toggleRow(addr)} title="Click for this address's history">
                     <td style={{ textAlign: 'left' }}>
-                      <a className="burn-addr" href={`${chain.explorer}/address/${addr}`} target="_blank" rel="noopener noreferrer" title={`View on ${chain.name} explorer`}>{shortAddr(addr)}</a>
+                      <button className="burn-expand-btn" aria-label="Toggle history" aria-expanded={isOpen}>
+                        <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                      </button>
+                      <a className="burn-addr" href={`${chain.explorer}/address/${addr}`} target="_blank" rel="noopener noreferrer" title={`View on ${chain.name} explorer`} onClick={(e) => e.stopPropagation()}>{shortAddr(addr)}</a>
                       {isYou && <span className="burn-you-badge">you</span>}
                     </td>
                     <td style={{ textAlign: 'left', fontWeight: 700 }}>{data.batches}</td>
@@ -305,6 +367,108 @@ export default function ActivityDashboard() {
                     <td style={{ textAlign: 'right' }}>{share}%</td>
                     <td style={{ textAlign: 'right', color: 'var(--green)', fontWeight: 700 }}>{estDxn}</td>
                   </tr>
+                  {isOpen && (
+                    <tr className="burn-detail-row">
+                      <td colSpan={7}>
+                        {!det || det.loading ? (
+                          <div className="burn-detail-msg">Loading on-chain history…</div>
+                        ) : det.error ? (
+                          <div className="burn-detail-msg">Couldn't load details on this RPC.</div>
+                        ) : (
+                          <div className="burn-detail">
+                            <div className="burn-detail-title">
+                              Lifetime on-chain activity
+                              <a className="burn-detail-link" href={`${chain.explorer}/address/${addr}`} target="_blank" rel="noopener noreferrer">
+                                {shortAddr(addr)} <ExternalLink size={12} />
+                              </a>
+                            </div>
+                            <div className="burn-detail-grid">
+                              <div className="burn-detail-item"><span className="burn-detail-label">DXN rewards (claimable)</span><span className="burn-detail-val" style={{ color: 'var(--green)' }}>{fmt(det.accRewards)} DXN</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">{chain.native} fees (claimable)</span><span className="burn-detail-val" style={{ color: 'var(--amber)' }}>{fmt(det.accFees, 5)} {chain.native}</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">DXN staked</span><span className="burn-detail-val">{fmt(det.stake)} DXN</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">Last active cycle</span><span className="burn-detail-val">{det.lastCycle > 0 ? `#${det.lastCycle}` : '—'}</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">Batches (cycle #{det.lastCycle})</span><span className="burn-detail-val">{det.lastCycleBatches.toLocaleString()}</span></div>
+                            </div>
+                            {det.supported ? (
+                              det.histLoading ? (
+                                <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>Reconstructing cycle history from {chain.name} explorer…</div>
+                              ) : det.histError || !det.history ? (
+                                <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>Couldn't reach {chain.name}'s explorer for full cycle history — snapshot above is on-chain and accurate.</div>
+                              ) : !det.history.cycles?.length ? (
+                                <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>No burn transactions found for this address on {chain.name}.</div>
+                              ) : (() => {
+                                const cyc = det.history.cycles;
+                                const pages = Math.max(1, Math.ceil(cyc.length / histSize));
+                                const pg = Math.min(histPage, pages);
+                                const rows = cyc.slice((pg - 1) * histSize, pg * histSize);
+                                const t = det.history.totals;
+                                return (
+                                  <div className="burn-hist">
+                                    <div className="burn-hist-head">Per-cycle burn history · {cyc.length} cycle{cyc.length !== 1 ? 's' : ''} active</div>
+                                    <div className="burn-hist-wrap">
+                                      <table className="burn-hist-table">
+                                        <thead>
+                                          <tr>
+                                            <th style={{ textAlign: 'left' }}>Cycle</th>
+                                            <th style={{ textAlign: 'left' }}>Date</th>
+                                            <th style={{ textAlign: 'right' }}>Batches</th>
+                                            <th style={{ textAlign: 'right' }}>XEN burned</th>
+                                            <th style={{ textAlign: 'right' }}>Fee paid</th>
+                                            <th style={{ textAlign: 'right' }}>Est. DXN</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {rows.map((e) => (
+                                            <tr key={e.cycle}>
+                                              <td style={{ textAlign: 'left', fontWeight: 700 }}>#{e.cycle}</td>
+                                              <td style={{ textAlign: 'left', color: 'var(--text-muted)' }}>{cycleDate(e.ts)}</td>
+                                              <td style={{ textAlign: 'right' }}>{e.batches.toLocaleString()}</td>
+                                              <td style={{ textAlign: 'right' }}>{fmt(e.xen, 0)}</td>
+                                              <td style={{ textAlign: 'right', color: 'var(--amber)' }}>{fmt(e.fee, 5)} {chain.native}</td>
+                                              <td style={{ textAlign: 'right', color: 'var(--green)', fontWeight: 700 }}>{e.estDxn.toFixed(2)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                        <tfoot>
+                                          <tr>
+                                            <td style={{ textAlign: 'left', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL</td>
+                                            <td />
+                                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{t.batches.toLocaleString()}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(t.xen, 0)}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--amber)' }}>{fmt(t.fee, 5)} {chain.native}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>{t.estDxn.toFixed(2)}</td>
+                                          </tr>
+                                        </tfoot>
+                                      </table>
+                                    </div>
+                                    <div className="burn-hist-controls">
+                                      <div className="burn-hist-sizes">
+                                        <span style={{ color: 'var(--text-muted)' }}>Rows</span>
+                                        {HIST_PAGE_SIZES.map((s) => (
+                                          <button key={s} className={`burn-hist-size${histSize === s ? ' active' : ''}`} onClick={() => { setHistSize(s); setHistPage(1); }}>{s}</button>
+                                        ))}
+                                      </div>
+                                      {pages > 1 && (
+                                        <div className="burn-hist-pager">
+                                          <button className="burn-page-btn" onClick={() => setHistPage((p) => Math.max(1, p - 1))} disabled={pg <= 1}><ChevronLeft size={14} /></button>
+                                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pg} / {pages}</span>
+                                          <button className="burn-page-btn" onClick={() => setHistPage((p) => Math.min(pages, p + 1))} disabled={pg >= pages}><ChevronRight size={14} /></button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <div className="burn-detail-note">Full per-cycle history isn't available on {chain.name}'s explorer — the lifetime snapshot above is on-chain and accurate. (Cycle-by-cycle history works on Ethereum, Polygon, Base &amp; Optimism.)</div>
+                            )}
+                            <div className="burn-detail-note">Accrued rewards &amp; fees are the on-chain claimable balance — they update when the address next interacts with the protocol. Est. DXN &amp; fees are reconstructed from explorer history (best-effort).</div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
