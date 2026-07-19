@@ -39,7 +39,9 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   let cum = 0;
   const rawHist = cycleData.map((d) => {
     cum += d.reward > 0 ? d.reward : 0;
-    return { yr: yrOf(d.cycle), cycle: d.cycle, minted: cum, emit: d.reward > 0 ? d.reward : 0 };
+    // No-burn cycles emit null (not 0) so the daily-emission line's connectNulls
+    // bridges straight across the gap instead of spiking down to the baseline.
+    return { yr: yrOf(d.cycle), cycle: d.cycle, minted: cum, emit: d.reward > 0 ? d.reward : null };
   });
   const mintedToDate = cum;
   const stride = Math.max(1, Math.ceil(rawHist.length / MAX_HIST_POINTS));
