@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { BarChart3, TrendingUp, Flame, Coins, Activity, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { ethers } from 'ethers';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush, ComposedChart, Line, ReferenceLine, ReferenceDot } from 'recharts';
+import { Area, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush, ComposedChart, Line, ReferenceLine, ReferenceDot } from 'recharts';
 import { useWallet } from '../hooks/WalletContext';
 import { CHAINS, getBatchSize } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
@@ -47,6 +47,91 @@ function buildArr(map, c) {
   return arr;
 }
 
+// Least-squares slope/intercept over {x,y} points.
+function linReg(pts) {
+  const n = pts.length;
+  if (n < 2) return { m: 0, b: n ? pts[0].y : 0 };
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (const p of pts) { sx += p.x; sy += p.y; sxy += p.x * p.y; sxx += p.x * p.x; }
+  const den = n * sxx - sx * sx;
+  if (den === 0) return { m: 0, b: sy / n };
+  const m = (n * sxy - sx * sy) / den;
+  return { m, b: (sy - m * sx) / n };
+}
+
+// Window of recent cycles the trend lines are fit over, and how much to ease the
+// fitted slope so multi-year extrapolations stay gentle rather than shooting off.
+const TREND_WIN = 90;
+const SLOPE_DAMP = 0.5;
+
+// Observed geometric decay factor of the per-cycle DXN reward, measured the same way
+// the emission forecast does (reward_next ≈ reward × factor, factor < 1). We use it to
+// project reward as the real geometric decay instead of chasing noisy recent data — so
+// the line only ever declines and looks identical at every horizon.
+function rewardDecayFactor(cycleData) {
+  const active = cycleData.filter((d) => d.reward > 0);
+  if (active.length < 2) return 10000 / 10020;
+  const a = active[0], b = active[active.length - 1];
+  const span = b.cycle - a.cycle;
+  let f = span > 0 ? Math.pow(b.reward / a.reward, 1 / span) : 10000 / 10020;
+  if (!(f > 0 && f < 1)) f = 10000 / 10020;
+  return f;
+}
+
+// Append a "current-trend" projection so all four charts can draw a dashed
+// continuation. DXN reward projects as its true geometric decay (curReward × factor^h,
+// same curve the emission forecast draws) — it eases toward zero asymptotically instead
+// of a straight line crossing zero early, and is one identical curve at every horizon.
+// Batches and fees continue their recent TREND_WIN-cycle trend eased by SLOPE_DAMP,
+// clamped only at zero. Batches/fees anchor at their fitted level at "now" (the
+// in-progress current cycle is only partial, so its raw value sits too low). Cumulative
+// XEN extends off the projected batch rate. Historical rows keep their real keys; future
+// rows carry only proj* keys, and the last real row seeds them so the dashed lines meet
+// the solid ones.
+function buildProjectedData(cycleData, c, projYears) {
+  if (!projYears || !cycleData || cycleData.length < 2) return cycleData;
+  const recent = cycleData.slice(-TREND_WIN);
+  if (recent.length < 2) return cycleData;
+
+  const perBatchXen = parseFloat(ethers.formatEther(getBatchSize(c)));
+  const batchFit = linReg(recent.map((d) => ({ x: d.cycle, y: d.batches })));
+  const feeFit = linReg(recent.map((d) => ({ x: d.cycle, y: d.fees })));
+  const lastRow = cycleData[cycleData.length - 1];
+  const fitAt = (fit, x) => fit.m * x + fit.b;
+
+  // Reward: the real geometric decay reward × factor^h — asymptotes toward zero, one
+  // identical curve at every horizon, never sloping up.
+  const factor = rewardDecayFactor(cycleData);
+  const rewardBase = lastRow.reward;
+  const rewardLine = (x) => rewardBase * Math.pow(factor, x - lastRow.cycle);
+
+  // Batches and fees: eased recent trend off their fitted "now" level, floored at zero.
+  const batchBase = Math.max(0, fitAt(batchFit, lastRow.cycle));
+  const feeBase = Math.max(0, fitAt(feeFit, lastRow.cycle));
+  const batchLine = (x) => Math.max(0, batchBase + batchFit.m * SLOPE_DAMP * (x - lastRow.cycle));
+  const feeLine = (x) => Math.max(0, feeBase + feeFit.m * SLOPE_DAMP * (x - lastRow.cycle));
+
+  const out = cycleData.map((d) => ({ ...d }));
+  const j = out[out.length - 1];
+  j.projReward = rewardBase;
+  j.projBatches = batchBase;
+  j.projFees = feeBase;
+  j.projCum = j.cumXenBurned;
+
+  // One point per cycle — same density as history — so on the index-based x-axis each
+  // cycle is one equal-width slot and the projected slope looks the same for every
+  // horizon (1y…5y), instead of longer horizons compressing and appearing steeper.
+  const projCycles = projYears * 365;
+  let cum = lastRow.cumXenBurned;
+  for (let h = 1; h <= projCycles; h += 1) {
+    const cyc = lastRow.cycle + h;
+    const pb = batchLine(cyc);
+    cum += pb * perBatchXen;
+    out.push({ cycle: cyc, projReward: rewardLine(cyc), projBatches: pb, projFees: feeLine(cyc), projCum: cum });
+  }
+  return out;
+}
+
 function timeAgo(ts) {
   if (!ts) return '';
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -58,6 +143,8 @@ function timeAgo(ts) {
 
 // Format large numbers for Y-axis readability
 function fmtAxis(val) {
+  if (val >= 1e15) return (val / 1e15).toFixed(1) + 'Q';
+  if (val >= 1e12) return (val / 1e12).toFixed(1) + 'T';
   if (val >= 1e9) return (val / 1e9).toFixed(1) + 'B';
   if (val >= 1e6) return (val / 1e6).toFixed(1) + 'M';
   if (val >= 1e3) return (val / 1e3).toFixed(1) + 'K';
@@ -90,6 +177,7 @@ export default function AnalyticsPage() {
   const [brushRange, setBrushRange] = useState(null); // shared so all brushes scroll together
   const [horizon, setHorizon] = useState(5);          // emission-forecast horizon, years
   const [openTiles, setOpenTiles] = useState({});     // which forecast cards are expanded
+  const [projYears, setProjYears] = useState(0);      // 0 = off; trend projection on the 4 charts
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches
@@ -185,18 +273,28 @@ export default function AnalyticsPage() {
 
   useEffect(() => { fetchCycleHistory(); }, [fetchCycleHistory]);
 
+  // The four charts consume this: real cycle data, plus a dashed trend projection
+  // appended when a projection year is selected.
+  const displayData = useMemo(
+    () => buildProjectedData(cycleData, CHAINS[chainKey], projYears),
+    [cycleData, chainKey, projYears],
+  );
+
   // Default the shared brush window to the latest WINDOW cycles; keep the user's
-  // window across background refreshes, just clamped to the current length.
+  // window across background refreshes, just clamped. When a projection is on, jump
+  // the window to show recent history + the whole projected tail.
   useEffect(() => {
-    if (!cycleData || cycleData.length === 0) { setBrushRange(null); return; }
-    const len = cycleData.length;
+    if (!displayData || displayData.length === 0) { setBrushRange(null); return; }
+    const len = displayData.length;
+    const histLen = cycleData?.length || len;
     setBrushRange((prev) => {
+      if (projYears) return { startIndex: Math.max(0, histLen - 120), endIndex: len - 1 };
       if (!prev) return { startIndex: Math.max(0, len - WINDOW), endIndex: len - 1 };
       const endIndex = Math.min(prev.endIndex, len - 1);
       const startIndex = Math.min(prev.startIndex, endIndex);
       return { startIndex, endIndex };
     });
-  }, [cycleData]);
+  }, [displayData, projYears, cycleData]);
 
   const handleRefresh = async () => {
     if (refreshing || cooldown) return;
@@ -212,7 +310,7 @@ export default function AnalyticsPage() {
   const forecast = buildEmissionForecast(cycleData, horizon);
 
   const chartHeight = 300;
-  const len = cycleData?.length || 0;
+  const len = displayData?.length || 0;
   const showBrush = len > WINDOW;
   const isEmpty = !loading && (!cycleData || cycleData.length === 0);
 
@@ -279,14 +377,22 @@ export default function AnalyticsPage() {
 
       {/* 4 charts in 2x2 grid */}
       <div className="analytics-grid">
-        {/* 1. DXN Reward per Cycle — line with cyan gradient fill */}
+        {/* 1. DXN Reward per Cycle — line with cyan gradient fill + trend projection controls */}
         <div className="analytics-card">
           <div className="analytics-card-title">
             <TrendingUp size={16} style={{ color: 'var(--cyan)' }} /> DXN Reward per Cycle
+            <span className="spacer" />
+            <div className="proj-btns" title="Project all four charts this many years ahead at current trends">
+              <span className="proj-label">Project</span>
+              {[1, 2, 3, 4, 5].map((y) => (
+                <button key={y} className={`proj-btn${projYears === y ? ' active' : ''}`} onClick={() => setProjYears(y)}>{y}y</button>
+              ))}
+              <button className={`proj-btn${projYears === 0 ? ' active' : ''}`} onClick={() => setProjYears(0)}>Off</button>
+            </div>
           </div>
           {loading ? skeletonChart : (
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <AreaChart data={cycleData}>
+              <ComposedChart data={displayData}>
                 <defs>
                   <linearGradient id="gradCyan" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} />
@@ -296,10 +402,11 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
                 <XAxis dataKey="cycle" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v.toFixed(2)} DXN`, 'Reward']} />
-                <Area type="monotone" dataKey="reward" stroke="#22d3ee" strokeWidth={2} fill="url(#gradCyan)" dot={false} />
+                <Tooltip {...tooltipStyle} formatter={(v, n) => [`${(+v).toFixed(2)} DXN`, n === 'projReward' ? 'Projected' : 'Reward']} />
+                <Area type="monotone" dataKey="reward" stroke="#22d3ee" strokeWidth={2} fill="url(#gradCyan)" dot={false} isAnimationActive={false} />
+                {projYears > 0 && <Line type="monotone" dataKey="projReward" stroke="#22d3ee" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.6} dot={false} connectNulls isAnimationActive={false} />}
                 {renderBrush()}
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -311,14 +418,15 @@ export default function AnalyticsPage() {
           </div>
           {loading ? skeletonChart : (
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <BarChart data={cycleData}>
+              <ComposedChart data={displayData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
                 <XAxis dataKey="cycle" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [v.toLocaleString(), 'Batches']} />
-                <Bar dataKey="batches" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Tooltip {...tooltipStyle} formatter={(v, n) => [Math.round(+v).toLocaleString(), n === 'projBatches' ? 'Projected' : 'Batches']} />
+                <Bar dataKey="batches" fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                {projYears > 0 && <Line type="monotone" dataKey="projBatches" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.6} dot={false} connectNulls isAnimationActive={false} />}
                 {renderBrush()}
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -330,14 +438,15 @@ export default function AnalyticsPage() {
           </div>
           {loading ? skeletonChart : (
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <BarChart data={cycleData}>
+              <ComposedChart data={displayData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
                 <XAxis dataKey="cycle" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v.toFixed(6)} ${chain.native}`, 'Fees']} />
-                <Bar dataKey="fees" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+                <Tooltip {...tooltipStyle} formatter={(v, n) => [`${(+v).toFixed(6)} ${chain.native}`, n === 'projFees' ? 'Projected' : 'Fees']} />
+                <Bar dataKey="fees" fill="#22d3ee" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                {projYears > 0 && <Line type="monotone" dataKey="projFees" stroke="#22d3ee" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.6} dot={false} connectNulls isAnimationActive={false} />}
                 {renderBrush()}
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -349,7 +458,7 @@ export default function AnalyticsPage() {
           </div>
           {loading ? skeletonChart : (
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <AreaChart data={cycleData}>
+              <ComposedChart data={displayData}>
                 <defs>
                   <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
@@ -359,14 +468,21 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
                 <XAxis dataKey="cycle" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [fmtAxis(v) + ' XEN', 'Cumulative Burned']} />
-                <Area type="monotone" dataKey="cumXenBurned" stroke="#34d399" strokeWidth={2} fill="url(#gradGreen)" dot={false} />
+                <Tooltip {...tooltipStyle} formatter={(v, n) => [fmtAxis(+v) + ' XEN', n === 'projCum' ? 'Projected' : 'Cumulative Burned']} />
+                <Area type="monotone" dataKey="cumXenBurned" stroke="#34d399" strokeWidth={2} fill="url(#gradGreen)" dot={false} isAnimationActive={false} />
+                {projYears > 0 && <Line type="monotone" dataKey="projCum" stroke="#34d399" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.6} dot={false} connectNulls isAnimationActive={false} />}
                 {renderBrush()}
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
       </div>
+
+      {projYears > 0 && !loading && (
+        <div className="burn-detail-note" style={{ marginTop: -4, marginBottom: 20 }}>
+          Dashed lines project <b>{projYears} year{projYears > 1 ? 's' : ''}</b> ahead as gentle straight-line continuations of the recent {TREND_WIN}-cycle trend (DXN reward, batches & {chain.native} fees), with XEN burned following the projected batch rate. Modeling estimate — real activity will vary.
+        </div>
+      )}
 
       {/* DXN Emission Forecast — cumulative minting (solid) + dotted projection to the cap */}
       <div className="analytics-card analytics-forecast">
@@ -402,7 +518,10 @@ export default function AnalyticsPage() {
                 <YAxis yAxisId="left" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
                 <YAxis yAxisId="right" orientation="right" width={72} tick={{ fill: '#f59e0b', fontSize: 11 }} tickFormatter={fmtEmit} />
                 <Tooltip {...tooltipStyle}
-                  labelFormatter={(v) => `Year ${(+v).toFixed(1)}`}
+                  labelFormatter={(v, payload) => {
+                    const cyc = payload?.[0]?.payload?.cycle;
+                    return cyc != null ? `Cycle ${Math.round(cyc).toLocaleString()} · Y${(+v).toFixed(1)}` : `Y${(+v).toFixed(1)}`;
+                  }}
                   formatter={(v, name) => {
                     const map = { minted: 'Minted (cumulative)', forecast: 'Projected (cumulative)', emit: 'Daily emission', emitF: 'Projected daily' };
                     const isEmit = name === 'emit' || name === 'emitF';
@@ -425,6 +544,7 @@ export default function AnalyticsPage() {
             <div className="forecast-tiles">
               {[1, 2, 3, 4, 5, 10, 20].map((y) => {
                 const H = y * 365;
+                const cyc = forecast.curCycle + H;
                 const emit = forecast.curReward * Math.pow(forecast.factor, H);
                 const rNext = forecast.curReward * forecast.factor;
                 const cumulative = forecast.mintedToDate + (rNext * (1 - Math.pow(forecast.factor, H))) / (1 - forecast.factor);
@@ -435,13 +555,14 @@ export default function AnalyticsPage() {
                     onClick={() => setOpenTiles((o) => ({ ...o, [y]: !o[y] }))}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenTiles((o) => ({ ...o, [y]: !o[y] })); } }}>
                     <div className="forecast-tile-head">
-                      <span className="forecast-tile-label">+{y} yr</span>
+                      <span className="forecast-tile-label">+{y} yr · cycle {Math.round(cyc).toLocaleString()}</span>
                       <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-muted)' }} />
                     </div>
                     <div className="forecast-tile-main">{fmtAxis(cumulative)} <span>DXN</span></div>
                     <div className="forecast-tile-est">{pct.toFixed(1)}% of cap minted</div>
                     {open && (
                       <div className="forecast-tile-details">
+                        <div><span>at cycle</span><b>{Math.round(cyc).toLocaleString()}</b></div>
                         <div><span>daily emission</span><b>~{fmtEmit(emit)} DXN</b></div>
                         <div><span>% of cap minted</span><b>{pct.toFixed(2)}%</b></div>
                         <div><span>left to mint</span><b>{fmtAxis(Math.max(0, forecast.cap - cumulative))} DXN</b></div>
@@ -451,7 +572,7 @@ export default function AnalyticsPage() {
                 );
               })}
               <div className="forecast-tile forecast-tile-cap">
-                <div className="forecast-tile-label">Max supply (~60 yr)</div>
+                <div className="forecast-tile-label">Max supply · ends ~cycle {Math.round(forecast.curCycle + 60 * 365).toLocaleString()}</div>
                 <div className="forecast-tile-main" style={{ color: 'var(--text-secondary)' }}>{fmtAxis(forecast.cap)} <span>DXN</span></div>
                 <div className="forecast-tile-est">{forecast.pctMinted.toFixed(1)}% already minted</div>
               </div>

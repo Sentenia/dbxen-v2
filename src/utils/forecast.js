@@ -39,7 +39,7 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   let cum = 0;
   const rawHist = cycleData.map((d) => {
     cum += d.reward > 0 ? d.reward : 0;
-    return { yr: yrOf(d.cycle), minted: cum, emit: d.reward > 0 ? d.reward : 0 };
+    return { yr: yrOf(d.cycle), cycle: d.cycle, minted: cum, emit: d.reward > 0 ? d.reward : 0 };
   });
   const mintedToDate = cum;
   const stride = Math.max(1, Math.ceil(rawHist.length / MAX_HIST_POINTS));
@@ -55,9 +55,9 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   const horizonCycles = Math.round(horizonYears * CYCLES_PER_YEAR);
   const step = Math.max(1, Math.round(horizonCycles / 120));
   // Forecast points start at the junction so the dotted lines continue the solid ones.
-  const forecast = [{ yr: yrOf(curCycle), forecast: mintedToDate, emitF: curReward }];
+  const forecast = [{ yr: yrOf(curCycle), cycle: curCycle, forecast: mintedToDate, emitF: curReward }];
   for (let H = step; H <= horizonCycles; H += step) {
-    forecast.push({ yr: yrOf(curCycle + H), forecast: mintedToDate + sumH(H), emitF: emitAt(H) });
+    forecast.push({ yr: yrOf(curCycle + H), cycle: curCycle + H, forecast: mintedToDate + sumH(H), emitF: emitAt(H) });
   }
 
   // Year markers scale with horizon so the axis never crowds.
@@ -65,19 +65,19 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   const markers = [];
   for (let y = mStep; y <= horizonYears; y += mStep) {
     const H = y * CYCLES_PER_YEAR;
-    markers.push({ year: y, yr: yrOf(curCycle + H), cumulative: mintedToDate + sumH(H), emit: emitAt(H) });
+    markers.push({ year: y, yr: yrOf(curCycle + H), cycle: curCycle + H, cumulative: mintedToDate + sumH(H), emit: emitAt(H) });
   }
 
   // Single merged array: minted/emit on history points, forecast/emitF on future
   // points; connectNulls stitches each dataKey across its own points.
   const chartData = [
-    ...hist.map((h) => ({ yr: h.yr, minted: h.minted, emit: h.emit })),
-    ...forecast.map((f) => ({ yr: f.yr, forecast: f.forecast, emitF: f.emitF })),
+    ...hist.map((h) => ({ yr: h.yr, cycle: h.cycle, minted: h.minted, emit: h.emit })),
+    ...forecast.map((f) => ({ yr: f.yr, cycle: f.cycle, forecast: f.forecast, emitF: f.emitF })),
   ].sort((a, b) => a.yr - b.yr);
 
   return {
     factor, decayPct: (1 - factor) * 100, mintedToDate, cap,
     pctMinted: cap > 0 ? (mintedToDate / cap) * 100 : 0,
-    curYr: yrOf(curCycle), curReward, markers, chartData, horizonYears,
+    curYr: yrOf(curCycle), curCycle, curReward, markers, chartData, horizonYears,
   };
 }
