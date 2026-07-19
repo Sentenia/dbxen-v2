@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BarChart3, TrendingUp, Flame, Coins, Activity, RefreshCw } from 'lucide-react';
+import { BarChart3, TrendingUp, Flame, Coins, Activity, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { ethers } from 'ethers';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush, ComposedChart, Line, ReferenceLine, ReferenceDot } from 'recharts';
 import { useWallet } from '../hooks/WalletContext';
 import { CHAINS, getBatchSize } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
 import { fmt } from '../utils/helpers';
+import { buildEmissionForecast, FORECAST_HORIZONS } from '../utils/forecast';
 import Skeleton from './Skeleton';
 
 
@@ -65,6 +66,20 @@ function fmtAxis(val) {
   return '0';
 }
 
+// Daily-emission formatter: keeps K/M for the big early numbers but drops into up to
+// 8 decimals (trailing zeros trimmed) for the tiny amounts minted in later years, so
+// fractions like 0.00012 stay visible instead of rounding to 0.0000.
+function fmtEmit(val) {
+  if (val >= 1e6) return (val / 1e6).toFixed(2) + 'M';
+  if (val >= 1e3) return (val / 1e3).toFixed(2) + 'K';
+  if (val >= 1) return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (val > 0) return val.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+  return '0';
+}
+
+// Percent of the emission cap minted by a given point.
+function pctOf(part, whole) { return whole > 0 ? (part / whole) * 100 : 0; }
+
 export default function AnalyticsPage() {
   const { chain, chainKey, protocolStats, getReadProvider } = useWallet();
   const [cycleData, setCycleData] = useState(null);
@@ -73,6 +88,8 @@ export default function AnalyticsPage() {
   const [cooldown, setCooldown] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(0);
   const [brushRange, setBrushRange] = useState(null); // shared so all brushes scroll together
+  const [horizon, setHorizon] = useState(5);          // emission-forecast horizon, years
+  const [openTiles, setOpenTiles] = useState({});     // which forecast cards are expanded
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches
@@ -192,6 +209,7 @@ export default function AnalyticsPage() {
   const nonZeroRewards = cycleData?.filter(d => d.reward > 0) || [];
   const avgReward = nonZeroRewards.length ? (nonZeroRewards.reduce((s, d) => s + d.reward, 0) / nonZeroRewards.length) : 0;
   const totalFees = cycleData?.reduce((s, d) => s + d.fees, 0) || 0;
+  const forecast = buildEmissionForecast(cycleData, horizon);
 
   const chartHeight = 300;
   const len = cycleData?.length || 0;
@@ -348,6 +366,101 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* DXN Emission Forecast — cumulative minting (solid) + dotted projection to the cap */}
+      <div className="analytics-card analytics-forecast">
+        <div className="analytics-card-title">
+          <Sparkles size={16} style={{ color: '#a78bfa' }} /> DXN Emission Forecast — {chain.name}
+          <span className="spacer" />
+          <div className="forecast-horizons">
+            {FORECAST_HORIZONS.map((y) => (
+              <button key={y} className={`forecast-hz${horizon === y ? ' active' : ''}`} onClick={() => setHorizon(y)}>{y === 60 ? 'Max' : `${y}y`}</button>
+            ))}
+          </div>
+        </div>
+        <div className="forecast-legend">
+          <span className="forecast-key"><i style={{ background: '#22d3ee' }} /> Cumulative minted (↑)</span>
+          <span className="forecast-key"><i style={{ background: '#f59e0b' }} /> Daily emission (↓)</span>
+          <span className="forecast-key forecast-key-dash"><i /> Projected</span>
+        </div>
+        {loading ? skeletonChart : !forecast ? (
+          <div className="analytics-empty" style={{ margin: 0 }}>Not enough cycle history to forecast yet.</div>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={chartHeight}>
+              <ComposedChart data={forecast.chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="gradMint" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
+                <XAxis type="number" dataKey="yr" domain={[1, 'dataMax']} tick={{ fill: '#64748b', fontSize: 11 }}
+                  tickFormatter={(v) => `Y${Math.round(v)}`} allowDecimals={false} />
+                <YAxis yAxisId="left" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
+                <YAxis yAxisId="right" orientation="right" width={72} tick={{ fill: '#f59e0b', fontSize: 11 }} tickFormatter={fmtEmit} />
+                <Tooltip {...tooltipStyle}
+                  labelFormatter={(v) => `Year ${(+v).toFixed(1)}`}
+                  formatter={(v, name) => {
+                    const map = { minted: 'Minted (cumulative)', forecast: 'Projected (cumulative)', emit: 'Daily emission', emitF: 'Projected daily' };
+                    const isEmit = name === 'emit' || name === 'emitF';
+                    return [`${isEmit ? fmtEmit(v) : fmtAxis(v)}${isEmit ? ' DXN/day' : ' DXN'}`, map[name] || name];
+                  }} />
+                <ReferenceLine yAxisId="left" y={forecast.cap} stroke="#94a3b8" strokeDasharray="5 5"
+                  label={{ value: `Cap ≈ ${fmtAxis(forecast.cap)} DXN`, position: 'insideTopRight', fill: '#94a3b8', fontSize: 11 }} />
+                <ReferenceLine yAxisId="left" x={forecast.curYr} stroke="#334155" strokeDasharray="2 4"
+                  label={{ value: 'now', position: 'insideBottom', fill: '#64748b', fontSize: 10 }} />
+                <Area yAxisId="left" type="monotone" dataKey="minted" stroke="#22d3ee" strokeWidth={2} fill="url(#gradMint)" dot={false} connectNulls isAnimationActive={false} />
+                <Line yAxisId="left" type="monotone" dataKey="forecast" stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 5" dot={false} connectNulls isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="emit" stroke="#f59e0b" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="emitF" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 5" dot={false} connectNulls isAnimationActive={false} />
+                {forecast.markers.map((m) => (
+                  <ReferenceDot key={m.year} yAxisId="left" x={m.yr} y={m.cumulative} r={4} fill="#22d3ee" stroke="#0a0e1a" strokeWidth={2} />
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+
+            <div className="forecast-tiles">
+              {[1, 2, 3, 4, 5, 10, 20].map((y) => {
+                const H = y * 365;
+                const emit = forecast.curReward * Math.pow(forecast.factor, H);
+                const rNext = forecast.curReward * forecast.factor;
+                const cumulative = forecast.mintedToDate + (rNext * (1 - Math.pow(forecast.factor, H))) / (1 - forecast.factor);
+                const pct = pctOf(cumulative, forecast.cap);
+                const open = !!openTiles[y];
+                return (
+                  <div key={y} className={`forecast-tile forecast-tile-btn${open ? ' is-open' : ''}`} role="button" tabIndex={0}
+                    onClick={() => setOpenTiles((o) => ({ ...o, [y]: !o[y] }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenTiles((o) => ({ ...o, [y]: !o[y] })); } }}>
+                    <div className="forecast-tile-head">
+                      <span className="forecast-tile-label">+{y} yr</span>
+                      <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-muted)' }} />
+                    </div>
+                    <div className="forecast-tile-main">{fmtAxis(cumulative)} <span>DXN</span></div>
+                    <div className="forecast-tile-est">{pct.toFixed(1)}% of cap minted</div>
+                    {open && (
+                      <div className="forecast-tile-details">
+                        <div><span>daily emission</span><b>~{fmtEmit(emit)} DXN</b></div>
+                        <div><span>% of cap minted</span><b>{pct.toFixed(2)}%</b></div>
+                        <div><span>left to mint</span><b>{fmtAxis(Math.max(0, forecast.cap - cumulative))} DXN</b></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="forecast-tile forecast-tile-cap">
+                <div className="forecast-tile-label">Max supply (~60 yr)</div>
+                <div className="forecast-tile-main" style={{ color: 'var(--text-secondary)' }}>{fmtAxis(forecast.cap)} <span>DXN</span></div>
+                <div className="forecast-tile-est">{forecast.pctMinted.toFixed(1)}% already minted</div>
+              </div>
+            </div>
+            <div className="burn-detail-note" style={{ marginTop: 10 }}>
+              Year 1 = the protocol's first active cycle (launch). Assumes the observed ~{forecast.decayPct.toFixed(2)}%/cycle reward decay continues with ~daily cycles: daily emission fades toward zero while cumulative minting approaches its ~{fmtAxis(forecast.cap)} DXN cap. Because the per-cycle reward floors below 1 wei, emission effectively ends around year ~60 and supply is fixed thereafter. Modeling estimate, not a guarantee · figures are for {chain.name} only.
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

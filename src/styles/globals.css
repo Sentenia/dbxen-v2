@@ -551,6 +551,34 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
 .analytics-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
 .analytics-card:hover { border-color: var(--border-glow); }
 .analytics-card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.analytics-card-title .spacer { flex: 1; }
+/* DXN emission forecast card */
+.analytics-forecast { margin-bottom: 20px; }
+.forecast-horizons { display: flex; gap: 5px; }
+.forecast-hz { padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-deep); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+.forecast-hz:hover { border-color: var(--border-glow); color: var(--text-primary); }
+.forecast-hz.active { color: #a78bfa; background: rgba(167, 139, 250, 0.12); border-color: rgba(167, 139, 250, 0.5); }
+.forecast-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; align-items: start; }
+.forecast-tile { background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.forecast-tile-btn { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.forecast-tile-btn:hover { border-color: rgba(52,211,153,0.5); }
+.forecast-tile-btn.is-open { border-color: rgba(52,211,153,0.6); background: rgba(52,211,153,0.06); }
+.forecast-tile-head { display: flex; align-items: center; justify-content: space-between; }
+.forecast-tile-est { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
+/* open card spans the full row so it pushes the others down and the details get room */
+.forecast-tile-btn.is-open { grid-column: 1 / -1; }
+.forecast-tile-details { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 12px 32px; }
+.forecast-tile-details div { display: flex; flex-direction: column; gap: 3px; }
+.forecast-tile-details span { color: var(--text-muted); font-size: 11px; }
+.forecast-tile-details b { font-weight: 800; font-size: 16px; color: var(--text-primary); }
+.forecast-tile-cap { border-color: rgba(148, 163, 184, 0.4); grid-column: 1 / -1; }
+.forecast-tile-label { font-size: 11px; color: var(--text-muted); }
+.forecast-tile-main { font-size: 18px; font-weight: 800; color: var(--cyan); margin-top: 4px; }
+.forecast-tile-main span { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.forecast-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: -6px 0 12px; }
+.forecast-key { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.forecast-key i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.forecast-key-dash i { background: repeating-linear-gradient(90deg, var(--text-secondary) 0 5px, transparent 5px 9px); }
 .analytics-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .analytics-stat-box { background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .analytics-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
