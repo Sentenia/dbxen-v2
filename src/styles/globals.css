@@ -469,6 +469,12 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+/* inline spinner for the burn-feed cycle scan ("this can take ~20s") */
+.burn-scan-spinner {
+  display: inline-block; width: 12px; height: 12px; margin-right: 7px; vertical-align: -1px;
+  border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%;
+  animation: spin360 0.8s linear infinite;
+}
 .btn-loading {
   pointer-events: none;
   opacity: 0.85;

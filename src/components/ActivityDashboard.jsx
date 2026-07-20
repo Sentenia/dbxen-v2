@@ -13,6 +13,19 @@ const cycleDate = (ts) => new Date(ts * 1000).toLocaleDateString('en-US', { mont
 const BURN_EVENT_SIG = ethers.id('Burn(address,uint256)');
 const PAGE_SIZE = 10;
 
+// Chains whose configured/public RPC refuses wide eth_getLogs (archive-gated) — pull the
+// burn feed from these getLogs-capable endpoints instead, raw JSON-RPC, rotated + retried.
+// Chains whose own public RPC archive-gates wide eth_getLogs — pull the burn feed from
+// these getLogs-capable endpoints (raw JSON-RPC) instead. `range` = max blocks per call
+// the endpoint allows; `blockTime` is deliberately set a touch BELOW the chain's real
+// block time so the scan OVER-covers the cycle (over-scan is harmless — lastActiveCycle
+// filters out any previous-cycle burns that get swept in). Their block number is read
+// from the chain's own RPC, never the wallet provider (which may be on another chain).
+const GETLOGS_RPCS = {
+  '0x38':   { rpcs: ['https://bsc.rpc.blxrbdn.com'], range: 45000, blockTime: 0.4 }, // BNB ~0.45s/block (bloXroute)
+  '0xa86a': { rpcs: ['https://avalanche.drpc.org'],  range: 9999,  blockTime: 0.9 }, // AVAX ~1.0s/block (drpc caps at 10k)
+};
+
 export default function ActivityDashboard() {
   const { chain, chainKey, connected, userAddr, protocolStats, getReadProvider } = useWallet();
   const [timerStr, setTimerStr] = useState('—');
@@ -26,8 +39,12 @@ export default function ActivityDashboard() {
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches; also drop any open history
-  // dropdown + cached per-address reads (they're chain-specific).
-  useEffect(() => { epochRef.current += 1; setExpanded(null); setDetails({}); }, [chainKey]);
+  // dropdown + cached per-address reads (they're chain-specific). Clear actData too so
+  // the panel never shows the previous chain's stats while the new one loads.
+  useEffect(() => {
+    epochRef.current += 1; setExpanded(null); setDetails({});
+    actDataRef.current = null; setActData(null);
+  }, [chainKey]);
 
   // Fresh cycle table (page 1, default size) whenever a different row opens.
   useEffect(() => { setHistPage(1); setHistSize(5); }, [expanded]);
@@ -134,6 +151,26 @@ export default function ActivityDashboard() {
         if (isStale()) return;
       }
 
+      // Commit the reliable contract stats NOW — the getLogs feed below can take many
+      // seconds (BSC scans ~16 chunks) or fail, and stats/your-position must never wait
+      // on it or linger on a previous chain. Keep any feed we already have for THIS cycle
+      // so the list doesn't blink to empty while the fresh scan runs.
+      if (isStale()) return;
+      {
+        const prevSame = actDataRef.current && actDataRef.current.cycle === Number(cycle) && actDataRef.current.logsOk;
+        const statsData = {
+          cycle: Number(cycle), reward, totalBatches: contractTotalBatches, totalEthFees, myBatches, feedLoading: true,
+          burnerCount: prevSame ? actDataRef.current.burnerCount : 0,
+          sorted: prevSame ? actDataRef.current.sorted : [],
+          totalGasCost: prevSame ? actDataRef.current.totalGasCost : 0n,
+          myGasCost: prevSame ? actDataRef.current.myGasCost : 0n,
+          logsOk: prevSame ? true : false,
+        };
+        if (!actDataRef.current || actDataRef.current.cycle !== Number(cycle)) setPage(1);
+        actDataRef.current = statsData;
+        setActData(statsData);
+      }
+
       // ── Burn feed (the per-address table) via getLogs — BEST EFFORT. Many public
       //    RPCs now gate wide getLogs behind API keys, so wrap it: a failure leaves
       //    the table empty but must NOT zero out the contract-derived stats above. ──
@@ -142,12 +179,15 @@ export default function ActivityDashboard() {
       const now = BigInt(Math.floor(Date.now() / 1000));
       const cycleStartTs = initTs + (cycle * period);
       const secsIntoCycle = Number(now - cycleStartTs);
+      const logCfg = GETLOGS_RPCS[c.chainId];
       const blockTimes = { '0x1': 12, '0x38': 1, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
-      const blockTime = blockTimes[c.chainId] || 2;
+      const blockTime = logCfg?.blockTime || blockTimes[c.chainId] || 2;
 
-      // For BSC: get block number via raw fetch, otherwise use wallet provider
+      // Chains with a getLogs endpoint read their block number from the chain's own RPC
+      // (never the wallet provider — it may be pointed at a different network); everyone
+      // else uses the wallet/fallback provider.
       let currentBlock;
-      if (c.chainId === '0x38') {
+      if (logCfg) {
         const bnResp = await fetch(c.rpc, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }),
@@ -162,14 +202,16 @@ export default function ActivityDashboard() {
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
       const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
-      // Chunk getLogs — BSC uses raw fetch (official BSC RPCs disable getLogs, ethers fails network detection)
-      const MAX_BLOCK_RANGE = 4999;
+      // Chunk getLogs — chains in GETLOGS_RPCS use raw fetch against getLogs-capable
+      // endpoints (their own public RPCs archive-gate getLogs); everyone else uses the
+      // wallet/fallback provider directly.
+      const MAX_BLOCK_RANGE = logCfg?.range || 4999;
+      const rawRpcs = logCfg?.rpcs;
       let logs = [];
       for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
         const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
-        if (c.chainId === '0x38') {
-          const bscRpcs = ['https://bsc.drpc.org', 'https://bsc.blockrazor.xyz', 'https://1rpc.io/bnb'];
-          const rpc = bscRpcs[Math.floor((from - startBlock) / (MAX_BLOCK_RANGE + 1)) % bscRpcs.length];
+        if (rawRpcs) {
+          const rpc = rawRpcs[Math.floor((from - startBlock) / (MAX_BLOCK_RANGE + 1)) % rawRpcs.length];
           let json;
           for (let retry = 0; retry < 3; retry++) {
             if (retry > 0) await new Promise(r => setTimeout(r, 1000));
@@ -252,14 +294,20 @@ export default function ActivityDashboard() {
       }
 
       if (isStale()) return;
+      // Feed done. Use the fresh scan if it succeeded; if it failed, keep whatever feed
+      // the early stats commit already had for this cycle rather than blanking the list.
       const prev = actDataRef.current;
       const newData = {
-        cycle: Number(cycle), reward, totalBatches: contractTotalBatches,
-        burnerCount, totalEthFees, sorted, totalGasCost, myBatches, myGasCost, logsOk,
+        cycle: Number(cycle), reward, totalBatches: contractTotalBatches, totalEthFees, myBatches,
+        feedLoading: false,
+        burnerCount: logsOk ? burnerCount : (prev?.burnerCount || 0),
+        sorted: logsOk ? sorted : (prev?.sorted || []),
+        totalGasCost: logsOk ? totalGasCost : (prev?.totalGasCost || 0n),
+        myGasCost: logsOk ? myGasCost : (prev?.myGasCost || 0n),
+        logsOk: logsOk || !!prev?.logsOk,
       };
       actDataRef.current = newData;
       setActData(newData);
-      if (!prev || prev.cycle !== Number(cycle)) setPage(1);
     } catch (e) {
       console.error('Activity refresh failed:', e);
     }
@@ -337,7 +385,9 @@ export default function ActivityDashboard() {
             <tbody>
               {pageData.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
-                  {actData === null ? 'Loading burn activity...'
+                  {d.feedLoading && !d.logsOk
+                    ? <><span className="burn-scan-spinner" /> Scanning the full cycle for burns — this can take up to ~20 seconds. Cycle totals and your position above are already accurate.</>
+                    : actData === null ? 'Loading burn activity…'
                     : d.totalBatches > 0 ? 'Per-address list unavailable on this RPC — cycle totals and your position above are accurate.'
                     : 'No burns this cycle yet.'}
                 </td></tr>
