@@ -17,7 +17,10 @@ export const FORECAST_HORIZONS = [1, 2, 3, 4, 5, 60];
 
 // cycleData: [{ cycle, reward }] in DXN (already formatEther'd), oldest → newest.
 // horizonYears: how far past "now" to project.
-export function buildEmissionForecast(cycleData, horizonYears = 5) {
+// bridged: this chain's V1→V2 migrated DXN (its STARTING circulating supply). The
+//   cumulative-supply line starts here and the decay emission unlocks the rest on top,
+//   so the cap = bridged + full emission tail. 0 → the pre-migration behaviour.
+export function buildEmissionForecast(cycleData, horizonYears = 5, bridged = 0) {
   if (!cycleData || cycleData.length < 2) return null;
   const active = cycleData.filter((d) => d.reward > 0);
   if (active.length < 2) return null;
@@ -34,9 +37,11 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   const base = first.cycle;
   const yrOf = (cycle) => (cycle - base) / CYCLES_PER_YEAR + 1;
 
-  // Cumulative DXN minted to date + downsampled solid-line series (with the daily
-  // emission on each point, for the downward line).
-  let cum = 0;
+  // Cumulative DXN supply to date + downsampled solid-line series (with the daily
+  // emission on each point, for the downward line). Seed the running total with the
+  // bridged amount so the curve starts from this chain's real starting supply.
+  const base0 = bridged > 0 ? bridged : 0;
+  let cum = base0;
   const rawHist = cycleData.map((d) => {
     cum += d.reward > 0 ? d.reward : 0;
     // No-burn cycles emit null (not 0) so the daily-emission line's connectNulls
@@ -80,6 +85,6 @@ export function buildEmissionForecast(cycleData, horizonYears = 5) {
   return {
     factor, decayPct: (1 - factor) * 100, mintedToDate, cap,
     pctMinted: cap > 0 ? (mintedToDate / cap) * 100 : 0,
-    curYr: yrOf(curCycle), curCycle, curReward, markers, chartData, horizonYears,
+    curYr: yrOf(curCycle), curCycle, curReward, markers, chartData, horizonYears, bridged: base0,
   };
 }

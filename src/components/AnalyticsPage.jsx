@@ -7,6 +7,7 @@ import { CHAINS, getBatchSize } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
 import { fmt } from '../utils/helpers';
 import { buildEmissionForecast, FORECAST_HORIZONS } from '../utils/forecast';
+import { cachedBridgedWei, readBridgedWei } from '../utils/migration';
 import Skeleton from './Skeleton';
 
 
@@ -178,10 +179,30 @@ export default function AnalyticsPage() {
   const [horizon, setHorizon] = useState(5);          // emission-forecast horizon, years
   const [openTiles, setOpenTiles] = useState({});     // which forecast cards are expanded
   const [projYears, setProjYears] = useState(0);      // 0 = off; trend projection on the 4 charts
+  const [bridged, setBridged] = useState(0);          // DXN migrated 1:1 from v1 = starting supply
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches
   useEffect(() => { epochRef.current += 1; setCycleData(null); setLoading(true); }, [chainKey]);
+
+  // This chain's bridged (migrated-from-v1) total = its starting circulating supply,
+  // used to seed the emission-forecast baseline. Frozen values: seed instantly from the
+  // shared MigrationStats cache, only hit the contract when the cache is cold.
+  useEffect(() => {
+    let cancelled = false;
+    const cachedWei = cachedBridgedWei(chainKey);
+    if (cachedWei != null) { setBridged(parseFloat(ethers.formatEther(cachedWei))); return; }
+    setBridged(0);
+    (async () => {
+      try {
+        const { provider } = getReadProvider();
+        if (!provider) return;
+        const wei = await readBridgedWei(CHAINS[chainKey], provider);
+        if (!cancelled && wei != null) setBridged(parseFloat(ethers.formatEther(wei)));
+      } catch { /* leave 0 → forecast just starts from zero */ }
+    })();
+    return () => { cancelled = true; };
+  }, [chainKey, getReadProvider]);
 
   const fetchCycleHistory = useCallback(async (force = false) => {
     const epoch = ++epochRef.current;
@@ -307,7 +328,7 @@ export default function AnalyticsPage() {
   const nonZeroRewards = cycleData?.filter(d => d.reward > 0) || [];
   const avgReward = nonZeroRewards.length ? (nonZeroRewards.reduce((s, d) => s + d.reward, 0) / nonZeroRewards.length) : 0;
   const totalFees = cycleData?.reduce((s, d) => s + d.fees, 0) || 0;
-  const forecast = buildEmissionForecast(cycleData, horizon);
+  const forecast = buildEmissionForecast(cycleData, horizon, bridged);
 
   const chartHeight = 300;
   const len = displayData?.length || 0;
@@ -578,7 +599,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="burn-detail-note" style={{ marginTop: 10 }}>
-              Year 1 = the protocol's first active cycle (launch). Assumes the observed ~{forecast.decayPct.toFixed(2)}%/cycle reward decay continues with ~daily cycles: daily emission fades toward zero while cumulative minting approaches its ~{fmtAxis(forecast.cap)} DXN cap. Because the per-cycle reward floors below 1 wei, emission effectively ends around year ~60 and supply is fixed thereafter. Modeling estimate, not a guarantee · figures are for {chain.name} only.
+              Year 1 = the protocol's first active cycle (launch).{forecast.bridged > 0 && <> Cumulative supply starts from the <b>{fmtAxis(forecast.bridged)} DXN</b> migrated 1:1 from v1 (this chain's starting circulating supply), which the emission then unlocks the rest on top of.</>} Assumes the observed ~{forecast.decayPct.toFixed(2)}%/cycle reward decay continues with ~daily cycles: daily emission fades toward zero while cumulative minting approaches its ~{fmtAxis(forecast.cap)} DXN cap. Because the per-cycle reward floors below 1 wei, emission effectively ends around year ~60 and supply is fixed thereafter. Modeling estimate, not a guarantee · figures are for {chain.name} only.
             </div>
           </>
         )}
