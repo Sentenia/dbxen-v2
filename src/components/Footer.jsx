@@ -35,12 +35,12 @@ export default function Footer({ protocolMode }) {
     rows = [
       { label: chain.xenSym + ':', addr: ct.XEN },
       { label: 'DBXenV2:', addr: ct.DBXEN_V2 },
-      { label: chain.dxnSym + 'v2:', addr: ct.DXN_V2 },
+      { label: chain.dxnSym + ':', addr: ct.DXN_V2 },
       { label: 'Migration:', addr: ct.MIGRATION },
     ];
     if (chain.legacy) {
       rows.push({ label: 'Old DBXenV2:', addr: chain.legacy.DBXEN_V2 });
-      rows.push({ label: 'Old ' + chain.dxnSym + 'v2:', addr: chain.legacy.DXN_V2 });
+      rows.push({ label: 'Old ' + chain.dxnSym + ':', addr: chain.legacy.DXN_V2 });
       rows.push({ label: 'Old Migration:', addr: chain.legacy.MIGRATION });
     }
   }

@@ -354,7 +354,7 @@ export function WalletProvider({ children }) {
       try {
         // Prefer the current cycle's summed stake (matches the protocol's live value).
         // If it's not populated yet (an in-progress cycle reads 0), fall back to
-        // lastStartedCycle so DXN Staked never wrongly shows 0.
+        // lastStartedCycle so DXNv2 Staked never wrongly shows 0.
         let summedStakes = await dbxRead.summedCycleStakes(storedCycle);
         if (isStale(epoch)) return;
         if (summedStakes === 0n) {
@@ -386,7 +386,7 @@ export function WalletProvider({ children }) {
       // DXNv2 price + real APR (async, non-blocking so it never delays core stats).
       // On Ethereum, DXNv2/WETH lives in a Uniswap V3 pool DexScreener doesn't index,
       // so we read it on-chain; other chains use DexScreener. APR = annual protocol
-      // fees ÷ the native-token value of all staked DXN.
+      // fees ÷ the native-token value of all staked DXNv2.
       (async () => {
         try {
           const now = Date.now();
@@ -543,13 +543,13 @@ export function WalletProvider({ children }) {
     const c = CHAINS[chainKey];
     const allowance = await dxnV2.allowance(userAddr, c.contracts.DBXEN_V2);
     if (allowance < amount) {
-      toast('Approving DXN...');
+      toast('Approving DXNv2...');
       const tx = await dxnV2.approve(c.contracts.DBXEN_V2, ethers.MaxUint256);
       await tx.wait();
     }
     const tx = await dbxen.stake(amount);
     await tx.wait();
-    toast.success('DXN staked!');
+    toast.success('DXNv2 staked!');
     await refreshAll();
   }, [chainKey, userAddr, refreshAll]);
 
@@ -557,7 +557,7 @@ export function WalletProvider({ children }) {
     const { dbxen } = contractsRef.current;
     const tx = await dbxen.unstake(amount);
     await tx.wait();
-    toast.success('DXN unstaked!');
+    toast.success('DXNv2 unstaked!');
     await refreshAll();
   }, [refreshAll]);
 
@@ -565,7 +565,7 @@ export function WalletProvider({ children }) {
     const { dbxen } = contractsRef.current;
     const tx = await dbxen.claimRewards();
     await tx.wait();
-    toast.success('DXN rewards claimed!');
+    toast.success('DXNv2 rewards claimed!');
     await refreshAll();
   }, [refreshAll]);
 
@@ -596,7 +596,7 @@ export function WalletProvider({ children }) {
       tx = await migration.swap(amount);
     }
     await tx.wait();
-    toast.success('DXN migrated!');
+    toast.success('DXNv2 migrated!');
     await refreshAll();
   }, [chainKey, userAddr, refreshAll]);
 
@@ -606,7 +606,7 @@ export function WalletProvider({ children }) {
     try {
       await window.ethereum.request({
         method: 'wallet_watchAsset',
-        params: { type: 'ERC20', options: { address: c.contracts.DXN_V2, symbol: c.dxnSym + 'v2', decimals: 18 } },
+        params: { type: 'ERC20', options: { address: c.contracts.DXN_V2, symbol: c.dxnSym, decimals: 18 } },
       });
       toast.success('Token added!');
     } catch { toast.error('Failed to add token'); }

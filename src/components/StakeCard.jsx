@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Lock, Wallet, Timer } from 'lucide-react';
+import { Lock, Wallet, Timer, Plus } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimerHMS } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function StakeCard() {
-  const { chain, connected, dxnBal, userStats, protocolStats, stakeTokens, unstakeTokens } = useWallet();
+  const { chain, connected, dxnBal, userStats, protocolStats, stakeTokens, unstakeTokens, addTokenToWallet } = useWallet();
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingTimer, setPendingTimer] = useState('—');
@@ -43,8 +43,8 @@ export default function StakeCard() {
       <div className="card-header">
         <div className="card-icon stake"><Lock size={20} color="white" /></div>
         <div>
-          <div className="card-title">Stake DXN</div>
-          <div className="card-desc">Stake DXN to earn {chain.native} protocol fees</div>
+          <div className="card-title">Stake DXNv2</div>
+          <div className="card-desc">Stake DXNv2 to earn {chain.native} protocol fees</div>
         </div>
       </div>
 
@@ -54,17 +54,25 @@ export default function StakeCard() {
           <span>Your DXNv2: <strong>{fmt(dxnBal)}</strong></span>
         </div>
       )}
-      {chain.dexUrl && (
-        <a href={chain.dexUrl.replace(chain.contracts.XEN, chain.contracts.DXN_V2)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none', marginTop: 4, marginBottom: 8 }}>
-          Get {chain.dxnSym} <span style={{ fontSize: 10 }}>&#8599;</span>
-        </a>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 4, marginBottom: 8 }}>
+        {chain.dexUrl && (
+          <a href={chain.dexUrl.replace(chain.contracts.XEN, chain.contracts.DXN_V2)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none' }}>
+            Get {chain.dxnSym} <span style={{ fontSize: 10 }}>&#8599;</span>
+          </a>
+        )}
+        {connected && (
+          <button onClick={addTokenToWallet} title={`Add ${chain.dxnSym} to your wallet's token list`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Plus size={12} /> Add {chain.dxnSym} to wallet
+          </button>
+        )}
+      </div>
 
       <div className="input-group">
         <div className="input-label">Amount to Stake</div>
         <input className="input-field" type="text" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
         <div className="input-hint">
-          <span>Balance: {fmt(dxnBal)} DXN</span>
+          <span>Balance: {fmt(dxnBal)} DXNv2</span>
           <span className="link" onClick={() => dxnBal > 0n && setAmount(ethers.formatEther(dxnBal))}>Max</span>
         </div>
       </div>
@@ -79,13 +87,13 @@ export default function StakeCard() {
       <div style={{ marginTop: 16 }}>
         <div className="stat-row">
           <span className="stat-label">Your Stake</span>
-          <span className="stat-value">{fmt(userStats.totalStake)} DXN</span>
+          <span className="stat-value">{fmt(userStats.totalStake)} DXNv2</span>
         </div>
         {userStats.pendingStake > 0n && (
           <>
             <div className="stat-row">
               <span className="stat-label">⏳ Pending (unlocks next cycle)</span>
-              <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmt(userStats.pendingStake)} DXN</span>
+              <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmt(userStats.pendingStake)} DXNv2</span>
             </div>
             <div className="stat-row">
               <span className="stat-label" />
@@ -95,9 +103,9 @@ export default function StakeCard() {
         )}
         <div className="stat-row">
           <span className="stat-label">Withdrawable</span>
-          <span className="stat-value">{fmt(userStats.withdrawable)} DXN</span>
+          <span className="stat-value">{fmt(userStats.withdrawable)} DXNv2</span>
         </div>
-        <div className="stat-row" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXN DEX liquidity is thin.">
+        <div className="stat-row" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXNv2 (DXNv2 priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXNv2 DEX liquidity is thin.">
           <span className="stat-label">Est. APR (24h) ⓘ</span>
           <span className="stat-value green">{protocolStats.apy ? protocolStats.apy + '%' : '—'}</span>
         </div>
