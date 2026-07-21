@@ -6,6 +6,7 @@ import { fmt, formatTimer, shortAddr, getGasPrice } from '../utils/helpers';
 import { getBatchSize, CHAINS } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
 import { fetchBurnHistory, isBurnHistorySupported } from '../utils/burnHistory';
+import { loadFeed, saveFeed } from '../utils/burnFeedCache';
 
 const HIST_PAGE_SIZES = [5, 10, 20, 50];
 const cycleDate = (ts) => new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -16,15 +17,72 @@ const PAGE_SIZE = 10;
 // Chains whose configured/public RPC refuses wide eth_getLogs (archive-gated) — pull the
 // burn feed from these getLogs-capable endpoints instead, raw JSON-RPC, rotated + retried.
 // Chains whose own public RPC archive-gates wide eth_getLogs — pull the burn feed from
-// these getLogs-capable endpoints (raw JSON-RPC) instead. `range` = max blocks per call
-// the endpoint allows; `blockTime` is deliberately set a touch BELOW the chain's real
-// block time so the scan OVER-covers the cycle (over-scan is harmless — lastActiveCycle
-// filters out any previous-cycle burns that get swept in). Their block number is read
+// these getLogs-capable endpoints (raw JSON-RPC) instead. `endpoints` are tried in order
+// (see scanBurnLogs), each with its own max block `range`: the first does the rare
+// full-cycle scan; the smaller-range fallbacks cover the frequent tiny delta scans (and
+// give redundancy if the wide endpoint hiccups). `blockTime` is deliberately set a touch
+// BELOW the chain's real block time so a full scan OVER-covers the cycle (harmless —
+// lastActiveCycle filters out any previous-cycle burns swept in). Block number is read
 // from the chain's own RPC, never the wallet provider (which may be on another chain).
 const GETLOGS_RPCS = {
-  '0x38':   { rpcs: ['https://bsc.rpc.blxrbdn.com'], range: 45000, blockTime: 0.4 }, // BNB ~0.45s/block (bloXroute)
-  '0xa86a': { rpcs: ['https://avalanche.drpc.org'],  range: 9999,  blockTime: 0.9 }, // AVAX ~1.0s/block (drpc caps at 10k)
+  '0x38': { // BNB ~0.45s/block
+    blockTime: 0.4,
+    endpoints: [
+      { url: 'https://bsc.rpc.blxrbdn.com', range: 45000 }, // bloXroute — wide, full scans
+      { url: 'https://bsc-pokt.nodies.app', range: 240 },   // fallback for delta scans
+    ],
+  },
+  '0xa86a': { // AVAX ~1.0s/block
+    blockTime: 0.9,
+    endpoints: [
+      { url: 'https://avalanche.drpc.org', range: 9999 },            // drpc — wide (caps at 10k)
+      { url: 'https://api.avax.network/ext/bc/C/rpc', range: 2000 }, // fallback (live-site CORS)
+      { url: 'https://1rpc.io/avax/c', range: 48 },                  // fallback (delta only)
+    ],
+  },
 };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Scan Burn(address,uint256) logs for `address` over [fromBlock, toBlock]. Tries each
+// endpoint in order; within one endpoint it chunks by that endpoint's max range and
+// retries a chunk once before giving up on that endpoint and falling to the next. An
+// endpoint whose range would need too many chunks for the span is skipped (so a
+// small-range fallback isn't used for a full-cycle scan). Returns { logs, ok } — ok=false
+// means every viable endpoint failed, and the caller should keep its cached feed.
+async function scanBurnLogs(endpoints, address, fromBlock, toBlock, isStale) {
+  if (toBlock < fromBlock) return { logs: [], ok: true };
+  const span = toBlock - fromBlock + 1;
+  for (const ep of endpoints) {
+    if (Math.ceil(span / ep.range) > 30) continue; // too many chunks for this endpoint
+    const logs = [];
+    let failed = false;
+    for (let from = fromBlock; from <= toBlock && !failed; from += ep.range + 1) {
+      if (isStale()) return { logs: [], ok: false };
+      const to = Math.min(from + ep.range, toBlock);
+      let got = null;
+      for (let attempt = 0; attempt < 2 && got === null; attempt++) {
+        if (attempt) await sleep(500);
+        try {
+          const resp = await fetch(ep.url, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{
+              address, topics: [BURN_EVENT_SIG],
+              fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16),
+            }] }),
+          });
+          const j = await resp.json();
+          if (Array.isArray(j.result)) got = j.result;
+        } catch { /* retry, then fall to next endpoint */ }
+      }
+      if (got === null) { failed = true; break; }
+      for (const l of got) logs.push(l);
+      await sleep(80);
+    }
+    if (!failed) return { logs, ok: true };
+  }
+  return { logs: [], ok: false };
+}
 
 export default function ActivityDashboard() {
   const { chain, chainKey, connected, userAddr, protocolStats, getReadProvider } = useWallet();
@@ -171,9 +229,11 @@ export default function ActivityDashboard() {
         setActData(statsData);
       }
 
-      // ── Burn feed (the per-address table) via getLogs — BEST EFFORT. Many public
-      //    RPCs now gate wide getLogs behind API keys, so wrap it: a failure leaves
-      //    the table empty but must NOT zero out the contract-derived stats above. ──
+      // ── Burn feed (the per-address table) via getLogs — BEST EFFORT + INCREMENTAL.
+      //    We cache this cycle's per-address burns and only scan blocks added since the
+      //    last refresh, so the steady-state cost is one tiny query instead of a full
+      //    cycle re-scan. A failure leaves the table on its cached feed and never zeroes
+      //    the contract-derived stats above. ──
       let sorted = [], burnerCount = 0, totalGasCost = 0n, myGasCost = 0n, logsOk = false;
       try {
       const now = BigInt(Math.floor(Date.now() / 1000));
@@ -200,88 +260,77 @@ export default function ActivityDashboard() {
       if (isStale()) return;
 
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
-      const startBlock = Math.max(currentBlock - blocksIntoCycle, 0);
+      const cycleStartBlock = Math.max(currentBlock - blocksIntoCycle, 0);
 
-      // Chunk getLogs — chains in GETLOGS_RPCS use raw fetch against getLogs-capable
-      // endpoints (their own public RPCs archive-gate getLogs); everyone else uses the
-      // wallet/fallback provider directly.
-      const MAX_BLOCK_RANGE = logCfg?.range || 4999;
-      const rawRpcs = logCfg?.rpcs;
-      let logs = [];
-      for (let from = startBlock; from <= currentBlock; from += MAX_BLOCK_RANGE + 1) {
-        const to = Math.min(from + MAX_BLOCK_RANGE, currentBlock);
-        if (rawRpcs) {
-          const rpc = rawRpcs[Math.floor((from - startBlock) / (MAX_BLOCK_RANGE + 1)) % rawRpcs.length];
-          let json;
-          for (let retry = 0; retry < 3; retry++) {
-            if (retry > 0) await new Promise(r => setTimeout(r, 1000));
-            try {
-              const resp = await fetch(rpc, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{
-                  address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG],
-                  fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16),
-                }] }),
-              });
-              json = await resp.json();
-              if (json.result) break;
-            } catch {}
-          }
-          if (json?.result) logs = logs.concat(json.result);
-          await new Promise(r => setTimeout(r, 200));
+      // Seed from the cached feed for THIS cycle and scan only new blocks; otherwise scan
+      // the whole cycle from its (over-covered) start.
+      const cached = loadFeed(chainKey);
+      const sameCycle = cached && cached.cycle === Number(cycle);
+      const burners = {};
+      if (sameCycle) for (const a in cached.burners) burners[a] = { ...cached.burners[a], gasCost: 0n };
+      const seededAddrs = new Set(Object.keys(burners));
+      const scanFrom = sameCycle ? cached.lastBlock + 1 : cycleStartBlock;
+
+      // Fetch new logs (delta if cached). logCfg chains use the fallback-aware scanner;
+      // others use the wallet/fallback provider directly.
+      let scanOk = true;
+      if (currentBlock >= scanFrom) {
+        let logs = [];
+        if (logCfg) {
+          const res = await scanBurnLogs(logCfg.endpoints, c.contracts.DBXEN_V2, scanFrom, currentBlock, isStale);
+          if (isStale()) return;
+          logs = res.logs; scanOk = res.ok;
         } else {
-          const chunk = await provider.getLogs({
-            address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to,
-          });
-          logs = logs.concat(chunk);
+          const R = 4999;
+          for (let from = scanFrom; from <= currentBlock && scanOk; from += R + 1) {
+            if (isStale()) return;
+            const to = Math.min(from + R, currentBlock);
+            try { logs = logs.concat(await provider.getLogs({ address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to })); }
+            catch { scanOk = false; }
+          }
         }
-        if (isStale()) return;
+        if (scanOk) {
+          for (const log of logs) {
+            const topics = log.topics || [];
+            const addr = ('0x' + (topics[1] || '').slice(26)).toLowerCase();
+            const batches = Number(BigInt(log.data || '0x0') / getBatchSize(c));
+            if (!burners[addr]) burners[addr] = { batches: 0, gasCost: 0n, txCount: 0 };
+            burners[addr].batches += batches;
+            burners[addr].txCount += 1;
+          }
+        }
       }
 
-      // Get gas price once for estimating gas costs
+      // A failed scan with no cached feed means we have nothing to show — bail to the
+      // catch so the row falls back to "unavailable"/"loading" rather than a false empty.
+      if (!scanOk && !sameCycle) throw new Error('burn scan failed, no cache');
+
+      // Filter previous-cycle burners (only the over-scan on a fresh scan can introduce
+      // them) via on-chain lastActiveCycle. Cached addresses were already vetted, so only
+      // check the NEW ones — keeps steady-state refreshes to ~0 extra calls.
+      const newAddrs = Object.keys(burners).filter((a) => !seededAddrs.has(a));
+      if (newAddrs.length > 0) {
+        let activeCycles;
+        if (isFallback) { activeCycles = []; for (const addr of newAddrs) { activeCycles.push(await dbxRead.lastActiveCycle(addr)); if (isStale()) return; } }
+        else { activeCycles = await Promise.all(newAddrs.map((addr) => dbxRead.lastActiveCycle(addr))); if (isStale()) return; }
+        for (let i = 0; i < newAddrs.length; i++) if (activeCycles[i] !== cycle) delete burners[newAddrs[i]];
+      }
+
+      // Persist the cleaned current-cycle aggregation + how far we scanned. Only advance
+      // lastBlock on a successful scan, and never move it backward (the block-number and
+      // getLogs RPCs can differ by a few blocks — rescanning would double-count batches).
+      const newLastBlock = scanOk
+        ? (sameCycle ? Math.max(cached.lastBlock, currentBlock) : currentBlock)
+        : (sameCycle ? cached.lastBlock : scanFrom - 1);
+      const persistBurners = {};
+      for (const a in burners) persistBurners[a] = { batches: burners[a].batches, txCount: burners[a].txCount };
+      saveFeed(chainKey, { cycle: Number(cycle), lastBlock: newLastBlock, burners: persistBurners });
+
+      // Gas estimate + ranked list.
       const gasPrice = (await getGasPrice(provider)) || 1000000000n;
       if (isStale()) return;
-      const isL2 = c.chainId !== '0x1';
-      const estGasPerTx = BigInt(isL2 ? 600000 : 200000);
-
-      const burners = {};
-      let totalBatches = 0;
-      for (const log of logs) {
-        const topics = log.topics || [];
-        const addr = ('0x' + (topics[1] || '').slice(26)).toLowerCase();
-        const xenAmount = BigInt(log.data || '0x0');
-        const batches = Number(xenAmount / getBatchSize(c));
-        if (!burners[addr]) burners[addr] = { batches: 0, gasCost: 0n, txCount: 0 };
-        burners[addr].batches += batches;
-        burners[addr].txCount += 1;
-        totalBatches += batches;
-      }
-
-      // Filter out burners from previous cycles using on-chain lastActiveCycle
-      const burnerAddrs = Object.keys(burners);
-      if (burnerAddrs.length > 0) {
-        let activeCycles;
-        if (isFallback) {
-          activeCycles = [];
-          for (const addr of burnerAddrs) {
-            activeCycles.push(await dbxRead.lastActiveCycle(addr));
-            if (isStale()) return;
-          }
-        } else {
-          activeCycles = await Promise.all(burnerAddrs.map(addr => dbxRead.lastActiveCycle(addr)));
-          if (isStale()) return;
-        }
-        for (let i = 0; i < burnerAddrs.length; i++) {
-          if (activeCycles[i] !== cycle) {
-            totalBatches -= burners[burnerAddrs[i]].batches;
-            delete burners[burnerAddrs[i]];
-          }
-        }
-      }
-
-      for (const [, data] of Object.entries(burners)) {
-        data.gasCost = gasPrice * estGasPerTx * BigInt(data.txCount);
-      }
+      const estGasPerTx = BigInt(c.chainId !== '0x1' ? 600000 : 200000);
+      for (const [, data] of Object.entries(burners)) data.gasCost = gasPrice * estGasPerTx * BigInt(data.txCount);
 
       const built = Object.entries(burners).sort((a, b) => b[1].batches - a[1].batches);
       sorted = built;
@@ -345,7 +394,7 @@ export default function ActivityDashboard() {
         <div className="cycle-stats-grid">
           <div className="cycle-stat-box"><div className="cycle-stat-label">Total batches</div><div className="cycle-stat-val">{(d.totalBatches || 0).toLocaleString()}</div></div>
           <div className="cycle-stat-box"><div className="cycle-stat-label">Burners</div><div className="cycle-stat-val">{d.burnerCount || 0}</div></div>
-          <div className="cycle-stat-box"><div className="cycle-stat-label">Reward pool</div><div className="cycle-stat-val">{d.reward ? fmt(d.reward) : '—'} <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>DXN</span></div></div>
+          <div className="cycle-stat-box"><div className="cycle-stat-label">Reward pool</div><div className="cycle-stat-val">{d.reward ? fmt(d.reward) : '—'} <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>DXNv2</span></div></div>
           <div className="cycle-stat-box"><div className="cycle-stat-label">Fees</div><div className="cycle-stat-val">{d.totalEthFees ? fmt(d.totalEthFees, 4) : '—'} <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{chain.native}</span></div></div>
         </div>
         <div className="cycle-timer-section">
@@ -357,7 +406,7 @@ export default function ActivityDashboard() {
             <div className="cycle-stat-label" style={{ marginBottom: 10 }}>Your position</div>
             <div className="cycle-pos-row"><span>Your batches</span><span>{myBatches}</span></div>
             <div className="cycle-pos-row"><span>Your share</span><span>{myShare.toFixed(2)}%</span></div>
-            <div className="cycle-pos-row"><span>Est. DXN reward</span><span style={{ color: 'var(--green)', fontWeight: 700 }}>{myReward.toFixed(2)} DXN</span></div>
+            <div className="cycle-pos-row"><span>Est. DXNv2 reward</span><span style={{ color: 'var(--green)', fontWeight: 700 }}>{myReward.toFixed(2)} DXNv2</span></div>
             <div className="cycle-pos-row"><span>Your gas cost</span><span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>~{parseFloat(ethers.formatEther(myGasCost)).toFixed(4)} {chain.native}</span></div>
             <div className="cycle-pos-row"><span>Your protocol fee</span><span style={{ color: 'var(--amber)', fontWeight: 700 }}>{myProtocolFee.toFixed(4)} {chain.native}</span></div>
           </div>
@@ -379,7 +428,7 @@ export default function ActivityDashboard() {
                 <th style={{ textAlign: 'right' }}>Est. Gas</th>
                 <th style={{ textAlign: 'right' }}>Protocol fee</th>
                 <th style={{ textAlign: 'right' }}>Share</th>
-                <th style={{ textAlign: 'right' }}>Est. DXN</th>
+                <th style={{ textAlign: 'right' }}>Est. DXNv2</th>
               </tr>
             </thead>
             <tbody>
@@ -433,9 +482,9 @@ export default function ActivityDashboard() {
                               </a>
                             </div>
                             <div className="burn-detail-grid">
-                              <div className="burn-detail-item"><span className="burn-detail-label">DXN rewards (claimable)</span><span className="burn-detail-val" style={{ color: 'var(--green)' }}>{fmt(det.accRewards)} DXN</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">DXNv2 rewards (claimable)</span><span className="burn-detail-val" style={{ color: 'var(--green)' }}>{fmt(det.accRewards)} DXNv2</span></div>
                               <div className="burn-detail-item"><span className="burn-detail-label">{chain.native} fees (claimable)</span><span className="burn-detail-val" style={{ color: 'var(--amber)' }}>{fmt(det.accFees, 5)} {chain.native}</span></div>
-                              <div className="burn-detail-item"><span className="burn-detail-label">DXN staked</span><span className="burn-detail-val">{fmt(det.stake)} DXN</span></div>
+                              <div className="burn-detail-item"><span className="burn-detail-label">DXNv2 staked</span><span className="burn-detail-val">{fmt(det.stake)} DXNv2</span></div>
                               <div className="burn-detail-item"><span className="burn-detail-label">Last active cycle</span><span className="burn-detail-val">{det.lastCycle > 0 ? `#${det.lastCycle}` : '—'}</span></div>
                               <div className="burn-detail-item"><span className="burn-detail-label">Batches (cycle #{det.lastCycle})</span><span className="burn-detail-val">{det.lastCycleBatches.toLocaleString()}</span></div>
                             </div>
@@ -464,7 +513,7 @@ export default function ActivityDashboard() {
                                             <th style={{ textAlign: 'right' }}>Batches</th>
                                             <th style={{ textAlign: 'right' }}>XEN burned</th>
                                             <th style={{ textAlign: 'right' }}>Fee paid</th>
-                                            <th style={{ textAlign: 'right' }}>Est. DXN</th>
+                                            <th style={{ textAlign: 'right' }}>Est. DXNv2</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -512,7 +561,7 @@ export default function ActivityDashboard() {
                             ) : (
                               <div className="burn-detail-note">Full per-cycle history isn't available on {chain.name}'s explorer. The lifetime snapshot above is on-chain and accurate. (Cycle-by-cycle history works on Ethereum, Polygon, Base &amp; Optimism.)</div>
                             )}
-                            <div className="burn-detail-note">Accrued rewards &amp; fees are the on-chain claimable balance. They update when the address next interacts with the protocol. Est. DXN &amp; fees are reconstructed from explorer history (best-effort).</div>
+                            <div className="burn-detail-note">Accrued rewards &amp; fees are the on-chain claimable balance. They update when the address next interacts with the protocol. Est. DXNv2 &amp; fees are reconstructed from explorer history (best-effort).</div>
                           </div>
                         )}
                       </td>
