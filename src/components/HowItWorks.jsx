@@ -1,8 +1,8 @@
 export default function HowItWorks() {
   const steps = [
-    { num: 1, title: 'Burn XEN', desc: 'Burn XEN in batches to earn DXN rewards.' },
-    { num: 2, title: 'Earn DXN', desc: 'DXN rewards distributed at end of each 24h cycle.' },
-    { num: 3, title: 'Stake for Fees', desc: 'Stake DXN to earn protocol fees in native tokens.' },
+    { num: 1, title: 'Burn XEN', desc: 'Burn XEN in batches to earn DXNv2 rewards.' },
+    { num: 2, title: 'Earn DXNv2', desc: 'DXNv2 rewards distributed at end of each 24h cycle.' },
+    { num: 3, title: 'Stake for Fees', desc: 'Stake DXNv2 to earn protocol fees in native tokens.' },
   ];
 
   return (

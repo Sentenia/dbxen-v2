@@ -40,26 +40,26 @@ export default function NXDVaultStats() {
 
   return (
     <div className="nxd-vault-stats fade-up fade-up-3">
-      {/* DXN Holdings TVL Overview */}
+      {/* DXNv2 Holdings TVL Overview */}
       <div className="card nxd-card">
         <div className="card-header">
           <div className="card-icon nxd-icon-stake"><Lock size={20} color="white" /></div>
           <div>
-            <div className="card-title">DXN Holdings TVL Overview</div>
-            <div className="card-desc">Protocol DXN lock metrics</div>
+            <div className="card-title">DXNv2 Holdings TVL Overview</div>
+            <div className="card-desc">Protocol DXNv2 lock metrics</div>
           </div>
         </div>
         <div className="stat-row">
-          <span className="stat-label">DXN Staked (LMP)</span>
-          <span className="stat-value">{fmt(protocolStats.totalDXNDeposited)} DXN</span>
+          <span className="stat-label">DXNv2 Staked (LMP)</span>
+          <span className="stat-value">{fmt(protocolStats.totalDXNDeposited)} DXNv2</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">DXN Compounded</span>
-          <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXN</span>
+          <span className="stat-label">DXNv2 Compounded</span>
+          <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXNv2</span>
         </div>
         <div className="stat-row stat-total">
-          <span className="stat-label">Total DXN Locked</span>
-          <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmt(totalDxnLocked)} DXN</span>
+          <span className="stat-label">Total DXNv2 Locked</span>
+          <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmt(totalDxnLocked)} DXNv2</span>
         </div>
       </div>
 
@@ -77,12 +77,12 @@ export default function NXDVaultStats() {
           <span className="stat-value" style={{ color: 'var(--green)' }}>{fmtFixed(protocolStats.ethToVault, 6)} ETH</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">DXN Compounded</span>
-          <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXN</span>
+          <span className="stat-label">DXNv2 Compounded</span>
+          <span className="stat-value">{fmt(protocolStats.dxnStaked)} DXNv2</span>
         </div>
         <div className="stat-row">
-          <span className="stat-label">DXN Burned</span>
-          <span className="stat-value" style={{ color: 'var(--red)' }}>{fmt(protocolStats.dxnBurned)} DXN</span>
+          <span className="stat-label">DXNv2 Burned</span>
+          <span className="stat-value" style={{ color: 'var(--red)' }}>{fmt(protocolStats.dxnBurned)} DXNv2</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">NXD Burned</span>
@@ -111,7 +111,7 @@ export default function NXDVaultStats() {
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Sell Tax Breakdown (5%)</div>
           <div className="stat-row"><span className="stat-label">Burn NXD</span><span className="stat-value" style={{ color: 'var(--red)' }}>1.5%</span></div>
-          <div className="stat-row"><span className="stat-label">Stake DXN</span><span className="stat-value">1.5%</span></div>
+          <div className="stat-row"><span className="stat-label">Stake DXNv2</span><span className="stat-value">1.5%</span></div>
           <div className="stat-row"><span className="stat-label">Add to LP</span><span className="stat-value">1%</span></div>
           <div className="stat-row"><span className="stat-label">Dev Fee</span><span className="stat-value">1%</span></div>
         </div>
@@ -119,9 +119,9 @@ export default function NXDVaultStats() {
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>ETH Fee Split</div>
           <div className="stat-row"><span className="stat-label">Buy + Burn NXD</span><span className="stat-value" style={{ color: 'var(--amber)' }}>50%</span></div>
-          <div className="stat-row"><span className="stat-label">Stake DXN</span><span className="stat-value">30%</span></div>
+          <div className="stat-row"><span className="stat-label">Stake DXNv2</span><span className="stat-value">30%</span></div>
           <div className="stat-row"><span className="stat-label">Staking Vault</span><span className="stat-value" style={{ color: 'var(--green)' }}>15%</span></div>
-          <div className="stat-row"><span className="stat-label">Burn DXN</span><span className="stat-value" style={{ color: 'var(--red)' }}>5%</span></div>
+          <div className="stat-row"><span className="stat-label">Burn DXNv2</span><span className="stat-value" style={{ color: 'var(--red)' }}>5%</span></div>
           <div className="stat-row"><span className="stat-label">Dev Fee</span><span className="stat-value">5%</span></div>
         </div>
 

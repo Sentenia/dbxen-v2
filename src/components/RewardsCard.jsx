@@ -13,7 +13,7 @@ export default function RewardsCard() {
     setBusy(true);
     try {
       if (userStats.unclaimedDxn > 0n) {
-        setBusyLabel('Claiming DXN...');
+        setBusyLabel('Claiming DXNv2...');
         await claimDxn();
       }
       if (userStats.unclaimedFees > 0n) {
@@ -49,13 +49,13 @@ export default function RewardsCard() {
         <div className="card-icon rewards"><Gift size={20} color="white" /></div>
         <div>
           <div className="card-title">Your Rewards</div>
-          <div className="card-desc">Claim earned DXN and {chain.native} fees</div>
+          <div className="card-desc">Claim earned DXNv2 and {chain.native} fees</div>
         </div>
       </div>
 
       <div style={{ marginBottom: 20 }}>
         <div className="stat-row">
-          <span className="stat-label">Unclaimed DXN</span>
+          <span className="stat-label">Unclaimed DXNv2</span>
           <span className="stat-value green">{fmt(userStats.unclaimedDxn)}</span>
         </div>
         <div className="stat-row">
@@ -69,7 +69,7 @@ export default function RewardsCard() {
           <Zap size={16} /> {busy && busyLabel ? busyLabel : 'Claim All Rewards'}
         </button>
         <button className="btn-action primary" onClick={handleClaimDxn} disabled={!connected || busy}>
-          <Coins size={16} /> Claim DXN Rewards
+          <Coins size={16} /> Claim DXNv2 Rewards
         </button>
         <button className="btn-action secondary" onClick={handleClaimFees} disabled={!connected || busy}>
           <Banknote size={16} /> Claim {chain.native} Fees

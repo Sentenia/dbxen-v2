@@ -19,11 +19,11 @@ export default function StatsTicker() {
 
   const items = [
     `Cycle ${protocolStats.cycle || '—'}`,
-    protocolStats.dxnPrice ? `DXN: $${protocolStats.dxnPrice < 0.01 ? protocolStats.dxnPrice.toFixed(5) : protocolStats.dxnPrice.toFixed(4)}` : null,
-    `Reward: ${protocolStats.reward ? fmt(protocolStats.reward) : '—'} DXN`,
+    protocolStats.dxnPrice ? `DXNv2: $${protocolStats.dxnPrice < 0.01 ? protocolStats.dxnPrice.toFixed(5) : protocolStats.dxnPrice.toFixed(4)}` : null,
+    `Reward: ${protocolStats.reward ? fmt(protocolStats.reward) : '—'} DXNv2`,
     protocolStats.apy ? `APR: ${protocolStats.apy}%` : null,
     `Next cycle: ${timerStr}`,
-    `Staked: ${protocolStats.totalStaked > 0n ? fmt(protocolStats.totalStaked) : '—'} DXN`,
+    `Staked: ${protocolStats.totalStaked > 0n ? fmt(protocolStats.totalStaked) : '—'} DXNv2`,
     `Chain: ${chain.name}`,
   ].filter(Boolean);
 

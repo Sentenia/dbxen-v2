@@ -74,7 +74,7 @@ export default function DonorScoreboard({ onClose }) {
 
         {bonus && bonus.multiplier > 1 && (
           <div className="scoreboard-bonus">
-            🔥 {bonus.multiplier.toFixed(1)}× points per $1 right now, fading every DXN cycle until 1× ({bonus.cyclesLeft} cycles left)
+            🔥 {bonus.multiplier.toFixed(1)}× points per $1 right now, fading every DXNv2 cycle until 1× ({bonus.cyclesLeft} cycles left)
           </div>
         )}
 

@@ -65,7 +65,7 @@ function linReg(pts) {
 const TREND_WIN = 90;
 const SLOPE_DAMP = 0.5;
 
-// Observed geometric decay factor of the per-cycle DXN reward, measured the same way
+// Observed geometric decay factor of the per-cycle DXNv2 reward, measured the same way
 // the emission forecast does (reward_next ≈ reward × factor, factor < 1). We use it to
 // project reward as the real geometric decay instead of chasing noisy recent data — so
 // the line only ever declines and looks identical at every horizon.
@@ -80,7 +80,7 @@ function rewardDecayFactor(cycleData) {
 }
 
 // Append a "current-trend" projection so all four charts can draw a dashed
-// continuation. DXN reward projects as its true geometric decay (curReward × factor^h,
+// continuation. DXNv2 reward projects as its true geometric decay (curReward × factor^h,
 // same curve the emission forecast draws) — it eases toward zero asymptotically instead
 // of a straight line crossing zero early, and is one identical curve at every horizon.
 // Batches and fees continue their recent TREND_WIN-cycle trend eased by SLOPE_DAMP,
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
   const [horizon, setHorizon] = useState(5);          // emission-forecast horizon, years
   const [openTiles, setOpenTiles] = useState({});     // which forecast cards are expanded
   const [projYears, setProjYears] = useState(0);      // 0 = off; trend projection on the 4 charts
-  const [bridged, setBridged] = useState(0);          // DXN migrated 1:1 from v1 = starting supply
+  const [bridged, setBridged] = useState(0);          // DXNv2 migrated 1:1 from v1 = starting supply
   const epochRef = useRef(0);
 
   // Bump epoch on chain change to abort stale fetches
@@ -370,13 +370,13 @@ export default function AnalyticsPage() {
       {/* 4 stat boxes */}
       <div className="analytics-stat-grid">
         <div className="analytics-stat-box">
-          <div className="analytics-stat-label">Total DXN Staked (TVL)</div>
+          <div className="analytics-stat-label">Total DXNv2 Staked (TVL)</div>
           <div className="analytics-stat-val" style={{ color: 'var(--cyan)' }}>
             {protocolStats.totalStaked > 0n ? fmt(protocolStats.totalStaked) : <Skeleton width="80px" />}
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}> DXN</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}> DXNv2</span>
           </div>
         </div>
-        <div className="analytics-stat-box" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXN DEX liquidity is thin.">
+        <div className="analytics-stat-box" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXNv2 (DXNv2 priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXNv2 DEX liquidity is thin.">
           <div className="analytics-stat-label">Est. APR (24h) ⓘ</div>
           <div className="analytics-stat-val" style={{ color: 'var(--green)' }}>
             {protocolStats.apy ? `${protocolStats.apy}%` : (protocolStats.cycle > 0 ? '—' : <Skeleton width="60px" />)}
@@ -385,7 +385,7 @@ export default function AnalyticsPage() {
         <div className="analytics-stat-box">
           <div className="analytics-stat-label">Avg Reward / Cycle</div>
           <div className="analytics-stat-val">
-            {loading ? <Skeleton width="70px" /> : `${avgReward.toFixed(2)} DXN`}
+            {loading ? <Skeleton width="70px" /> : `${avgReward.toFixed(2)} DXNv2`}
           </div>
         </div>
         <div className="analytics-stat-box">
@@ -398,10 +398,10 @@ export default function AnalyticsPage() {
 
       {/* 4 charts in 2x2 grid */}
       <div className="analytics-grid">
-        {/* 1. DXN Reward per Cycle — line with cyan gradient fill + trend projection controls */}
+        {/* 1. DXNv2 Reward per Cycle — line with cyan gradient fill + trend projection controls */}
         <div className="analytics-card">
           <div className="analytics-card-title">
-            <TrendingUp size={16} style={{ color: 'var(--cyan)' }} /> DXN Reward per Cycle
+            <TrendingUp size={16} style={{ color: 'var(--cyan)' }} /> DXNv2 Reward per Cycle
             <span className="spacer" />
             <div className="proj-btns" title="Project all four charts this many years ahead at current trends">
               <span className="proj-label">Project</span>
@@ -423,7 +423,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" />
                 <XAxis dataKey="cycle" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={fmtAxis} />
-                <Tooltip {...tooltipStyle} formatter={(v, n) => [`${(+v).toFixed(2)} DXN`, n === 'projReward' ? 'Projected' : 'Reward']} />
+                <Tooltip {...tooltipStyle} formatter={(v, n) => [`${(+v).toFixed(2)} DXNv2`, n === 'projReward' ? 'Projected' : 'Reward']} />
                 <Area type="monotone" dataKey="reward" stroke="#22d3ee" strokeWidth={2} fill="url(#gradCyan)" dot={false} isAnimationActive={false} />
                 {projYears > 0 && <Line type="monotone" dataKey="projReward" stroke="#22d3ee" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.6} dot={false} connectNulls isAnimationActive={false} />}
                 {renderBrush()}
@@ -501,14 +501,14 @@ export default function AnalyticsPage() {
 
       {projYears > 0 && !loading && (
         <div className="burn-detail-note" style={{ marginTop: -4, marginBottom: 20 }}>
-          Dashed lines project <b>{projYears} year{projYears > 1 ? 's' : ''}</b> ahead as gentle straight-line continuations of the recent {TREND_WIN}-cycle trend (DXN reward, batches & {chain.native} fees), with XEN burned following the projected batch rate. Modeling estimate, so real activity will vary.
+          Dashed lines project <b>{projYears} year{projYears > 1 ? 's' : ''}</b> ahead as gentle straight-line continuations of the recent {TREND_WIN}-cycle trend (DXNv2 reward, batches & {chain.native} fees), with XEN burned following the projected batch rate. Modeling estimate, so real activity will vary.
         </div>
       )}
 
-      {/* DXN Emission Forecast — cumulative minting (solid) + dotted projection to the cap */}
+      {/* DXNv2 Emission Forecast — cumulative minting (solid) + dotted projection to the cap */}
       <div className="analytics-card analytics-forecast">
         <div className="analytics-card-title">
-          <Sparkles size={16} style={{ color: '#a78bfa' }} /> DXN Emission Forecast ({chain.name})
+          <Sparkles size={16} style={{ color: '#a78bfa' }} /> DXNv2 Emission Forecast ({chain.name})
           <span className="spacer" />
           <div className="forecast-horizons">
             {FORECAST_HORIZONS.map((y) => (
@@ -546,10 +546,10 @@ export default function AnalyticsPage() {
                   formatter={(v, name) => {
                     const map = { minted: 'Minted (cumulative)', forecast: 'Projected (cumulative)', emit: 'Daily emission', emitF: 'Projected daily' };
                     const isEmit = name === 'emit' || name === 'emitF';
-                    return [`${isEmit ? fmtEmit(v) : fmtAxis(v)}${isEmit ? ' DXN/day' : ' DXN'}`, map[name] || name];
+                    return [`${isEmit ? fmtEmit(v) : fmtAxis(v)}${isEmit ? ' DXNv2/day' : ' DXNv2'}`, map[name] || name];
                   }} />
                 <ReferenceLine yAxisId="left" y={forecast.cap} stroke="#94a3b8" strokeDasharray="5 5"
-                  label={{ value: `Cap ≈ ${fmtAxis(forecast.cap)} DXN`, position: 'insideTopRight', fill: '#94a3b8', fontSize: 11 }} />
+                  label={{ value: `Cap ≈ ${fmtAxis(forecast.cap)} DXNv2`, position: 'insideTopRight', fill: '#94a3b8', fontSize: 11 }} />
                 <ReferenceLine yAxisId="left" x={forecast.curYr} stroke="#334155" strokeDasharray="2 4"
                   label={{ value: 'now', position: 'insideBottom', fill: '#64748b', fontSize: 10 }} />
                 <Area yAxisId="left" type="monotone" dataKey="minted" stroke="#22d3ee" strokeWidth={2} fill="url(#gradMint)" dot={false} connectNulls isAnimationActive={false} />
@@ -579,14 +579,14 @@ export default function AnalyticsPage() {
                       <span className="forecast-tile-label">+{y} yr · cycle {Math.round(cyc).toLocaleString()}</span>
                       <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-muted)' }} />
                     </div>
-                    <div className="forecast-tile-main">{fmtAxis(cumulative)} <span>DXN</span></div>
+                    <div className="forecast-tile-main">{fmtAxis(cumulative)} <span>DXNv2</span></div>
                     <div className="forecast-tile-est">{pct.toFixed(1)}% of cap minted</div>
                     {open && (
                       <div className="forecast-tile-details">
                         <div><span>at cycle</span><b>{Math.round(cyc).toLocaleString()}</b></div>
-                        <div><span>daily emission</span><b>~{fmtEmit(emit)} DXN</b></div>
+                        <div><span>daily emission</span><b>~{fmtEmit(emit)} DXNv2</b></div>
                         <div><span>% of cap minted</span><b>{pct.toFixed(2)}%</b></div>
-                        <div><span>left to mint</span><b>{fmtAxis(Math.max(0, forecast.cap - cumulative))} DXN</b></div>
+                        <div><span>left to mint</span><b>{fmtAxis(Math.max(0, forecast.cap - cumulative))} DXNv2</b></div>
                       </div>
                     )}
                   </div>
@@ -594,12 +594,12 @@ export default function AnalyticsPage() {
               })}
               <div className="forecast-tile forecast-tile-cap">
                 <div className="forecast-tile-label">Max supply · ends ~cycle {Math.round(forecast.curCycle + 60 * 365).toLocaleString()}</div>
-                <div className="forecast-tile-main" style={{ color: 'var(--text-secondary)' }}>{fmtAxis(forecast.cap)} <span>DXN</span></div>
+                <div className="forecast-tile-main" style={{ color: 'var(--text-secondary)' }}>{fmtAxis(forecast.cap)} <span>DXNv2</span></div>
                 <div className="forecast-tile-est">{forecast.pctMinted.toFixed(1)}% already minted</div>
               </div>
             </div>
             <div className="burn-detail-note" style={{ marginTop: 10 }}>
-              Year 1 = the protocol's first active cycle (launch).{forecast.bridged > 0 && <> Cumulative supply starts from the <b>{fmtAxis(forecast.bridged)} DXN</b> migrated 1:1 from v1 (this chain's starting circulating supply), which the emission then unlocks the rest on top of.</>} Assumes the observed ~{forecast.decayPct.toFixed(2)}%/cycle reward decay continues with ~daily cycles: daily emission fades toward zero while cumulative minting approaches its ~{fmtAxis(forecast.cap)} DXN cap. Because the per-cycle reward floors below 1 wei, emission effectively ends around year ~60 and supply is fixed thereafter. Modeling estimate, not a guarantee · figures are for {chain.name} only.
+              Year 1 = the protocol's first active cycle (launch).{forecast.bridged > 0 && <> Cumulative supply starts from the <b>{fmtAxis(forecast.bridged)} DXNv2</b> migrated 1:1 from v1 (this chain's starting circulating supply), which the emission then unlocks the rest on top of.</>} Assumes the observed ~{forecast.decayPct.toFixed(2)}%/cycle reward decay continues with ~daily cycles: daily emission fades toward zero while cumulative minting approaches its ~{fmtAxis(forecast.cap)} DXNv2 cap. Because the per-cycle reward floors below 1 wei, emission effectively ends around year ~60 and supply is fixed thereafter. Modeling estimate, not a guarantee · figures are for {chain.name} only.
             </div>
           </>
         )}

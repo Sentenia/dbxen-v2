@@ -85,7 +85,7 @@ export default function BurnCard() {
         <div className={`card-icon burn${flaring ? ' flare' : ''}`}><Flame size={20} color="white" /></div>
         <div>
           <div className="card-title">Burn XEN</div>
-          <div className="card-desc">Burn XEN tokens to earn DXN rewards</div>
+          <div className="card-desc">Burn XEN tokens to earn DXNv2 rewards</div>
         </div>
       </div>
 

@@ -63,9 +63,9 @@ export default function NXDMaintenance() {
 
         <div className="maintenance-action">
           <div className="maintenance-info">
-            <div className="maintenance-name">Stake Protocol DXN</div>
+            <div className="maintenance-name">Stake Protocol DXNv2</div>
             <div className="maintenance-desc">
-              Stakes pending DXN in the protocol{pendingDxnFloat > 0 ? ` (${fmt(protocolStats.pendingDXNToStake)} DXN pending)` : ''}
+              Stakes pending DXNv2 in the protocol{pendingDxnFloat > 0 ? ` (${fmt(protocolStats.pendingDXNToStake)} DXNv2 pending)` : ''}
             </div>
           </div>
           <button

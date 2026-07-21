@@ -45,7 +45,7 @@ export default function Hero() {
           <Timer size={14} /> Next cycle: {timerStr}
         </div>
       </div>
-      <h1>Burn <span className="cyan">XEN</span>. Earn <span className="amber">DXN</span>.</h1>
+      <h1>Burn <span className="cyan">XEN</span>. Earn <span className="amber">DXNv2</span>.</h1>
       <p>Trustless Yield. Community-built Protocol. Fully Immutable.</p>
       <div className="hero-stats fade-up fade-up-2">
         <div className="hero-stat">
@@ -76,7 +76,7 @@ export default function Hero() {
           <div className="hero-stat-value">
             {loaded ? <AnimatedNumber value={stakedFloat} decimals={2} /> : <Skeleton width="70px" />}
           </div>
-          <div className="hero-stat-label">DXN Staked</div>
+          <div className="hero-stat-label">DXNv2 Staked</div>
         </div>
       </div>
     </section>

@@ -46,7 +46,7 @@ export default function NXDHero() {
           <Timer size={14} /> CSP: {timerStr}
         </div>
       </div>
-      <h1>Deflationary <span className="nxd-accent">DXN</span> Derivative</h1>
+      <h1>Deflationary <span className="nxd-accent">DXNv2</span> Derivative</h1>
       <p>Deposit DXNv2. Mint NXDv2. Stake and earn ETH.</p>
       <div className="hero-stats fade-up fade-up-2">
         <div className="hero-stat">

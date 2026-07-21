@@ -118,7 +118,7 @@ export default function NXDAnalytics() {
             <span className="stat-value" style={{ color: 'var(--amber)' }}>{fmtNum(cspMinted)}</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">CSP DXN Deposited</span>
+            <span className="stat-label">CSP DXNv2 Deposited</span>
             <span className="stat-value">{fmtNum(cspDepositsFloat)}</span>
           </div>
           <div className="stat-row">
@@ -130,15 +130,15 @@ export default function NXDAnalytics() {
             <span className="stat-value" style={{ color: 'var(--red)' }}>{burnPct}%</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">DXN Locked</span>
+            <span className="stat-label">DXNv2 Locked</span>
             <span className="stat-value">{fmtNum(dxnStakedFloat)}</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">DXN Burned</span>
+            <span className="stat-label">DXNv2 Burned</span>
             <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(dxnBurnedFloat)}</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">DXN Locked % of Supply</span>
+            <span className="stat-label">DXNv2 Locked % of Supply</span>
             <span className="stat-value" style={{ color: 'var(--amber)' }}>{dxnLockedPct}%</span>
           </div>
           <div className="stat-row">

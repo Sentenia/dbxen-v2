@@ -35,7 +35,7 @@ export default function WhyV2() {
               <b style={{ color: 'var(--text-primary)' }}>What happened.</b> On March 12, 2026 the original DBXen (V1) was drained of 65.28 ETH (~$150K). The attacker chained two bugs: an ERC2771 sender-spoofing flaw that let them forge who a transaction came from, and a fresh-address fee-backdating bug that let a brand-new wallet claim protocol fees it never paid into.
             </p>
             <p style={{ marginBottom: 12 }}>
-              <b style={{ color: 'var(--text-primary)' }}>What V2 is.</b> V2 is a faithful clone of V1 with only those two vulnerabilities removed. It runs the exact same XEN-burn → DXN-mint → protocol-fee reward mechanics you already know. Nothing else about how the protocol works has changed: no new tokenomics, no new trust assumptions, no added privileges.
+              <b style={{ color: 'var(--text-primary)' }}>What V2 is.</b> V2 is a faithful clone of V1 with only those two vulnerabilities removed. It runs the exact same XEN-burn → DXNv2-mint → protocol-fee reward mechanics you already know. Nothing else about how the protocol works has changed: no new tokenomics, no new trust assumptions, no added privileges.
             </p>
             <p style={{ marginBottom: 12 }}>
               <b style={{ color: 'var(--text-primary)' }}>Community-built and immutable.</b> V2 is built by the community and fully immutable. Every contract is verified on Etherscan and ownership is renounced to address(0), so there are no admin keys, no upgrade switch, and no pause button. No one, including the people who deployed it, can alter, halt, or drain it.
