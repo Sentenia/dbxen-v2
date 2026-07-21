@@ -141,7 +141,7 @@ export default function TipJar() {
       toast('Sending donation…');
       await tx.wait();
       const elite = Math.abs(parseFloat(amount) - 13.37) < 1e-9;
-      toast.success(elite ? 'elite donor 😎 — thanks for the 13.37!' : `Thanks for the ${amount} ${symbolOf(token)} donation! 💰`);
+      toast.success(elite ? 'elite donor 😎, thanks for the 13.37!' : `Thanks for the ${amount} ${symbolOf(token)} donation! 💰`);
       if (elite) spawnCoins(10);
       setAmount('');
       fetchRaised();
@@ -239,7 +239,7 @@ export default function TipJar() {
             View community wallet <ExternalLink size={11} />
           </a>
           <button type="button" className="tipjar-link tipjar-board-link" onClick={() => setBoard(true)}>
-            🏆 Chest Scoreboard — 10× points for early donors
+            🏆 Chest Scoreboard: 10× points for early donors
           </button>
           <div className="tipjar-note">Donate on {chain.name} · bar shows the total raised across all chains</div>
         </div>

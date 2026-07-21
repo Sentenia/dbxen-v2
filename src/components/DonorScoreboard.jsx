@@ -74,7 +74,7 @@ export default function DonorScoreboard({ onClose }) {
 
         {bonus && bonus.multiplier > 1 && (
           <div className="scoreboard-bonus">
-            🔥 {bonus.multiplier.toFixed(1)}× points per $1 right now — fades every DXN cycle until 1× ({bonus.cyclesLeft} cycles left)
+            🔥 {bonus.multiplier.toFixed(1)}× points per $1 right now, fading every DXN cycle until 1× ({bonus.cyclesLeft} cycles left)
           </div>
         )}
 
@@ -82,7 +82,7 @@ export default function DonorScoreboard({ onClose }) {
             The marker shows where the bonus sits today. */}
         <div className="scoreboard-decay">
           <div className="scoreboard-decay-caption">
-            <span>Point bonus by cycle — donations keep the bonus they were earned at</span>
+            <span>Point bonus by cycle. Donations keep the bonus they were earned at</span>
             <span>cycle {dayNow} of {BONUS_CYCLES}</span>
           </div>
           <div className="scoreboard-decay-track">

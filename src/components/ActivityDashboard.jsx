@@ -366,7 +366,7 @@ export default function ActivityDashboard() {
 
       <div className="burn-feed">
         <div className="burn-feed-header">
-          <span style={{ fontSize: 15, fontWeight: 700 }}>Burn activity — cycle <span style={{ color: 'var(--cyan)' }}>{d.cycle || protocolStats.cycle}</span></span>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>Burn activity · cycle <span style={{ color: 'var(--cyan)' }}>{d.cycle || protocolStats.cycle}</span></span>
           <span className="burn-feed-live"><span className="pulse-dot" /> Live</span>
         </div>
         <div className="burn-table-wrap">
@@ -386,9 +386,9 @@ export default function ActivityDashboard() {
               {pageData.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
                   {d.feedLoading && !d.logsOk
-                    ? <><span className="burn-scan-spinner" /> Scanning the full cycle for burns — this can take up to ~20 seconds. Cycle totals and your position above are already accurate.</>
+                    ? <><span className="burn-scan-spinner" /> Scanning the full cycle for burns. This can take up to ~20 seconds, and the cycle totals and your position above are already accurate.</>
                     : actData === null ? 'Loading burn activity…'
-                    : d.totalBatches > 0 ? 'Per-address list unavailable on this RPC — cycle totals and your position above are accurate.'
+                    : d.totalBatches > 0 ? 'Per-address list unavailable on this RPC. Cycle totals and your position above are accurate.'
                     : 'No burns this cycle yet.'}
                 </td></tr>
               ) : pageData.map(([addr, data]) => {
@@ -443,7 +443,7 @@ export default function ActivityDashboard() {
                               det.histLoading ? (
                                 <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>Reconstructing cycle history from {chain.name} explorer…</div>
                               ) : det.histError || !det.history ? (
-                                <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>Couldn't reach {chain.name}'s explorer for full cycle history — snapshot above is on-chain and accurate.</div>
+                                <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>Couldn't reach {chain.name}'s explorer for full cycle history. The snapshot above is on-chain and accurate.</div>
                               ) : !det.history.cycles?.length ? (
                                 <div className="burn-detail-msg" style={{ padding: '14px 0 4px' }}>No burn transactions found for this address on {chain.name}.</div>
                               ) : (() => {
@@ -510,9 +510,9 @@ export default function ActivityDashboard() {
                                 );
                               })()
                             ) : (
-                              <div className="burn-detail-note">Full per-cycle history isn't available on {chain.name}'s explorer — the lifetime snapshot above is on-chain and accurate. (Cycle-by-cycle history works on Ethereum, Polygon, Base &amp; Optimism.)</div>
+                              <div className="burn-detail-note">Full per-cycle history isn't available on {chain.name}'s explorer. The lifetime snapshot above is on-chain and accurate. (Cycle-by-cycle history works on Ethereum, Polygon, Base &amp; Optimism.)</div>
                             )}
-                            <div className="burn-detail-note">Accrued rewards &amp; fees are the on-chain claimable balance — they update when the address next interacts with the protocol. Est. DXN &amp; fees are reconstructed from explorer history (best-effort).</div>
+                            <div className="burn-detail-note">Accrued rewards &amp; fees are the on-chain claimable balance. They update when the address next interacts with the protocol. Est. DXN &amp; fees are reconstructed from explorer history (best-effort).</div>
                           </div>
                         )}
                       </td>

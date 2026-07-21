@@ -141,7 +141,7 @@ export default function NXDStakeCard() {
       <div className="nxd-info-box">
         <Info size={14} className="nxd-info-icon" />
         <div style={{ color: 'var(--text-muted)' }}>
-          <strong style={{ color: 'var(--text-secondary)' }}>Withdrawal options:</strong> Instant unstake burns 25% of your withdrawal as a penalty. Alternatively, request a withdrawal to start a 24h cooldown — after which you can withdraw the full amount with no penalty.
+          <strong style={{ color: 'var(--text-secondary)' }}>Withdrawal options:</strong> Instant unstake burns 25% of your withdrawal as a penalty. Alternatively, request a withdrawal to start a 24h cooldown, after which you can withdraw the full amount with no penalty.
         </div>
       </div>
     </div>

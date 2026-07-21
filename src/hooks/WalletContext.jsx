@@ -529,7 +529,7 @@ export function WalletProvider({ children }) {
       const est = await dbxen.burnBatch.estimateGas(batches, { value });
       gasLimit = est + est / 3n; // +33%
     } catch (e) {
-      throw new Error(e.reason || e.shortMessage || 'Burn would revert — check XEN balance, approval, and protocol fee');
+      throw new Error(e.reason || e.shortMessage || 'Burn would revert. Check XEN balance, approval, and protocol fee');
     }
 
     const tx = await dbxen.burnBatch(batches, { value, gasLimit });

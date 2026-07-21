@@ -357,7 +357,7 @@ export default function AnalyticsPage() {
         <span className="spacer" />
         {lastUpdated > 0 && <span className="analytics-updated">Updated {timeAgo(lastUpdated)}</span>}
         <button className="analytics-refresh" onClick={handleRefresh} disabled={refreshing || cooldown}
-          title={cooldown ? 'Data is fresh — full reload available again in a bit' : 'Reload all data from the chain'}>
+          title={cooldown ? 'Data is fresh. Full reload available again in a bit' : 'Reload all data from the chain'}>
           <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
           <span className="analytics-refresh-label">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
         </button>
@@ -376,7 +376,7 @@ export default function AnalyticsPage() {
             <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}> DXN</span>
           </div>
         </div>
-        <div className="analytics-stat-box" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate — fee revenue varies per cycle and DXN DEX liquidity is thin.">
+        <div className="analytics-stat-box" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXN DEX liquidity is thin.">
           <div className="analytics-stat-label">Est. APR (24h) ⓘ</div>
           <div className="analytics-stat-val" style={{ color: 'var(--green)' }}>
             {protocolStats.apy ? `${protocolStats.apy}%` : (protocolStats.cycle > 0 ? '—' : <Skeleton width="60px" />)}
@@ -501,14 +501,14 @@ export default function AnalyticsPage() {
 
       {projYears > 0 && !loading && (
         <div className="burn-detail-note" style={{ marginTop: -4, marginBottom: 20 }}>
-          Dashed lines project <b>{projYears} year{projYears > 1 ? 's' : ''}</b> ahead as gentle straight-line continuations of the recent {TREND_WIN}-cycle trend (DXN reward, batches & {chain.native} fees), with XEN burned following the projected batch rate. Modeling estimate — real activity will vary.
+          Dashed lines project <b>{projYears} year{projYears > 1 ? 's' : ''}</b> ahead as gentle straight-line continuations of the recent {TREND_WIN}-cycle trend (DXN reward, batches & {chain.native} fees), with XEN burned following the projected batch rate. Modeling estimate, so real activity will vary.
         </div>
       )}
 
       {/* DXN Emission Forecast — cumulative minting (solid) + dotted projection to the cap */}
       <div className="analytics-card analytics-forecast">
         <div className="analytics-card-title">
-          <Sparkles size={16} style={{ color: '#a78bfa' }} /> DXN Emission Forecast — {chain.name}
+          <Sparkles size={16} style={{ color: '#a78bfa' }} /> DXN Emission Forecast ({chain.name})
           <span className="spacer" />
           <div className="forecast-horizons">
             {FORECAST_HORIZONS.map((y) => (

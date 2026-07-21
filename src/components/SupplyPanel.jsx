@@ -143,7 +143,7 @@ export default function SupplyPanel() {
             className="icon-btn"
             onClick={handleRefresh}
             disabled={loading || cooldown}
-            title={cooldown ? 'Just refreshed — try again in a moment' : 'Refresh all chains'}
+            title={cooldown ? 'Just refreshed, try again in a moment' : 'Refresh all chains'}
             style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: 8, cursor: loading || cooldown ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', opacity: loading || cooldown ? 0.5 : 1 }}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />

@@ -71,7 +71,7 @@ export default function Footer({ protocolMode }) {
         </div>
       </div>
       <div className="footer-bottom">
-        DBXen V2 — Community-owned. Fully immutable. No admin keys.
+        DBXen V2 · Community-owned. Fully immutable. No admin keys.
       </div>
     </footer>
   );

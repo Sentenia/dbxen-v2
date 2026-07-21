@@ -97,7 +97,7 @@ export default function StakeCard() {
           <span className="stat-label">Withdrawable</span>
           <span className="stat-value">{fmt(userStats.withdrawable)} DXN</span>
         </div>
-        <div className="stat-row" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate — fee revenue varies per cycle and DXN DEX liquidity is thin.">
+        <div className="stat-row" title="Annualized: last completed cycle's protocol fees ÷ the native-token value of all staked DXN (DXN priced via DexScreener). Rough estimate. Fee revenue varies per cycle and DXN DEX liquidity is thin.">
           <span className="stat-label">Est. APR (24h) ⓘ</span>
           <span className="stat-value green">{protocolStats.apy ? protocolStats.apy + '%' : '—'}</span>
         </div>

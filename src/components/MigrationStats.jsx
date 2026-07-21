@@ -104,14 +104,14 @@ export default function MigrationStats() {
         </div>
         <div>
           <div className="card-title">Migration Complete</div>
-          <div className="card-desc">1:1 swap of v1 DXN → DXNv2 across all chains — now permanently closed</div>
+          <div className="card-desc">1:1 swap of v1 DXN → DXNv2 across all chains, now permanently closed</div>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--green-glow, rgba(52,211,153,0.08))', border: '1px solid var(--green-glow, rgba(52,211,153,0.25))', marginBottom: 20 }}>
         <CheckCircle2 size={16} style={{ color: 'var(--green)', flexShrink: 0 }} />
         <span style={{ fontSize: 13, color: 'var(--text-secondary, #cbd5e1)' }}>
-          Bridges closed — unclaimed DXNv2 burned to the dead address and ownership renounced on every chain.
+          Bridges closed. Unclaimed DXNv2 was burned to the dead address and ownership renounced on every chain.
         </span>
       </div>
 

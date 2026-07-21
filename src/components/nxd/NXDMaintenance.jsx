@@ -40,7 +40,7 @@ export default function NXDMaintenance() {
           <button
             className="btn nxd-btn-maintenance"
             disabled={!maintenanceStats.canUpdateOracle || loading.oracle}
-            title={!maintenanceStats.canUpdateOracle ? 'Cooldown active — try again in a few minutes' : 'Update oracle price feed'}
+            title={!maintenanceStats.canUpdateOracle ? 'Cooldown active, try again in a few minutes' : 'Update oracle price feed'}
             onClick={() => run('oracle', updateOracle)}
           >
             {loading.oracle ? 'Running...' : 'Run'}

@@ -56,7 +56,7 @@ export default function DexChart() {
           <div className="dexchart-title">
             <CandlestickChart size={18} style={{ color: 'var(--text-muted)' }} /> DXNv2 Chart
           </div>
-          <p className="dexchart-note">No DEX market for DXNv2 on {chain.name} yet — the main pool is on Ethereum.</p>
+          <p className="dexchart-note">No DEX market for DXNv2 on {chain.name} yet. The main pool is on Ethereum.</p>
         </div>
       </section>
     );

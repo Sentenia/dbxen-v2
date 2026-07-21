@@ -302,7 +302,7 @@ export function NXDProvider({ children }) {
     const vault = new ethers.Contract(NXD_CONTRACTS.NXDStakingVault, NXD_ABIS.NXDStakingVault, signer);
     const tx = await vault.withdraw(0, amount, false);
     await tx.wait();
-    toast.success('Withdrawal requested — 24h cooldown started');
+    toast.success('Withdrawal requested, 24h cooldown started');
     await refreshAll();
   }, [getSigner, refreshAll]);
 
