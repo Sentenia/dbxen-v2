@@ -5,7 +5,7 @@ import { useWallet } from '../hooks/WalletContext';
 // DXNv2 charts per chain. DexScreener indexes the pools on these chains:
 const DEX_PAIRS = {
   ethereum:   '0x582B074e1016e8774D91dBF5c88E9859a6c7E7d8', // Uniswap V3 1%
-  bsc:        '0x475E72747Fc0328125C7B2A87E30d2318D859071',
+  bsc:        '0x8C0f9FcdC13c6044D4901cb58A24a79509165b0D', // PancakeSwap bDXNv2/WBNB
   optimism:   '0x625Dd1efE8A6cc24a02aa94d51ceE99DB3d3b5aA',
   pulsechain: '0x899ee07295f9910D314B61291b014396869d7009', // PulseX
 };
