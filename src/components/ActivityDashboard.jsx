@@ -268,8 +268,8 @@ export default function ActivityDashboard() {
       const sameCycle = cached && cached.cycle === Number(cycle);
       const burners = {};
       if (sameCycle) for (const a in cached.burners) burners[a] = { ...cached.burners[a], gasCost: 0n };
-      const seededAddrs = new Set(Object.keys(burners));
       const scanFrom = sameCycle ? cached.lastBlock + 1 : cycleStartBlock;
+      const dirty = new Set(); // addresses that burned in this scan's blocks → their on-chain count changed
 
       // Fetch new logs (delta if cached). logCfg chains use the fallback-aware scanner;
       // others use the wallet/fallback provider directly.
@@ -291,12 +291,10 @@ export default function ActivityDashboard() {
         }
         if (scanOk) {
           for (const log of logs) {
-            const topics = log.topics || [];
-            const addr = ('0x' + (topics[1] || '').slice(26)).toLowerCase();
-            const batches = Number(BigInt(log.data || '0x0') / getBatchSize(c));
+            const addr = ('0x' + ((log.topics || [])[1] || '').slice(26)).toLowerCase();
             if (!burners[addr]) burners[addr] = { batches: 0, gasCost: 0n, txCount: 0 };
-            burners[addr].batches += batches;
-            burners[addr].txCount += 1;
+            burners[addr].txCount += 1;   // for the gas estimate; the batch COUNT comes from the contract below
+            dirty.add(addr);              // burned in this delta → its on-chain batch count changed
           }
         }
       }
@@ -305,15 +303,23 @@ export default function ActivityDashboard() {
       // catch so the row falls back to "unavailable"/"loading" rather than a false empty.
       if (!scanOk && !sameCycle) throw new Error('burn scan failed, no cache');
 
-      // Filter previous-cycle burners (only the over-scan on a fresh scan can introduce
-      // them) via on-chain lastActiveCycle. Cached addresses were already vetted, so only
-      // check the NEW ones — keeps steady-state refreshes to ~0 extra calls.
-      const newAddrs = Object.keys(burners).filter((a) => !seededAddrs.has(a));
-      if (newAddrs.length > 0) {
-        let activeCycles;
-        if (isFallback) { activeCycles = []; for (const addr of newAddrs) { activeCycles.push(await dbxRead.lastActiveCycle(addr)); if (isStale()) return; } }
-        else { activeCycles = await Promise.all(newAddrs.map((addr) => dbxRead.lastActiveCycle(addr))); if (isStale()) return; }
-        for (let i = 0; i < newAddrs.length; i++) if (activeCycles[i] !== cycle) delete burners[newAddrs[i]];
+      // For every address that burned in this scan's blocks, read its EXACT current-cycle
+      // batch count from the contract (accCycleBatchesBurned) and drop it if its last active
+      // cycle isn't this one (filters out previous-cycle burns the over-scan swept in).
+      // Cached addresses that didn't burn in the delta keep their existing count, so
+      // steady-state refreshes only re-read the addresses that actually changed. Contract
+      // counts are self-consistent, so per-address shares are exact and sum to the true
+      // cycle total — the feed is used only to DISCOVER who burned, never to count.
+      const toVet = [...dirty];
+      if (toVet.length > 0) {
+        let res;
+        if (isFallback) { res = []; for (const a of toVet) { res.push(await Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)])); if (isStale()) return; } }
+        else { res = await Promise.all(toVet.map((a) => Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)]))); if (isStale()) return; }
+        for (let i = 0; i < toVet.length; i++) {
+          const [accB, lac] = res[i];
+          if (lac !== cycle) { delete burners[toVet[i]]; continue; }
+          burners[toVet[i]].batches = Number(accB);
+        }
       }
 
       // Persist the cleaned current-cycle aggregation + how far we scanned. Only advance
