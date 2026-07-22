@@ -5,7 +5,7 @@ import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimer, shortAddr, getGasPrice } from '../utils/helpers';
 import { getBatchSize, CHAINS } from '../config/chains';
 import { DBXEN_ABI } from '../config/abis';
-import { fetchBurnHistory, isBurnHistorySupported } from '../utils/burnHistory';
+import { fetchBurnHistory, isBurnHistorySupported, explorerBurnLogs, isBurnFeedExplorerSupported } from '../utils/burnHistory';
 import { loadFeed, saveFeed } from '../utils/burnFeedCache';
 
 const HIST_PAGE_SIZES = [5, 10, 20, 50];
@@ -82,6 +82,29 @@ async function scanBurnLogs(endpoints, address, fromBlock, toBlock, isStale) {
     if (!failed) return { logs, ok: true };
   }
   return { logs: [], ok: false };
+}
+
+// Discover Burn logs over [fromBlock, toBlock], preferring the block explorer (reliable
+// recent indexing) where one exists, then a getLogs-capable RPC (logCfg endpoints), then
+// the wallet/fallback provider. Returns { logs, ok }; ok=false → every source failed, so
+// the caller keeps its cached feed. Only topics[1] (the indexed burner) is read downstream,
+// which both explorer- and RPC-shaped logs provide.
+async function getBurnLogs(chainKey, c, provider, logCfg, fromBlock, toBlock, isStale) {
+  if (toBlock < fromBlock) return { logs: [], ok: true };
+  if (isBurnFeedExplorerSupported(chainKey)) {
+    const r = await explorerBurnLogs(chainKey, c.contracts.DBXEN_V2, fromBlock, toBlock);
+    if (r.ok) return r; // fall through to RPC only if the explorer call itself failed
+  }
+  if (logCfg) return scanBurnLogs(logCfg.endpoints, c.contracts.DBXEN_V2, fromBlock, toBlock, isStale);
+  try {
+    let logs = [];
+    const R = 4999;
+    for (let from = fromBlock; from <= toBlock; from += R + 1) {
+      if (isStale()) return { logs: [], ok: false };
+      logs = logs.concat(await provider.getLogs({ address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: Math.min(from + R, toBlock) }));
+    }
+    return { logs, ok: true };
+  } catch { return { logs: [], ok: false }; }
 }
 
 export default function ActivityDashboard() {
@@ -271,26 +294,14 @@ export default function ActivityDashboard() {
       const scanFrom = sameCycle ? cached.lastBlock + 1 : cycleStartBlock;
       const dirty = new Set(); // addresses that burned in this scan's blocks → their on-chain count changed
 
-      // Fetch new logs (delta if cached). logCfg chains use the fallback-aware scanner;
-      // others use the wallet/fallback provider directly.
+      // Fetch new logs (delta if cached): explorer where available, else RPC.
       let scanOk = true;
       if (currentBlock >= scanFrom) {
-        let logs = [];
-        if (logCfg) {
-          const res = await scanBurnLogs(logCfg.endpoints, c.contracts.DBXEN_V2, scanFrom, currentBlock, isStale);
-          if (isStale()) return;
-          logs = res.logs; scanOk = res.ok;
-        } else {
-          const R = 4999;
-          for (let from = scanFrom; from <= currentBlock && scanOk; from += R + 1) {
-            if (isStale()) return;
-            const to = Math.min(from + R, currentBlock);
-            try { logs = logs.concat(await provider.getLogs({ address: c.contracts.DBXEN_V2, topics: [BURN_EVENT_SIG], fromBlock: from, toBlock: to })); }
-            catch { scanOk = false; }
-          }
-        }
+        const res = await getBurnLogs(chainKey, c, provider, logCfg, scanFrom, currentBlock, isStale);
+        if (isStale()) return;
+        scanOk = res.ok;
         if (scanOk) {
-          for (const log of logs) {
+          for (const log of res.logs) {
             const addr = ('0x' + ((log.topics || [])[1] || '').slice(26)).toLowerCase();
             if (!burners[addr]) burners[addr] = { batches: 0, gasCost: 0n, txCount: 0 };
             burners[addr].txCount += 1;   // for the gas estimate; the batch COUNT comes from the contract below
@@ -322,11 +333,14 @@ export default function ActivityDashboard() {
         }
       }
 
-      // Persist the cleaned current-cycle aggregation + how far we scanned. Only advance
-      // lastBlock on a successful scan, and never move it backward (the block-number and
-      // getLogs RPCs can differ by a few blocks — rescanning would double-count batches).
+      // Persist the cleaned current-cycle aggregation + how far we scanned. Leave a ~90s
+      // lag buffer behind head so the next refresh re-scans the most recent blocks —
+      // explorer/RPC indexing lag or a small reorg then can't permanently drop a tail
+      // burn. Re-scanning is safe now that per-address counts come from the contract
+      // (idempotent), so we no longer need a "never move backward" guard.
+      const lagBlocks = Math.ceil(90 / blockTime);
       const newLastBlock = scanOk
-        ? (sameCycle ? Math.max(cached.lastBlock, currentBlock) : currentBlock)
+        ? Math.max(scanFrom - 1, currentBlock - lagBlocks)
         : (sameCycle ? cached.lastBlock : scanFrom - 1);
       const persistBurners = {};
       for (const a in burners) persistBurners[a] = { batches: burners[a].batches, txCount: burners[a].txCount };

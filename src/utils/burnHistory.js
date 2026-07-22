@@ -30,6 +30,52 @@ export function isBurnHistorySupported(chainKey) {
   return !!SOURCES[chainKey];
 }
 
+// ── Burner discovery via block explorer ──────────────────────────────────────
+// Some public RPCs archive-gate wide eth_getLogs or lag their indexing, so the
+// Activity feed can't reliably DISCOVER who burned this cycle from them. Where a
+// keyless explorer exists (same SOURCES as above), query the Burn events there
+// instead — explorers index recent logs accurately. Chains without one fall back
+// to RPC getLogs in the caller.
+const BURN_TOPIC = ethers.id('Burn(address,uint256)');
+
+export function isBurnFeedExplorerSupported(chainKey) {
+  return !!SOURCES[chainKey];
+}
+
+async function explorerLogsCall(base, params) {
+  const r = await fetch(`${base}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(9000) });
+  const d = await r.json();
+  if (Array.isArray(d.result)) return d.result;                          // success (possibly empty)
+  if (d.status === '0' && /no records/i.test(d.message || '')) return []; // success, no logs in range
+  throw new Error(d.message || 'explorer getLogs failed');
+}
+
+// Discover Burn(address,uint256) logs for `address` over [fromBlock, toBlock] via the
+// chain's explorer(s). Returns { logs, ok } where each log is Etherscan-shaped (has a
+// `topics` array); ok=false means the explorer call failed and the caller should fall
+// back to RPC getLogs.
+export async function explorerBurnLogs(chainKey, address, fromBlock, toBlock) {
+  const src = SOURCES[chainKey];
+  if (!src) return { logs: [], ok: false };
+  const params = { module: 'logs', action: 'getLogs', address, topic0: BURN_TOPIC, fromBlock: String(fromBlock), toBlock: String(toBlock) };
+  const useEtherscan = API_KEY && src.etherscanFree;
+  try {
+    const [bs, es] = await Promise.all([
+      explorerLogsCall(src.blockscout, params),
+      useEtherscan ? explorerLogsCall(ES_API, { chainid: src.chainid, ...params, apikey: API_KEY }).catch(() => []) : Promise.resolve([]),
+    ]);
+    const seen = new Set();
+    const logs = [];
+    for (const l of [...bs, ...es]) {
+      const k = (l.transactionHash || '') + ':' + (l.logIndex || '');
+      if (seen.has(k)) continue;
+      seen.add(k);
+      logs.push(l);
+    }
+    return { logs, ok: true };
+  } catch { return { logs: [], ok: false }; }
+}
+
 // ── Troll-guard ──────────────────────────────────────────────────────────────
 // Layered so button-mashing the address dropdown can't hammer the free explorer/RPC
 // APIs: (1) an L1 in-memory + L2 persistent LRU cache so repeat opens cost nothing,
