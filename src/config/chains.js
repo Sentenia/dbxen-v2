@@ -28,7 +28,7 @@ export const CHAINS = {
       OLD_DXN: '0x47DD60FA40A050c0677dE19921Eb4cc512947729',
       MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
     },
-    addChain: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 }, rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] },
+    addChain: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 }, rpcUrls: ['https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'], blockExplorerUrls: ['https://polygonscan.com'] },
   },
   avalanche: {
     name: 'Avalanche', chainId: '0xa86a', color: '#E84142', native: 'AVAX',
@@ -44,7 +44,7 @@ export const CHAINS = {
       OLD_DXN: '0x80f0C1c49891dcFDD40b6e0F960F84E6042bcB6F',
       MIGRATION: '0x302c1c777FC144492E29148b4F2a95466e06d970',
     },
-    addChain: { chainId: '0xa86a', chainName: 'Avalanche C-Chain', nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 }, rpcUrls: ['https://avalanche-c-chain-rpc.publicnode.com'], blockExplorerUrls: ['https://snowtrace.io'] },
+    addChain: { chainId: '0xa86a', chainName: 'Avalanche C-Chain', nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 }, rpcUrls: ['https://avalanche-c-chain-rpc.publicnode.com', 'https://api.avax.network/ext/bc/C/rpc'], blockExplorerUrls: ['https://snowtrace.io'] },
   },
   bsc: {
     name: 'BNB Chain', chainId: '0x38', color: '#F0B90B', native: 'BNB',
@@ -60,7 +60,7 @@ export const CHAINS = {
       OLD_DXN: '0xCcd09b80453335aa914f5d9174984b6586c315EC',
       MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
     },
-    addChain: { chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: ['https://bsc-dataseed.binance.org'], blockExplorerUrls: ['https://bscscan.com'] },
+    addChain: { chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed.binance.org', 'https://bsc.drpc.org'], blockExplorerUrls: ['https://bscscan.com'] },
   },
   ethw: {
     name: 'EthereumPoW', chainId: '0x2711', color: '#3C3C3D', native: 'ETHW',
@@ -92,7 +92,7 @@ export const CHAINS = {
       OLD_DXN: '0x9430A7e6283Fb704Fd1D9302868Bc39d16FE82Ba',
       MIGRATION: '0x6054A1dBC14bd1b1653727f3E4690DB4174d8F0c',
     },
-    addChain: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://mainnet.base.org'], blockExplorerUrls: ['https://basescan.org'] },
+    addChain: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://base-rpc.publicnode.com', 'https://mainnet.base.org', 'https://base.drpc.org'], blockExplorerUrls: ['https://basescan.org'] },
   },
   optimism: {
     name: 'Optimism', chainId: '0xa', color: '#FF0420', native: 'ETH',
@@ -108,7 +108,7 @@ export const CHAINS = {
       OLD_DXN: '0xc418B123885d732ED042b16e12e259741863F723',
       MIGRATION: '0x6B7653f208888f978936c603FF52c98e216F481F',
     },
-    addChain: { chainId: '0xa', chainName: 'OP Mainnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://mainnet.optimism.io'], blockExplorerUrls: ['https://optimistic.etherscan.io'] },
+    addChain: { chainId: '0xa', chainName: 'OP Mainnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://optimism-rpc.publicnode.com', 'https://mainnet.optimism.io', 'https://optimism.drpc.org'], blockExplorerUrls: ['https://optimistic.etherscan.io'] },
   },
   pulsechain: {
     name: 'PulseChain', chainId: '0x171', color: '#00FF00', native: 'PLS',
@@ -131,7 +131,7 @@ export const CHAINS = {
       MIGRATION: '0x302c1c777FC144492E29148b4F2a95466e06d970',
     },
     dualMigration: true,
-    addChain: { chainId: '0x171', chainName: 'PulseChain', nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 }, rpcUrls: ['https://rpc.pulsechain.com'], blockExplorerUrls: ['https://scan.pulsechain.com'] },
+    addChain: { chainId: '0x171', chainName: 'PulseChain', nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 }, rpcUrls: ['https://rpc.pulsechain.com', 'https://rpc-pulsechain.g4mm4.io'], blockExplorerUrls: ['https://scan.pulsechain.com'] },
   },
 };
 
