@@ -109,11 +109,18 @@ export default function NXDVaultStats() {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Sell Tax Breakdown (5%)</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Transfer Tax Breakdown (5%)</div>
           <div className="stat-row"><span className="stat-label">Burn NXD</span><span className="stat-value" style={{ color: 'var(--red)' }}>1.5%</span></div>
           <div className="stat-row"><span className="stat-label">Stake DXNv2</span><span className="stat-value">1.5%</span></div>
           <div className="stat-row"><span className="stat-label">Add to LP</span><span className="stat-value">1%</span></div>
           <div className="stat-row"><span className="stat-label">Dev Fee</span><span className="stat-value">1%</span></div>
+          {/* Called "Sell Tax" everywhere, but the contract taxes EVERY transfer between two
+              non-whitelisted addresses — a plain wallet-to-wallet send is charged 5% as well.
+              Buys are free (the pool is exempt as sender) and so are staking-vault transfers
+              (exempt both ways). Verified against the token's own getAmountsAfterTax(). */}
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 8 }}>
+            Charged on sells <strong style={{ color: 'var(--text-secondary)' }}>and on wallet-to-wallet transfers</strong>. Buying and staking are exempt.
+          </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
