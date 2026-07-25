@@ -44,6 +44,36 @@ const GETLOGS_RPCS = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Thrown to unwind out of a nested read when the chain changed mid-flight — the caller
+// checks for this identity and returns silently rather than logging a bogus failure.
+const STALE = new Error('stale');
+
+// ── Block time: measured, not assumed ────────────────────────────────────────
+// The cycle→block-window math needs seconds-per-block. Hardcoding it rots silently:
+// Polygon moved to ~1.5s and the stale 2s constant made the scan start ~4k blocks INTO
+// the cycle, hiding every early burn while the cycle totals still looked right. So
+// measure it from two block timestamps instead — eth_getBlockByNumber is served by
+// every RPC, including the ones that archive-gate eth_getLogs. Cached per chain for
+// the session (block times change at hardfork scale, not minute scale), and the
+// hardcoded map below survives only as the fallback if measurement fails.
+const SAMPLE_SPAN = 5000;          // blocks between the two samples
+const OVERCOVER = 0.8;             // report a touch BELOW real so scans over-cover the cycle
+const blockTimeCache = new Map();  // chainId -> measured seconds/block
+
+async function measureBlockTime(chainId, head, readBlockTs) {
+  const hit = blockTimeCache.get(chainId);
+  if (hit) return hit;
+  const from = Math.max(head - SAMPLE_SPAN, 1);
+  const span = head - from;
+  if (span < 100) return null;     // chain too young to sample meaningfully
+  const [a, b] = await Promise.all([readBlockTs(from), readBlockTs(head)]);
+  if (!a || !b || b <= a) return null;
+  const secs = (b - a) / span;
+  if (!(secs > 0.05) || secs > 60) return null; // implausible → fall back to the constant
+  blockTimeCache.set(chainId, secs);
+  return secs;
+}
+
 // Scan Burn(address,uint256) logs for `address` over [fromBlock, toBlock]. Tries each
 // endpoint in order; within one endpoint it chunks by that endpoint's max range and
 // retries a chunk once before giving up on that endpoint and falling to the next. An
@@ -193,30 +223,60 @@ export default function ActivityDashboard() {
     const isStale = () => epoch !== epochRef.current;
     const myAddr = userAddr?.toLowerCase() || '';
     try {
-      const dbxRead = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, provider);
-
       // ── Reliable contract reads (single eth_calls; work on ANY RPC). The cycle
       //    totals + the user's own batches come from here, NOT from getLogs, so the
       //    stats and "Your position" survive even when log queries are unavailable. ──
-      let cycle, reward, initTs, period, cycleTotalBN, totalEthFees;
-      if (isFallback) {
-        cycle = await dbxRead.getCurrentCycle(); if (isStale()) return;
-        reward = await dbxRead.currentCycleReward(); if (isStale()) return;
-        initTs = await dbxRead.i_initialTimestamp(); if (isStale()) return;
-        period = await dbxRead.i_periodDuration(); if (isStale()) return;
-        cycleTotalBN = await dbxRead.cycleTotalBatchesBurned(cycle); if (isStale()) return;
-        try { totalEthFees = await dbxRead.cycleAccruedFees(cycle); } catch { totalEthFees = 0n; }
-        if (isStale()) return;
-      } else {
-        [cycle, reward, initTs, period] = await Promise.all([
-          dbxRead.getCurrentCycle(), dbxRead.currentCycleReward(), dbxRead.i_initialTimestamp(), dbxRead.i_periodDuration(),
-        ]);
-        if (isStale()) return;
-        [cycleTotalBN, totalEthFees] = await Promise.all([
-          dbxRead.cycleTotalBatchesBurned(cycle), dbxRead.cycleAccruedFees(cycle).catch(() => 0n),
-        ]);
-        if (isStale()) return;
+      // Reads the whole set through ONE provider; throws so the ladder can try the next.
+      const readCycleStats = async (p, sequential) => {
+        const dbx = new ethers.Contract(c.contracts.DBXEN_V2, DBXEN_ABI, p);
+        let cycle, reward, initTs, period, cycleTotalBN, totalEthFees;
+        if (sequential) {
+          cycle = await dbx.getCurrentCycle(); if (isStale()) throw STALE;
+          reward = await dbx.currentCycleReward(); if (isStale()) throw STALE;
+          initTs = await dbx.i_initialTimestamp(); if (isStale()) throw STALE;
+          period = await dbx.i_periodDuration(); if (isStale()) throw STALE;
+          cycleTotalBN = await dbx.cycleTotalBatchesBurned(cycle); if (isStale()) throw STALE;
+          try { totalEthFees = await dbx.cycleAccruedFees(cycle); } catch { totalEthFees = 0n; }
+          if (isStale()) throw STALE;
+        } else {
+          [cycle, reward, initTs, period] = await Promise.all([
+            dbx.getCurrentCycle(), dbx.currentCycleReward(), dbx.i_initialTimestamp(), dbx.i_periodDuration(),
+          ]);
+          if (isStale()) throw STALE;
+          [cycleTotalBN, totalEthFees] = await Promise.all([
+            dbx.cycleTotalBatchesBurned(cycle), dbx.cycleAccruedFees(cycle).catch(() => 0n),
+          ]);
+          if (isStale()) throw STALE;
+        }
+        return { dbx, cycle, reward, initTs, period, cycleTotalBN, totalEthFees };
+      };
+
+      // ── Provider ladder ──
+      // Activity used to get exactly one shot — getReadProvider() and nothing else — so a
+      // single dead or throttled RPC blanked the whole panel, cycle totals and "Your
+      // position" included, even though those are cheap eth_calls any RPC can serve. Fall
+      // through this chain's public + backup RPCs before giving up. Deliberately local to
+      // this page: getReadProvider is shared with the write path, so widening it there
+      // carries a far bigger blast radius than this fix warrants.
+      let stats = null, activeProvider = provider, seqReads = isFallback;
+      const rpcLadder = [c.rpc, c.rpcBackup].filter(Boolean);
+      for (let i = 0; i <= rpcLadder.length && !stats; i++) {
+        let p = provider, seq = isFallback;
+        if (i > 0) {
+          try { p = new ethers.JsonRpcProvider(rpcLadder[i - 1], parseInt(c.chainId, 16), { staticNetwork: true }); }
+          catch { continue; }
+          seq = true;
+        }
+        try {
+          stats = await readCycleStats(p, seq);
+          activeProvider = p; seqReads = seq;
+        } catch (e) {
+          if (e === STALE) return;
+          console.warn('[Activity] cycle stats failed on', i === 0 ? 'primary provider' : rpcLadder[i - 1], '—', e?.shortMessage || e?.message || e);
+        }
       }
+      if (!stats) throw new Error('every RPC failed for cycle stats');
+      const { dbx: dbxRead, cycle, reward, initTs, period, cycleTotalBN, totalEthFees } = stats;
       const contractTotalBatches = Number(cycleTotalBN);
 
       // Your position, straight from the contract — accCycleBatchesBurned is your
@@ -263,24 +323,41 @@ export default function ActivityDashboard() {
       const cycleStartTs = initTs + (cycle * period);
       const secsIntoCycle = Number(now - cycleStartTs);
       const logCfg = GETLOGS_RPCS[c.chainId];
-      const blockTimes = { '0x1': 12, '0x38': 1, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
-      const blockTime = logCfg?.blockTime || blockTimes[c.chainId] || 2;
 
       // Chains with a getLogs endpoint read their block number from the chain's own RPC
       // (never the wallet provider — it may be pointed at a different network); everyone
-      // else uses the wallet/fallback provider.
-      let currentBlock;
-      if (logCfg) {
-        const bnResp = await fetch(c.rpc, {
+      // else uses whichever provider just answered the stats reads.
+      const rawCall = async (method, params) => {
+        const r = await fetch(c.rpc, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }),
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
         });
-        const bnJson = await bnResp.json();
-        currentBlock = parseInt(bnJson.result, 16);
+        return (await r.json()).result;
+      };
+      let currentBlock, readBlockTs;
+      if (logCfg) {
+        currentBlock = parseInt(await rawCall('eth_blockNumber', []), 16);
+        readBlockTs = async (n) => {
+          const b = await rawCall('eth_getBlockByNumber', ['0x' + n.toString(16), false]);
+          return b ? parseInt(b.timestamp, 16) : null;
+        };
       } else {
-        currentBlock = await provider.getBlockNumber();
+        currentBlock = await activeProvider.getBlockNumber();
+        readBlockTs = async (n) => { const b = await activeProvider.getBlock(n); return b ? Number(b.timestamp) : null; };
       }
       if (isStale()) return;
+
+      // Seconds-per-block, measured from the chain (see measureBlockTime). These constants
+      // are kept ONLY as the last resort if measurement fails — they're what broke Polygon,
+      // so nothing should depend on them being right.
+      const blockTimes = { '0x1': 12, '0x38': 1, '0x89': 1.2, '0x171': 10, '0xa86a': 2, '0x2711': 12 };
+      let blockTime = null;
+      try {
+        const measured = await measureBlockTime(c.chainId, currentBlock, readBlockTs);
+        if (measured) blockTime = measured * OVERCOVER;
+      } catch { /* fall back to the constant below */ }
+      if (isStale()) return;
+      if (!blockTime) blockTime = logCfg?.blockTime || blockTimes[c.chainId] || 2;
 
       const blocksIntoCycle = Math.ceil(secsIntoCycle / blockTime);
       const cycleStartBlock = Math.max(currentBlock - blocksIntoCycle, 0);
@@ -297,7 +374,7 @@ export default function ActivityDashboard() {
       // Fetch new logs (delta if cached): explorer where available, else RPC.
       let scanOk = true;
       if (currentBlock >= scanFrom) {
-        const res = await getBurnLogs(chainKey, c, provider, logCfg, scanFrom, currentBlock, isStale);
+        const res = await getBurnLogs(chainKey, c, activeProvider, logCfg, scanFrom, currentBlock, isStale);
         if (isStale()) return;
         scanOk = res.ok;
         if (scanOk) {
@@ -321,15 +398,46 @@ export default function ActivityDashboard() {
       // steady-state refreshes only re-read the addresses that actually changed. Contract
       // counts are self-consistent, so per-address shares are exact and sum to the true
       // cycle total — the feed is used only to DISCOVER who burned, never to count.
-      const toVet = [...dirty];
-      if (toVet.length > 0) {
+      const vetAddrs = async (addrs) => {
+        if (!addrs.length) return true;
         let res;
-        if (isFallback) { res = []; for (const a of toVet) { res.push(await Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)])); if (isStale()) return; } }
-        else { res = await Promise.all(toVet.map((a) => Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)]))); if (isStale()) return; }
-        for (let i = 0; i < toVet.length; i++) {
+        if (seqReads) { res = []; for (const a of addrs) { res.push(await Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)])); if (isStale()) return false; } }
+        else { res = await Promise.all(addrs.map((a) => Promise.all([dbxRead.accCycleBatchesBurned(a).catch(() => 0n), dbxRead.lastActiveCycle(a).catch(() => 0n)]))); if (isStale()) return false; }
+        for (let i = 0; i < addrs.length; i++) {
           const [accB, lac] = res[i];
-          if (lac !== cycle) { delete burners[toVet[i]]; continue; }
-          burners[toVet[i]].batches = Number(accB);
+          if (lac !== cycle) { delete burners[addrs[i]]; continue; }
+          burners[addrs[i]].batches = Number(accB);
+        }
+        return true;
+      };
+      if (!(await vetAddrs([...dirty]))) return;
+
+      // ── Closed-loop completeness check ──
+      // Because every count above comes from the contract, sum(feed) can never EXCEED
+      // cycleTotalBatchesBurned — and equals it exactly when every burner was found. So a
+      // shortfall is proof the discovery window missed someone, whatever the cause: a
+      // drifted block time, a cache that starts too late, explorer lag, a reorg. Reach
+      // twice as far back once and re-vet whoever turns up. This is what makes the page
+      // self-correcting rather than quietly wrong — the Polygon bug would have healed
+      // itself here on the next refresh instead of hiding an entire cycle of burns.
+      const feedSum = () => Object.values(burners).reduce((s, b) => s + (b.batches || 0), 0);
+      if (scanOk && feedSum() < contractTotalBatches) {
+        const wideFrom = Math.max(currentBlock - blocksIntoCycle * 2, 0);
+        const wideTo = Math.min(scanFrom, cycleStartBlock) - 1; // strictly older than what we just scanned — no double counting
+        if (wideTo >= wideFrom) {
+          console.warn('[Activity] feed short (', feedSum(), 'of', contractTotalBatches, 'batches) — widening scan to block', wideFrom);
+          const res2 = await getBurnLogs(chainKey, c, activeProvider, logCfg, wideFrom, wideTo, isStale);
+          if (isStale()) return;
+          if (res2.ok) {
+            const extra = new Set();
+            for (const log of res2.logs) {
+              const a = ('0x' + ((log.topics || [])[1] || '').slice(26)).toLowerCase();
+              if (!burners[a]) burners[a] = { batches: 0, gasCost: 0n, txCount: 0 };
+              burners[a].txCount += 1;
+              if (!dirty.has(a)) extra.add(a);
+            }
+            if (!(await vetAddrs([...extra]))) return;
+          }
         }
       }
 
@@ -347,7 +455,7 @@ export default function ActivityDashboard() {
       saveFeed(chainKey, { cycle: Number(cycle), lastBlock: newLastBlock, burners: persistBurners });
 
       // Gas estimate + ranked list.
-      const gasPrice = (await getGasPrice(provider)) || 1000000000n;
+      const gasPrice = (await getGasPrice(activeProvider)) || 1000000000n;
       if (isStale()) return;
       const estGasPerTx = BigInt(c.chainId !== '0x1' ? 600000 : 200000);
       for (const [, data] of Object.entries(burners)) data.gasCost = gasPrice * estGasPerTx * BigInt(data.txCount);
@@ -384,9 +492,15 @@ export default function ActivityDashboard() {
 
   useEffect(() => { refreshActivity(); }, [refreshActivity]);
 
+  // Poll only while the tab is visible, and catch up once on return. A backgrounded tab
+  // refreshing every 30s is pure battery and data burn on mobile, and whatever it fetched
+  // is stale by the time anyone looks at it. The 1s countdown above stays running — it's
+  // local arithmetic, no network.
   useEffect(() => {
-    const id = setInterval(refreshActivity, 30000);
-    return () => clearInterval(id);
+    const poll = () => { if (!document.hidden) refreshActivity(); };
+    const id = setInterval(poll, 30000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', poll); };
   }, [refreshActivity]);
 
   const myAddr = userAddr?.toLowerCase() || '';
