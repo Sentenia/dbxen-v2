@@ -7,7 +7,7 @@ export default function HowItWorks() {
 
   return (
     <section className="how-it-works">
-      <h2 className="hiw-title">How DBXen Works</h2>
+      <h2 className="hiw-title">How DBXenV2 Works</h2>
       <div className="hiw-grid">
         {steps.map((s, i) => (
           <div key={s.num} className={`hiw-step fade-up fade-up-${i + 1}`}>
