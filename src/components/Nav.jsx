@@ -76,7 +76,7 @@ export default function Nav({ activeTab, setActiveTab, protocolMode, setProtocol
           <Flame size={14} /> <span className="pill-label">DBXen</span>
         </button>
         <button className={`protocol-pill nxd-pill${isNXD ? ' active' : ''}`} onClick={handleNXDToggle}>
-          <Zap size={14} /> <span className="pill-label">NXD</span>
+          <Zap size={14} /> <span className="pill-label">NXDv2</span>
         </button>
       </div>
 

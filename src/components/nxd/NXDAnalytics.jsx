@@ -126,7 +126,7 @@ export default function NXDAnalytics() {
             <span className="stat-value">{fmtNum(totalMigratedFloat)}</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">NXD Burned %</span>
+            <span className="stat-label">NXDv2 Burned %</span>
             <span className="stat-value" style={{ color: 'var(--red)' }}>{burnPct}%</span>
           </div>
           <div className="stat-row">
@@ -142,7 +142,7 @@ export default function NXDAnalytics() {
             <span className="stat-value" style={{ color: 'var(--amber)' }}>{dxnLockedPct}%</span>
           </div>
           <div className="stat-row">
-            <span className="stat-label">NXD Burned (Unstake Penalty)</span>
+            <span className="stat-label">NXDv2 Burned (Unstake Penalty)</span>
             <span className="stat-value" style={{ color: 'var(--red)' }}>{fmtNum(nxdPenaltyBurnedFloat)}</span>
           </div>
           <div className="stat-row stat-total">

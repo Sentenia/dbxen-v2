@@ -42,7 +42,7 @@ export default function LegalNotice({ onClose }) {
 
           <h4>It is not the protocol</h4>
           <p>
-            DBXen V2, DXNv2, NXD, and XEN are independent third-party smart contracts deployed on
+            DBXen V2, DXNv2, NXDv2, and XEN are independent third-party smart contracts deployed on
             public blockchains. They are immutable and have no admin keys, no upgrade path, and no
             owner — including the people who publish this interface. This site is one of many
             possible ways to reach those contracts; you can always interact with them directly.
