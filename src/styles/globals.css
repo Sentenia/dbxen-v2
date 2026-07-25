@@ -153,6 +153,21 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 .scoreboard-decay-track { position: relative; display: flex; height: 24px; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
 .scoreboard-decay-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--bg-deep); }
 .scoreboard-decay-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+/* Terms & disclaimer modal body — reuses the scoreboard shell above, so only the
+   prose styling is new. Scrolls inside the modal rather than the page. */
+.legal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; margin-right: -8px; padding-right: 8px; font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+.legal-body h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cyan); margin: 18px 0 6px; }
+.legal-body h4:first-child { margin-top: 0; }
+.legal-body p { margin: 0 0 8px; }
+.legal-body ul { margin: 0 0 8px; padding-left: 20px; }
+.legal-body li { margin-bottom: 4px; }
+.legal-body strong { color: var(--text-primary); font-weight: 700; }
+.legal-body a { color: var(--cyan); text-decoration: none; }
+.legal-body a:hover { text-decoration: underline; }
+.legal-foot { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); }
+.footer-legal-btn { display: flex; align-items: center; gap: 8px; margin: 0 auto 10px; padding: 0; font-size: 14px; font-family: var(--font); color: var(--text-muted); background: none; border: none; cursor: pointer; transition: color 0.2s; }
+.footer-legal-btn:hover { color: var(--cyan); }
+
 .scoreboard-table-wrap { overflow: auto; margin-right: -8px; padding-right: 8px; }
 .scoreboard-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .scoreboard-table th { position: sticky; top: 0; background: var(--bg-card); text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { BookOpen, Github, ExternalLink, Copy, Check } from 'lucide-react';
+import { BookOpen, Github, ExternalLink, Copy, Check, Scale } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { shortAddr } from '../utils/helpers';
 import { NXD_CONTRACTS } from '../config/nxd';
+import LegalNotice from './LegalNotice';
 
 function FooterAddr({ label, addr, explorer }) {
   const [copied, setCopied] = useState(false);
@@ -19,6 +20,7 @@ function FooterAddr({ label, addr, explorer }) {
 
 export default function Footer({ protocolMode }) {
   const { chain } = useWallet();
+  const [legalOpen, setLegalOpen] = useState(false);
   const isNXD = protocolMode === 'nxd';
   const ct = chain.contracts;
   const ex = isNXD ? 'https://etherscan.io' : chain.explorer;
@@ -57,6 +59,7 @@ export default function Footer({ protocolMode }) {
           <a href="https://dbxen.gitbook.io/dbxen-litepaper" target="_blank" rel="noopener noreferrer" className="footer-link"><BookOpen size={13} /> Litepaper</a>
           <a href="https://github.com/Sentenia/dbxen-v2" target="_blank" rel="noopener noreferrer" className="footer-link"><Github size={13} /> GitHub</a>
           <a href="https://xen.network" target="_blank" rel="noopener noreferrer" className="footer-link"><ExternalLink size={13} /> XEN Network</a>
+          <button type="button" className="footer-legal-btn" onClick={() => setLegalOpen(true)}><Scale size={13} /> Terms &amp; Disclaimer</button>
         </div>
         <div className="footer-col">
           <div className="footer-heading">Community</div>
@@ -72,7 +75,10 @@ export default function Footer({ protocolMode }) {
       </div>
       <div className="footer-bottom">
         DBXen V2 · Community-owned. Fully immutable. No admin keys.
+        <br />
+        Non-custodial interface to third-party contracts. Not financial advice. No warranty.
       </div>
+      {legalOpen && <LegalNotice onClose={() => setLegalOpen(false)} />}
     </footer>
   );
 }
