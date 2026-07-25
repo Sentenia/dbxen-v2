@@ -46,7 +46,10 @@ async function explorerLogsCall(base, params) {
   const r = await fetch(`${base}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(9000) });
   const d = await r.json();
   if (Array.isArray(d.result)) return d.result;                          // success (possibly empty)
-  if (d.status === '0' && /no records/i.test(d.message || '')) return []; // success, no logs in range
+  // Etherscan says "No records found", Blockscout "No logs found" — both mean an empty
+  // range, not a failure. Misreading them as errors sends the caller to an RPC fallback
+  // that's archive-gated on most chains, turning "no burns yet" into "unavailable".
+  if (d.status === '0' && /no (records|logs)/i.test(d.message || '')) return []; // success, no logs in range
   throw new Error(d.message || 'explorer getLogs failed');
 }
 

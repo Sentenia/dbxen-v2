@@ -5,7 +5,10 @@
 // One entry per chain, holding ONLY the current cycle: { cycle, lastBlock, burners }
 // where burners = { [addr]: { batches, txCount } }. Tiny (a handful of addresses per
 // chain), so no LRU/quota gymnastics needed — a new cycle simply overwrites the entry.
-const KEY = 'dbxen-actfeed-v1';
+// Bump the key when a scan-window bug is fixed: entries written by the buggy version
+// carry a lastBlock past the blocks that were wrongly skipped, so incremental scans
+// would keep inheriting the gap for the rest of the cycle. v2 = Polygon block-time fix.
+const KEY = 'dbxen-actfeed-v2';
 
 export function loadFeed(chainKey) {
   try {
