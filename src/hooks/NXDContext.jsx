@@ -401,8 +401,12 @@ export function NXDProvider({ children }) {
   // ═══ AUTO REFRESH ═══
   useEffect(() => {
     refreshAll();
-    const id = setInterval(refreshAll, 30000);
-    return () => clearInterval(id);
+    // Only poll while the tab is visible; refresh once on return. Saves battery and
+    // mobile data in a backgrounded tab.
+    const poll = () => { if (!document.hidden) refreshAll(); };
+    const id = setInterval(poll, 30000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', poll); };
   }, [refreshAll]);
 
   return (

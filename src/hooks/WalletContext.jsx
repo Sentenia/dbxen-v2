@@ -745,8 +745,12 @@ export function WalletProvider({ children }) {
     const tick = () => { refreshProtocolStats(); refreshBridgeStats(); };
     const t1 = setTimeout(tick, 1500);
     const t2 = setTimeout(tick, 5000);
-    const id = setInterval(tick, 30000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(id); };
+    // Skip the periodic refresh while the tab is hidden (battery/data on mobile), and
+    // catch up once on return. The mount retries above still run regardless.
+    const poll = () => { if (!document.hidden) tick(); };
+    const id = setInterval(poll, 30000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(id); document.removeEventListener('visibilitychange', poll); };
   }, [refreshProtocolStats, refreshBridgeStats]);
 
   // Mobile link fix
