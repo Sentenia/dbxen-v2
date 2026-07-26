@@ -67,7 +67,13 @@ export const CHAINS = {
     explorer: 'https://mainnet.ethwscan.com',
     rpc: 'https://mainnet.ethereumpow.org', rpcBackup: 'https://mainnet.ethereumpow.org',
     xenSym: 'vvXEN', dxnSym: 'vvDXNv2', minFee: 100000000000000n,
-    dexUrl: 'https://app.uniswap.org/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
+    // Uniswap has no ETHW deployment or liquidity — LFGSwap is the chain's actual DEX
+    // (PancakeSwap fork, same ?inputCurrency=/?outputCurrency= convention).
+    dexUrl: 'https://app.lfgswap.finance/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
+    // vvDXNv2's ONLY pool is vvDXNv2/vvXEN (0x748FD466…0090E9) and there is no WETHW pair for
+    // either token, so the usual derived link (output=DXNv2, input defaults to ETHW) opens with
+    // no route. Pin the input to vvXEN. See the dexUrlDxn note in StakeCard.
+    dexUrlDxn: 'https://app.lfgswap.finance/swap?inputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e&outputCurrency=0x1B08d317963CC65932F3f79F00987B2E23df52Ab',
     oldDbxenV1: '0x2A9C55b6Dc56da178f9f9a566F1161237b73Ba66',
     contracts: {
       XEN: '0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',

@@ -55,8 +55,13 @@ export default function StakeCard() {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 4, marginBottom: 8 }}>
-        {chain.dexUrl && (
-          <a href={chain.dexUrl.replace(chain.contracts.XEN, chain.contracts.DXN_V2)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none' }}>
+        {/* Most chains reuse the XEN swap link with the output token swapped (note: a string
+            .replace hits only the FIRST occurrence, which is why XEN's address stays first in
+            dexUrl). A chain can set dexUrlDxn to override that where the derived link wouldn't
+            work — on ETHW the only DXNv2 pool is vvDXNv2/vvXEN and there's no WETHW pair, so
+            the input token has to be pinned to vvXEN or the swap opens with no route. */}
+        {(chain.dexUrlDxn || chain.dexUrl) && (
+          <a href={chain.dexUrlDxn || chain.dexUrl.replace(chain.contracts.XEN, chain.contracts.DXN_V2)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--cyan)', textDecoration: 'none' }}>
             Get {chain.dxnSym} <span style={{ fontSize: 10 }}>&#8599;</span>
           </a>
         )}
