@@ -36,6 +36,13 @@ const GETLOGS_RPCS = {
     blockTime: 0.9,
     endpoints: [
       { url: 'https://avalanche.drpc.org', range: 9999 },            // drpc — wide (caps at 10k)
+      // Tenderly is the only OTHER endpoint that can cover a full AVAX cycle (~68.5k blocks)
+      // within scanBurnLogs' 30-chunk cap — the two below need 35 and 1400 chunks and get
+      // skipped, so without this a full scan had no redundancy at all and a drpc outage
+      // emptied the burner list. Measured 2026-07-30: 20k range, CORS '*', ~1.3s for a full
+      // cycle vs drpc's ~2.7s, and identical results (both matched the contract exactly).
+      // It's wider AND faster than drpc — promote it to first if drpc ever gets flaky.
+      { url: 'https://avalanche.gateway.tenderly.co', range: 20000 },
       { url: 'https://api.avax.network/ext/bc/C/rpc', range: 2000 }, // fallback (live-site CORS)
       { url: 'https://1rpc.io/avax/c', range: 48 },                  // fallback (delta only)
     ],
