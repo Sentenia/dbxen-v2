@@ -69,7 +69,13 @@ export const CHAINS = {
     xenSym: 'vvXEN', dxnSym: 'vvDXNv2', minFee: 100000000000000n,
     // Uniswap has no ETHW deployment or liquidity — LFGSwap is the chain's actual DEX
     // (PancakeSwap fork, same ?inputCurrency=/?outputCurrency= convention).
-    dexUrl: 'https://app.lfgswap.finance/swap?outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
+    // Both links pin BOTH sides so nothing has to be pasted by hand. vvXEN has 20 pools but
+    // NONE against wrapped native, so a link that leaves the input empty defaults to ETHW and
+    // finds no route; DAI is the only recognisable real-money quote (~27.4k DAI liquidity).
+    // NOTE: LFGSwap reads the chain from the connected WALLET — there is no chain query param
+    // — so if the wallet isn't on ETHW the page opens on its default chain (X Layer, whose
+    // native token is OKB) and these addresses mean nothing there.
+    dexUrl: 'https://app.lfgswap.finance/swap?inputCurrency=0x6B175474E89094C44Da98b954EedeAC495271d0F&outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
     // vvDXNv2's ONLY pool is vvDXNv2/vvXEN (0x748FD466…0090E9) and there is no WETHW pair for
     // either token, so the usual derived link (output=DXNv2, input defaults to ETHW) opens with
     // no route. Pin the input to vvXEN. See the dexUrlDxn note in StakeCard.
