@@ -28,7 +28,15 @@ const GETLOGS_RPCS = {
   '0x38': { // BNB ~0.45s/block
     blockTime: 0.4,
     endpoints: [
-      { url: 'https://bsc.rpc.blxrbdn.com', range: 45000 }, // bloXroute — wide, full scans
+      // 48.club: narrow range but ~300ms a call and CORS-open, so a full cycle (~240k blocks,
+      // 48 chunks) finishes in ~20s. Needs maxChunks above the default 30. Verified
+      // 2026-07-30: 0 failed chunks and the feed matched cycleTotalBatchesBurned exactly.
+      { url: 'https://rpc-bsc.48.club', range: 5000, maxChunks: 50 },
+      // bloXroute was configured at range 45000, which it REJECTS — its real cap is 10000, so
+      // every full-scan chunk was failing and BSC discovery had no working path at all. Fixed
+      // to 10000, but kept second: it takes 15-18s per call (1 of 3 test runs timed out at
+      // 25s), so a full scan through it is ~7 minutes. Fine as a last resort / for deltas.
+      { url: 'https://bsc.rpc.blxrbdn.com', range: 10000 },
       { url: 'https://bsc-pokt.nodies.app', range: 240 },   // fallback for delta scans
     ],
   },
@@ -91,7 +99,10 @@ async function scanBurnLogs(endpoints, address, fromBlock, toBlock, isStale) {
   if (toBlock < fromBlock) return { logs: [], ok: true };
   const span = toBlock - fromBlock + 1;
   for (const ep of endpoints) {
-    if (Math.ceil(span / ep.range) > 30) continue; // too many chunks for this endpoint
+    // Skip an endpoint whose range would need too many round trips for this span. Default 30;
+    // an endpoint can raise it when it's fast enough that more, smaller calls still beat a
+    // wide-but-slow one (BSC's 48.club: 48 chunks at ~300ms ≈ 20s, vs bloXroute's ~7 min).
+    if (Math.ceil(span / ep.range) > (ep.maxChunks || 30)) continue;
     const logs = [];
     let failed = false;
     for (let from = fromBlock; from <= toBlock && !failed; from += ep.range + 1) {
