@@ -63,6 +63,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // checks for this identity and returns silently rather than logging a bogus failure.
 const STALE = new Error('stale');
 
+// `${chainKey}:${cycle}` for which the widened rescan has already run once. The feed can be
+// PERMANENTLY short of cycleTotalBatchesBurned: claiming rewards zeroes the claimer's
+// accCycleBatchesBurned, so a burner who has claimed reads 0 and their batches are
+// unrecoverable from the contract. Without this guard the shortfall never resolves and every
+// 30s refresh re-runs the widened scan forever. Session-scoped and one tiny entry per chain
+// per cycle, so it needs no eviction.
+const healedCycles = new Set();
+
 // ── Block time: measured, not assumed ────────────────────────────────────────
 // The cycle→block-window math needs seconds-per-block. Hardcoding it rots silently:
 // Polygon moved to ~1.5s and the stale 2s constant made the scan start ~4k blocks INTO
@@ -438,8 +446,12 @@ export default function ActivityDashboard() {
       // twice as far back once and re-vet whoever turns up. This is what makes the page
       // self-correcting rather than quietly wrong — the Polygon bug would have healed
       // itself here on the next refresh instead of hiding an entire cycle of burns.
+      // Equality is the healthy case but NOT guaranteed: an address that claimed its rewards
+      // has accCycleBatchesBurned reset to 0, so its batches can never be recovered from the
+      // contract and the sum stays short for the rest of the cycle. Hence one attempt only.
       const feedSum = () => Object.values(burners).reduce((s, b) => s + (b.batches || 0), 0);
-      if (scanOk && feedSum() < contractTotalBatches) {
+      const healKey = `${chainKey}:${Number(cycle)}`;
+      if (scanOk && feedSum() < contractTotalBatches && !healedCycles.has(healKey)) {
         const wideFrom = Math.max(currentBlock - blocksIntoCycle * 2, 0);
         const wideTo = Math.min(scanFrom, cycleStartBlock) - 1; // strictly older than what we just scanned — no double counting
         if (wideTo >= wideFrom) {
@@ -447,6 +459,9 @@ export default function ActivityDashboard() {
           const res2 = await getBurnLogs(chainKey, c, activeProvider, logCfg, wideFrom, wideTo, isStale);
           if (isStale()) return;
           if (res2.ok) {
+            // Mark spent only on a scan that actually completed — a failed widen should still
+            // be retryable next refresh, a completed-but-still-short one must not repeat.
+            healedCycles.add(healKey);
             const extra = new Set();
             for (const log of res2.logs) {
               const a = ('0x' + ((log.topics || [])[1] || '').slice(26)).toLowerCase();
