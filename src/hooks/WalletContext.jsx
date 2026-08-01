@@ -10,6 +10,7 @@ const WalletContext = createContext(null);
 export const useWallet = () => useContext(WalletContext);
 
 const SCALING = 10n ** 40n;
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function WalletProvider({ children }) {
   const [chainKey, setChainKey] = useState('ethereum');
@@ -647,8 +648,43 @@ export function WalletProvider({ children }) {
       return;
     }
 
+    // MetaMask's in-app browser does not reliably emit `chainChanged` after a programmatic
+    // switch. Observed on Base: the wallet really does move to the chain, but the page is
+    // never told, so it sits on the old one until you hit MetaMask's own refresh button —
+    // which looks exactly like "tapping Base does nothing". Don't trust the event: confirm
+    // with eth_chainId ourselves and drive the change. If the event DOES fire (every other
+    // chain), it gets there first and this is a harmless no-op.
+    const settleTo = async (targetHex) => {
+      for (let i = 0; i < 16; i++) {                     // ~4s, polled every 250ms
+        try {
+          const now = await window.ethereum.request({ method: 'eth_chainId' });
+          if (typeof now === 'string' && now.toLowerCase() === targetHex.toLowerCase()) return true;
+        } catch { /* provider mid-switch; keep polling */ }
+        await sleepMs(250);
+      }
+      return false;
+    };
+    const applySwitch = async () => {
+      if (!(await settleTo(c.chainId))) return;          // never switched — leave the app alone
+      const detected = detectChainKey(c.chainId);
+      if (!detected || chainKeyRef.current === detected) return; // handleChainChanged beat us
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { location.reload(); return; }
+      chainKeyRef.current = detected;
+      fallbackProviderRef.current = null;
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          await fullReconnect(detected, accounts[0]);
+          setUserAddr(accounts[0]);
+          setConnected(true);
+        }
+      } catch (e) { console.error('[switchChain] reconnect after switch failed', e); }
+      setChainKey(detected);
+    };
+
     try {
       await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: c.chainId }] });
+      await applySwitch();
     } catch (err) {
       // 4902 = chain unknown to the wallet; anything else (user rejection, mobile quirks) is
       // still worth an addChain attempt since some wallets report an unknown chain oddly.
@@ -657,6 +693,7 @@ export function WalletProvider({ children }) {
       if (c.addChain) {
         try {
           await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] });
+          await applySwitch(); // same event-less-switch problem applies after an add
           return;
         } catch (addErr) {
           addFailure = addErr;
@@ -673,7 +710,7 @@ export function WalletProvider({ children }) {
         toast.error(`Couldn't switch to ${c.name}${code ? ` [${code}]` : ''}${why ? `: ${why.slice(0, 90)}` : ''}`);
       }
     }
-  }, []);
+  }, [fullReconnect]);
 
   const getGasInfo = useCallback(async () => {
     try {
