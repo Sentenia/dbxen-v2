@@ -634,15 +634,43 @@ export function WalletProvider({ children }) {
   const switchChain = useCallback(async (key) => {
     const c = CHAINS[key];
     if (!c?.contracts.DBXEN_V2) return;
+
+    // No injected wallet — a normal mobile browser rather than MetaMask's in-app one, or a
+    // desktop without an extension. There's no wallet chain to switch, but every read on this
+    // site works off the public fallback RPC, so just move the app's own view to that chain.
+    // Previously this path threw on `window.ethereum.request`, the catch retried the same
+    // undefined object, and the error was swallowed — so the chain picker was silently dead
+    // for every read-only visitor, on every chain.
+    if (typeof window.ethereum === 'undefined') {
+      chainKeyRef.current = key;
+      setChainKey(key);
+      return;
+    }
+
     try {
       await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: c.chainId }] });
     } catch (err) {
+      // 4902 = chain unknown to the wallet; anything else (user rejection, mobile quirks) is
+      // still worth an addChain attempt since some wallets report an unknown chain oddly.
+      console.error('[switchChain] switch failed for', key, 'code', err?.code, err);
+      let addFailure = null;
       if (c.addChain) {
-        try { 
-          await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] }); 
+        try {
+          await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [c.addChain] });
+          return;
         } catch (addErr) {
-          console.error('[switchChain] addChain failed for', key, addErr);
+          addFailure = addErr;
+          console.error('[switchChain] addChain failed for', key, 'code', addErr?.code, addErr);
         }
+      }
+      // Never fail silently: a dead-feeling chain picker is indistinguishable from a broken
+      // app. Surface the wallet's own reason too — this fires inside MetaMask's in-app
+      // browser where there is no console to inspect, so the toast is the only diagnostic a
+      // mobile user (or we) can actually see.
+      if (err?.code !== 4001 && addFailure?.code !== 4001) {
+        const why = addFailure?.message || err?.message || '';
+        const code = addFailure?.code ?? err?.code;
+        toast.error(`Couldn't switch to ${c.name}${code ? ` [${code}]` : ''}${why ? `: ${why.slice(0, 90)}` : ''}`);
       }
     }
   }, []);
