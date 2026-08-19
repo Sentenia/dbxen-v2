@@ -5,13 +5,27 @@ import { CHAINS } from '../config/chains';
 import { fmt } from '../utils/helpers';
 import { useWallet } from '../hooks/WalletContext';
 
-// Circulating DXNv2 = totalSupply - balance held at the dead address (burned).
+// Circulating DXNv2 = totalSupply - burned (dead address) + unclaimed staker rewards.
+//
+// The last term exists because DBXen mints reward DXN lazily: a cycle's reward is added
+// to the protocol's stake accounting (summedCycleStakes) the moment the cycle turns, but
+// the tokens are only minted when a staker claims. So totalSupply lags what the protocol
+// already owes, and raw circulating can read LOWER than "DXNv2 Staked" on the hero cards.
+// Those unminted rewards are claimable (and then unstakeable) at any moment, so we count
+// them as circulating: unclaimed = protocol stake accounting - DXN the DBXen contract holds.
 const DEAD = '0x000000000000000000000000000000000000dEaD';
 const SUPPLY_ABI = [
   'function totalSupply() view returns (uint256)',
   'function balanceOf(address) view returns (uint256)',
 ];
-const CACHE_KEY = 'dxnv2_supply_v2';
+const DBXEN_STAKE_ABI = [
+  'function currentCycle() view returns (uint256)',
+  'function lastStartedCycle() view returns (uint256)',
+  'function currentCycleReward() view returns (uint256)',
+  'function pendingStake() view returns (uint256)',
+  'function summedCycleStakes(uint256) view returns (uint256)',
+];
+const CACHE_KEY = 'dxnv2_supply_v3';
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // Browser-friendly (CORS-enabled) public RPCs per chain, tried before the config
@@ -52,6 +66,29 @@ async function makeProvider(key, c) {
   return null;
 }
 
+// Reward DXN the protocol already owes stakers but hasn't minted yet: the stake
+// accounting (same formula as the hero "DXNv2 Staked" card) minus the DXN the DBXen
+// contract actually holds. Best-effort — a failed read just means no adjustment.
+// Only the live contract is measured; PulseChain's abandoned legacy DBXen still carries
+// stale accounting against a token whose whole supply has migrated, so it's skipped.
+async function fetchUnclaimed(provider, dxnAddr, dbxenAddr) {
+  try {
+    const dbx = new ethers.Contract(dbxenAddr, DBXEN_STAKE_ABI, provider);
+    const token = new ethers.Contract(dxnAddr, SUPPLY_ABI, provider);
+    const [storedCycle, reward, pending, held] = await withTimeout(Promise.all([
+      dbx.currentCycle(), dbx.currentCycleReward(), dbx.pendingStake(), token.balanceOf(dbxenAddr),
+    ]), 8000);
+    // An in-progress cycle can read 0; fall back to lastStartedCycle (as WalletContext does).
+    let summed = await withTimeout(dbx.summedCycleStakes(storedCycle), 8000);
+    if (summed === 0n) {
+      const lsc = await withTimeout(dbx.lastStartedCycle(), 8000);
+      summed = await withTimeout(dbx.summedCycleStakes(lsc), 8000);
+    }
+    const staked = summed - reward + pending;
+    return staked > held ? staked - held : 0n;
+  } catch { return 0n; }
+}
+
 // One number per chain: sum circulating across the chain's DXNv2 token(s).
 // PulseChain has a current + a legacy token, so include both when present.
 async function fetchChainSupply(key, c) {
@@ -69,7 +106,8 @@ async function fetchChainSupply(key, c) {
     } catch { /* skip this token */ }
   }
   if (!gotAny) return { key, error: true };
-  return { key, circulating, total, burned };
+  const unclaimed = await fetchUnclaimed(provider, c.contracts.DXN_V2, c.contracts.DBXEN_V2);
+  return { key, circulating: circulating + unclaimed, total, burned, unclaimed };
 }
 
 export default function SupplyPanel() {
@@ -100,7 +138,10 @@ export default function SupplyPanel() {
     let grandCirc = 0n, grandBurned = 0n;
     for (const r of results) {
       if (r.error) { chains[r.key] = null; continue; }
-      chains[r.key] = { circulating: r.circulating.toString(), burned: r.burned.toString() };
+      chains[r.key] = {
+        circulating: r.circulating.toString(), burned: r.burned.toString(),
+        unclaimed: (r.unclaimed || 0n).toString(),
+      };
       grandCirc += r.circulating; grandBurned += r.burned;
     }
     const payload = {
@@ -123,6 +164,8 @@ export default function SupplyPanel() {
 
   const order = Object.keys(CHAINS);
   const updated = data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : null;
+  let activeUnclaimed = 0n;
+  try { activeUnclaimed = BigInt(data?.chains?.[activeKey]?.unclaimed || 0); } catch { /* old cache */ }
 
   return (
     <section className="content supply-panel fade-up">
@@ -135,7 +178,7 @@ export default function SupplyPanel() {
             <div>
               <h2 style={{ margin: 0, fontSize: 20 }}>DXNv2 Circulating Supply</h2>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Circulating DXNv2 per chain (excludes burned tokens) · updates daily
+                Circulating DXNv2 per chain (excludes burned, includes unclaimed rewards) · updates daily
               </div>
             </div>
           </div>
@@ -156,6 +199,12 @@ export default function SupplyPanel() {
             {data?.chains?.[activeKey] ? fmt(data.chains[activeKey].circulating) : (loading ? '…' : '—')}
           </div>
           <div className="hero-stat-label">{CHAINS[activeKey]?.name} · DXNv2 in circulation</div>
+          {activeUnclaimed > 0n && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}
+              title="Reward DXNv2 the protocol owes stakers. It's only minted when claimed, so it isn't in totalSupply yet — but it can be claimed and unstaked at any time, so it counts as circulating.">
+              includes {fmt(activeUnclaimed)} of unclaimed rewards (not yet minted)
+            </div>
+          )}
         </div>
 
         {/* Other chains */}
