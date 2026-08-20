@@ -1,0 +1,7 @@
+# Env (secrets — keep Codex from reading these)
+.env
+.env.*
+!.env.example
+
+# Local machine info / broad permission grants — not for a shared repo
+.claude/settings.local.json
