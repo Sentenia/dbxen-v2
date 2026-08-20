@@ -21,7 +21,7 @@ const RPCS = {
   base:       ['https://base-rpc.publicnode.com', 'https://base.drpc.org'],
   avalanche:  ['https://avalanche-c-chain-rpc.publicnode.com', 'https://api.avax.network/ext/bc/C/rpc'],
   bsc:        ['https://bsc-rpc.publicnode.com', 'https://bsc.drpc.org'],
-  polygon:    ['https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'],
+  polygon:    ['https://polygon.publicnode.com', 'https://polygon.drpc.org'],
   ethw:       ['https://mainnet.ethereumpow.org'],
   pulsechain: ['https://rpc.pulsechain.com', 'https://rpc-pulsechain.g4mm4.io'],
 };

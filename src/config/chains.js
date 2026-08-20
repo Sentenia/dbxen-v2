@@ -17,7 +17,7 @@ export const CHAINS = {
   polygon: {
     name: 'Polygon', chainId: '0x89', color: '#8247E5', native: 'POL',
     explorer: 'https://polygonscan.com',
-    rpc: 'https://polygon-bor-rpc.publicnode.com', rpcBackup: 'https://polygon.drpc.org',
+    rpc: 'https://polygon.publicnode.com', rpcBackup: 'https://polygon.drpc.org',
     xenSym: 'mXEN', dxnSym: 'mDXNv2', minFee: 100000000000000n,
     dexUrl: 'https://app.uniswap.org/swap?chain=polygon&outputCurrency=0x2AB0e9e4eE70FFf1fB9D67031E44F6410170d00e',
     oldDbxenV1: '0x4f3ce26d9749c0f36012c9abb41bf9938476c462',
@@ -28,7 +28,7 @@ export const CHAINS = {
       OLD_DXN: '0x47DD60FA40A050c0677dE19921Eb4cc512947729',
       MIGRATION: '0x11efcFFa9AD422C52e8b668708DEC6F5ce645324',
     },
-    addChain: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 }, rpcUrls: ['https://polygon-bor-rpc.publicnode.com', 'https://polygon.drpc.org'], blockExplorerUrls: ['https://polygonscan.com'] },
+    addChain: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 }, rpcUrls: ['https://polygon.publicnode.com', 'https://polygon.drpc.org'], blockExplorerUrls: ['https://polygonscan.com'] },
   },
   avalanche: {
     name: 'Avalanche', chainId: '0xa86a', color: '#E84142', native: 'AVAX',
