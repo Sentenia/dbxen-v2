@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Gift, Coins, Banknote, PlusCircle, Zap } from 'lucide-react';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt } from '../utils/helpers';
+import { txErrorMessage } from '../utils/txError';
 import toast from 'react-hot-toast';
 
 export default function RewardsCard() {
@@ -22,7 +23,7 @@ export default function RewardsCard() {
       }
       toast.success('All rewards claimed!');
     } catch (e) {
-      toast.error('Claim failed: ' + (e.reason || e.message));
+      toast.error('Claim failed: ' + txErrorMessage(e, chain.native));
     } finally {
       setBusy(false);
       setBusyLabel('');
@@ -31,13 +32,13 @@ export default function RewardsCard() {
 
   const handleClaimDxn = async () => {
     setBusy(true);
-    try { await claimDxn(); } catch (e) { toast.error('Claim failed: ' + (e.reason || e.message)); }
+    try { await claimDxn(); } catch (e) { toast.error('Claim failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBusy(false); }
   };
 
   const handleClaimFees = async () => {
     setBusy(true);
-    try { await claimFees(); } catch (e) { toast.error('Claim failed: ' + (e.reason || e.message)); }
+    try { await claimFees(); } catch (e) { toast.error('Claim failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBusy(false); }
   };
 

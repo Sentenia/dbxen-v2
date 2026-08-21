@@ -6,6 +6,7 @@ import { useWallet } from '../hooks/WalletContext';
 import { CHAINS } from '../config/chains';
 import { JAR_ADDRESS, STABLES, STABLE_ABI } from '../config/chest';
 import { getNativeUsd } from '../utils/price';
+import { txErrorMessage } from '../utils/txError';
 import DonorScoreboard from './DonorScoreboard';
 
 // Community treasure chest — collects donations toward the DexScreener logo listing.
@@ -146,7 +147,7 @@ export default function TipJar() {
       setAmount('');
       fetchRaised();
     } catch (e) {
-      toast.error('Donation failed: ' + (e.reason || e.shortMessage || e.message));
+      toast.error('Donation failed: ' + txErrorMessage(e, chain.native));
     } finally {
       setBusy(false);
     }

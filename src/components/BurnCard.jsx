@@ -5,6 +5,7 @@ import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimer } from '../utils/helpers';
 import { getBatchSize, getBatchDisplay } from '../config/chains';
 import { onEgg } from '../utils/eggs';
+import { txErrorMessage } from '../utils/txError';
 import toast from 'react-hot-toast';
 
 export default function BurnCard() {
@@ -69,7 +70,7 @@ export default function BurnCard() {
     if (!connected) { connectWallet(); return; }
     setBurning(true);
     try { const n = batches; await burnBatch(batches); setBatches(1); if (n >= 100) flare(); }
-    catch (e) { toast.error('Burn failed: ' + (e.reason || e.message)); }
+    catch (e) { toast.error('Burn failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBurning(false); }
   };
 

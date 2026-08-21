@@ -3,6 +3,8 @@ import { Wrench } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
 import { fmt } from '../../utils/helpers';
+import { txErrorMessage } from '../../utils/txError';
+import toast from 'react-hot-toast';
 
 export default function NXDMaintenance() {
   const { protocolStats, maintenanceStats, updateOracle, collectFees, stakeProtocolDXN } = useNXD();
@@ -12,6 +14,7 @@ export default function NXDMaintenance() {
     setLoading(prev => ({ ...prev, [key]: true }));
     try { await fn(); } catch (e) {
       console.error(`[NXD maintenance ${key}]`, e);
+      toast.error(txErrorMessage(e, 'ETH'));
     } finally {
       setLoading(prev => ({ ...prev, [key]: false }));
     }

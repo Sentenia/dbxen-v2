@@ -4,11 +4,12 @@ import { ethers } from 'ethers';
 import { useNXD } from '../../hooks/NXDContext';
 import { useWallet } from '../../hooks/WalletContext';
 import { fmt, formatTimerHMS } from '../../utils/helpers';
+import { txErrorMessage } from '../../utils/txError';
 import toast from 'react-hot-toast';
 
 export default function NXDStakeCard() {
   const { nxdBal, vaultStats, stakeNXD, unstakeWithPenalty, requestWithdraw, completeWithdraw, claimETHRewards } = useNXD();
-  const { connected, connectWallet } = useWallet();
+  const { connected, connectWallet, chain } = useWallet();
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState('');
@@ -32,7 +33,7 @@ export default function NXDStakeCard() {
 
   const wrap = async (action, fn) => {
     setBusy(true); setBusyAction(action);
-    try { await fn(); } catch (e) { toast.error((action === 'stake' ? 'Stake' : action === 'claim' ? 'Claim' : 'Withdraw') + ' failed: ' + (e.reason || e.message)); }
+    try { await fn(); } catch (e) { toast.error((action === 'stake' ? 'Stake' : action === 'claim' ? 'Claim' : 'Withdraw') + ' failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBusy(false); setBusyAction(''); }
   };
 

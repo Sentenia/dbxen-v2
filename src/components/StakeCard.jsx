@@ -3,6 +3,7 @@ import { Lock, Wallet, Timer, Plus } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../hooks/WalletContext';
 import { fmt, formatTimerHMS } from '../utils/helpers';
+import { txErrorMessage } from '../utils/txError';
 import toast from 'react-hot-toast';
 
 export default function StakeCard() {
@@ -26,7 +27,7 @@ export default function StakeCard() {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return; }
     setBusy(true);
     try { await stakeTokens(ethers.parseEther(amount)); setAmount(''); }
-    catch (e) { toast.error('Stake failed: ' + (e.reason || e.message)); }
+    catch (e) { toast.error('Stake failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBusy(false); }
   };
 
@@ -34,7 +35,7 @@ export default function StakeCard() {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter an amount'); return; }
     setBusy(true);
     try { await unstakeTokens(ethers.parseEther(amount)); setAmount(''); }
-    catch (e) { toast.error('Unstake failed: ' + (e.reason || e.message)); }
+    catch (e) { toast.error('Unstake failed: ' + txErrorMessage(e, chain.native)); }
     finally { setBusy(false); }
   };
 
