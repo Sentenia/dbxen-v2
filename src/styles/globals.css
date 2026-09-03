@@ -197,13 +197,13 @@ nav { display: flex; align-items: center; justify-content: space-between; paddin
 .wallet-dd-mobile-info { display: none; }
 
 /* ═══ HERO ═══ */
-.hero { text-align: center; padding: 80px 32px 48px; max-width: 720px; margin: 0 auto; }
+.hero { text-align: center; padding: 80px 32px 48px; max-width: 860px; margin: 0 auto; }
 .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--cyan); background: var(--cyan-glow); border: 1px solid var(--cyan-dim); margin-bottom: 24px; letter-spacing: 0.04em; text-transform: uppercase; }
 .hero h1 { font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
 .hero h1 .cyan { color: var(--cyan); }
 .hero h1 .amber { color: var(--amber); }
 .hero p { font-size: 17px; color: var(--text-secondary); line-height: 1.6; max-width: 520px; margin: 0 auto 32px; font-weight: 400; }
-.hero-stats { display: flex; justify-content: center; gap: 40px; margin-top: 16px; background: rgba(17,24,39,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; }
+.hero-stats { display: flex; flex-wrap: nowrap; justify-content: center; gap: clamp(10px, 2.4vw, 40px); margin-top: 16px; background: rgba(17,24,39,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px clamp(10px, 2vw, 24px); }
 .hero-stat { text-align: center; }
 .hero-stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
 .hero-stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -695,12 +695,7 @@ footer { border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto;
     gap: 12px 8px;
     margin-top: 12px;
   }
-  /* Reorder: Cycle(1), Reward(2), Staked(5) on top; V1(3), V2(4) on bottom */
-  .hero-stats .hero-stat:nth-child(1) { grid-row: 1; grid-column: 1; }
-  .hero-stats .hero-stat:nth-child(2) { grid-row: 1; grid-column: 2; }
-  .hero-stats .hero-stat:nth-child(5) { grid-row: 1; grid-column: 3; }
-  .hero-stats .hero-stat:nth-child(3) { grid-row: 2; grid-column: 1 / 2; }
-  .hero-stats .hero-stat:nth-child(4) { grid-row: 2; grid-column: 2 / 3; }
+  /* 6 stats now divide evenly into 2 rows of 3 in DOM order — no reorder needed. */
   .hero-stat-value { font-size: 18px; }
   .hero-stat-label { font-size: 10px; }
 

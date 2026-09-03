@@ -33,6 +33,7 @@ export default function Hero() {
   const loaded = hasLoadedOnce.current || loadTimedOut;
   const hasData = hasLoadedOnce.current;
   const rewardFloat = protocolStats.reward ? parseFloat(ethers.formatEther(protocolStats.reward)) : (hasData ? 0 : null);
+  const xenSupplyFloat = protocolStats.xenTotalSupply > 0n ? parseFloat(ethers.formatEther(protocolStats.xenTotalSupply)) : (hasData ? 0 : null);
   const v1Float = protocolStats.xenBurnedV1 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV1)) : (hasData ? 0 : null);
   const v2Float = protocolStats.xenBurnedV2 > 0n ? parseFloat(ethers.formatEther(protocolStats.xenBurnedV2)) : (hasData ? 0 : null);
   const stakedFloat = protocolStats.totalStaked > 0n ? parseFloat(ethers.formatEther(protocolStats.totalStaked)) : (hasData ? 0 : null);
@@ -59,6 +60,12 @@ export default function Hero() {
             {loaded ? <AnimatedNumber value={rewardFloat} decimals={2} /> : <Skeleton width="60px" />}
           </div>
           <div className="hero-stat-label">Daily Reward</div>
+        </div>
+        <div className="hero-stat">
+          <div className="hero-stat-value">
+            {loaded ? <AnimatedNumber value={xenSupplyFloat} decimals={0} /> : <Skeleton width="90px" />}
+          </div>
+          <div className="hero-stat-label">XEN Total Supply</div>
         </div>
         <div className="hero-stat">
           <div className="hero-stat-value">

@@ -27,7 +27,7 @@ export function WalletProvider({ children }) {
   // Protocol stats
   const [protocolStats, setProtocolStats] = useState({
     cycle: 0, reward: 0n, xenBurnedV1: 0n, xenBurnedV2: 0n, totalStaked: 0n, apy: null,
-    nextCycleTs: 0, dxnPrice: null,
+    nextCycleTs: 0, dxnPrice: null, xenTotalSupply: 0n,
   });
 
   // User stats
@@ -347,6 +347,15 @@ export function WalletProvider({ children }) {
         } catch {}
       }
 
+      // XEN's burn() is a true supply-reducing burn (not a send-to-dead), so
+      // totalSupply() already nets out everything DBXen (and anything else) has burned.
+      let xenTotalSupply = 0n;
+      try {
+        const xenRead = new ethers.Contract(c.contracts.XEN, ERC20_ABI, provider);
+        xenTotalSupply = await xenRead.totalSupply();
+        if (isStale(epoch)) return;
+      } catch {}
+
       const xenBurnedV1 = oldBatches * 2500000n * (10n ** 18n);
       const xenBurnedV2 = totalBatches * getBatchSize(c);
       const nextCycleTs = Number(initTs + ((cycle + 1n) * period));
@@ -382,6 +391,7 @@ export function WalletProvider({ children }) {
       console.log('[refreshProtocolStats] Success for', key, '— cycle:', Number(cycle));
       setProtocolStats({
         cycle: Number(cycle), reward, xenBurnedV1, xenBurnedV2, totalStaked, apy: null, nextCycleTs,
+        xenTotalSupply,
       });
 
       // DXNv2 price + real APR (async, non-blocking so it never delays core stats).
